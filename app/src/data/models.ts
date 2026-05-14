@@ -22,6 +22,12 @@ export interface CellModel {
   defaultRotationY: number;
   /** 在统一归一化尺寸基础上的显示倍率，用于让不同模型默认呈现大小不同 */
   displayScale: number;
+  /** 是否为运行时新增模型 */
+  custom?: boolean;
+  /** 生成或导入来源 */
+  source?: string;
+  /** 当前生成/导入状态说明 */
+  generationStatus?: string;
 }
 
 const BASE = import.meta.env.BASE_URL;
@@ -182,3 +188,7 @@ export const MODELS: CellModel[] = [
 ];
 
 export const DEFAULT_MODEL_ID = MODELS[0].id;
+
+export function getModelTemplate(templateId?: string): CellModel {
+  return MODELS.find((model) => model.id === templateId) ?? MODELS[0];
+}

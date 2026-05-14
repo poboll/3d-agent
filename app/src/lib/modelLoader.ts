@@ -92,7 +92,7 @@ function parseGLTF(buffer: ArrayBuffer, base: string): Promise<GLTF> {
 }
 
 export interface LoadOptions {
-  fileSize: number;
+  fileSize?: number;
 }
 
 /**
@@ -114,7 +114,7 @@ export function loadModel(url: string, options: LoadOptions): LoadEntry {
 
   entry.promise = (async () => {
     try {
-      const buffer = await fetchWithProgress(url, options.fileSize, (loaded, total) => {
+      const buffer = await fetchWithProgress(url, options.fileSize ?? 0, (loaded, total) => {
         entry.status = 'downloading';
         entry.progress = Math.min(0.95, (loaded / Math.max(1, total)) * 0.95);
         notifyEntry(entry);

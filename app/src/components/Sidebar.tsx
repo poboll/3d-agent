@@ -8,15 +8,18 @@ interface Props {
 }
 
 export function Sidebar({ models, activeId, onSelect }: Props) {
+  const officialModels = models.filter((model) => !model.custom);
+  const generatedModels = models.filter((model) => model.custom);
+
   return (
     <aside className="sidebar">
-      <div className="sidebar-section">
+      <div className="sidebar-section official-section">
         <header className="sidebar-header">
           <span className="dot" />
           细 胞 类 型
         </header>
         <ul className="cell-list">
-          {models.map((m) => (
+          {officialModels.map((m) => (
             <CellItem
               key={m.id}
               model={m}
@@ -27,6 +30,24 @@ export function Sidebar({ models, activeId, onSelect }: Props) {
         </ul>
       </div>
 
+      {generatedModels.length > 0 && (
+        <div className="sidebar-section generated-section">
+          <header className="sidebar-header generated-header">
+            <span className="dot" />
+            生成模型
+          </header>
+          <ul className="cell-list">
+            {generatedModels.map((m) => (
+              <CellItem
+                key={m.id}
+                model={m}
+                active={m.id === activeId}
+                onSelect={() => onSelect(m.id)}
+              />
+            ))}
+          </ul>
+        </div>
+      )}
     </aside>
   );
 }
@@ -63,7 +84,7 @@ function CellItem({
         </div>
         <div className="cell-meta">
           <div className="cell-name">{model.name}</div>
-          <div className="cell-sub">{model.subtitle}</div>
+          <div className="cell-sub">{model.custom ? model.source ?? model.subtitle : model.subtitle}</div>
           <div className="cell-status">
             {downloaded && (
               <span className="status-chip ok">

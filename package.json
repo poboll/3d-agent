@@ -1,0 +1,12 @@
+{
+  "name": "learning-cell-fusion",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev:api": "node server.mjs",
+    "dev:app": "npm --prefix app run dev -- --host 127.0.0.1",
+    "build": "npm --prefix app run build",
+    "test:api": "node --test test/*.test.mjs"
+  }
+}

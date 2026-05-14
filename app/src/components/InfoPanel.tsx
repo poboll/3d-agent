@@ -9,10 +9,16 @@ export function InfoPanel({ model }: Props) {
     <aside className="info-panel" style={{ '--accent': model.accent } as React.CSSProperties}>
       <section className="info-card hero-card">
         <header>
-          <span className="card-eyebrow">本节焦点</span>
+          <span className="card-eyebrow">{model.custom ? '生成模型' : '本节焦点'}</span>
           <h2>{model.name}</h2>
           <p className="info-tagline">{model.subtitle}</p>
         </header>
+        {model.custom && (
+          <div className="generated-note">
+            <span>{model.source ?? 'Generated'}</span>
+            <p>{model.generationStatus ?? '已加入本地展示流程'}</p>
+          </div>
+        )}
         <dl className="info-grid">
           <div>
             <dt>类别</dt>

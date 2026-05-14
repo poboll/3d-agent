@@ -3,15 +3,34 @@ import { DEFAULT_MODEL_ID, MODELS } from './data/models';
 import { Sidebar } from './components/Sidebar';
 import { ModelViewer } from './components/ModelViewer';
 import { InfoPanel } from './components/InfoPanel';
+import { GenerationPanel } from './components/GenerationPanel';
 import { getLoadEntry, loadModel, preloadModel } from './lib/modelLoader';
+import type { CellModel } from './data/models';
 import './app.css';
 
 function App() {
   const [activeId, setActiveId] = useState<string>(DEFAULT_MODEL_ID);
+  const [generatedModels, setGeneratedModels] = useState<CellModel[]>([]);
+  const allModels = useMemo(() => [...MODELS, ...generatedModels], [generatedModels]);
   const activeModel = useMemo(
-    () => MODELS.find((m) => m.id === activeId) ?? MODELS[0],
-    [activeId]
+    () => allModels.find((m) => m.id === activeId) ?? MODELS[0],
+    [activeId, allModels]
   );
+
+  const handleModelsLoaded = (models: CellModel[]) => {
+    setGeneratedModels((current) => {
+      const existingIds = new Set(current.map((model) => model.id));
+      const merged = [...current];
+      for (const model of models) {
+        if (!existingIds.has(model.id)) merged.push(model);
+      }
+      return merged;
+    });
+  };
+
+  const handleModelCreated = (model: CellModel) => {
+    setGeneratedModels((current) => [model, ...current.filter((item) => item.id !== model.id)].slice(0, 8));
+  };
 
   // 启动加载编排：
   //   1. 立刻启动默认模型的下载（也由 ModelViewer 内的 useModel 触发，这里做兜底）；
@@ -99,7 +118,7 @@ function App() {
       </header>
 
       <main className="layout">
-        <Sidebar models={MODELS} activeId={activeId} onSelect={setActiveId} />
+        <Sidebar models={allModels} activeId={activeId} onSelect={setActiveId} />
 
         <section
           className="stage"
@@ -108,7 +127,15 @@ function App() {
           <ModelViewer key={activeModel.id} model={activeModel} />
         </section>
 
-        <InfoPanel model={activeModel} />
+        <div className="right-rail">
+          <GenerationPanel
+            generatedModels={generatedModels}
+            onModelsLoaded={handleModelsLoaded}
+            onModelCreated={handleModelCreated}
+            onSelect={setActiveId}
+          />
+          <InfoPanel model={activeModel} />
+        </div>
       </main>
 
       <footer className="footer">

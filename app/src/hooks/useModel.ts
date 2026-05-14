@@ -16,7 +16,7 @@ export interface UseModelState {
 interface Options {
   /** 当 entry 不存在时是否立即启动下载（默认 true） */
   autoStart?: boolean;
-  fileSize: number;
+  fileSize?: number;
 }
 
 /**
