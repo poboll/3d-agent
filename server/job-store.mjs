@@ -1,0 +1,113 @@
+import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
+import path from 'node:path'
+import { WORKFLOW_EVENTS_FILE, WORKFLOW_JOBS_FILE, WORKFLOW_STORE_DIR } from './config.mjs'
+import {
+  buildJobId,
+  chooseTemplateForPrompt,
+  estimateGenerationCost,
+  normalizePrompt,
+  normalizeProvider,
+  publicJob,
+} from './workflow-utils.mjs'
+
+export async function createWorkflowJob(input = {}) {
+  const prompt = normalizePrompt(input.prompt)
+  const provider = normalizeProvider(input.provider)
+  const template = chooseTemplateForPrompt(prompt, input.template)
+  const now = new Date().toISOString()
+  const job = {
+    id: buildJobId(),
+    prompt,
+    provider,
+    template,
+    status: 'queued',
+    stage: '任务已创建，等待工作流处理。',
+    progress: 5,
+    costEstimateCny: estimateGenerationCost(provider),
+    createdAt: now,
+    updatedAt: now,
+  }
+
+  await upsertJob(job)
+  await appendJobEvent(job.id, 'created', {
+    provider: job.provider,
+    template: job.template,
+    costEstimateCny: job.costEstimateCny,
+  })
+  return publicJob(job)
+}
+
+export async function updateWorkflowJob(jobId, patch = {}, eventName = 'updated') {
+  const jobs = await readJobs()
+  const index = jobs.findIndex((job) => job.id === jobId)
+  if (index === -1) {
+    throw Object.assign(new Error('生成任务不存在。'), { status: 404 })
+  }
+
+  const updated = {
+    ...jobs[index],
+    ...patch,
+    updatedAt: new Date().toISOString(),
+  }
+
+  jobs[index] = updated
+  await writeJobs(jobs)
+  await appendJobEvent(jobId, eventName, patch)
+  return publicJob(updated)
+}
+
+export async function getWorkflowJob(jobId) {
+  const jobs = await readJobs()
+  const job = jobs.find((item) => item.id === jobId)
+  if (!job) {
+    throw Object.assign(new Error('生成任务不存在。'), { status: 404 })
+  }
+  return publicJob(job)
+}
+
+export async function listWorkflowJobs(limit = 20) {
+  const safeLimit = Math.min(Math.max(Number(limit) || 20, 1), 60)
+  const jobs = await readJobs()
+  return jobs
+    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+    .slice(0, safeLimit)
+    .map(publicJob)
+}
+
+async function upsertJob(job) {
+  const jobs = await readJobs()
+  const index = jobs.findIndex((item) => item.id === job.id)
+  if (index >= 0) jobs[index] = job
+  else jobs.push(job)
+  await writeJobs(jobs)
+}
+
+async function readJobs() {
+  try {
+    const raw = await readFile(WORKFLOW_JOBS_FILE, 'utf8')
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed.jobs) ? parsed.jobs : []
+  } catch (error) {
+    if (error.code === 'ENOENT') return []
+    throw error
+  }
+}
+
+async function writeJobs(jobs) {
+  await mkdir(WORKFLOW_STORE_DIR, { recursive: true })
+  const tmpPath = path.join(WORKFLOW_STORE_DIR, `jobs-${Date.now()}.tmp`)
+  await writeFile(tmpPath, JSON.stringify({ jobs }, null, 2))
+  await rename(tmpPath, WORKFLOW_JOBS_FILE)
+}
+
+async function appendJobEvent(jobId, eventName, payload = {}) {
+  await mkdir(WORKFLOW_STORE_DIR, { recursive: true })
+  const line = `${JSON.stringify({
+    jobId,
+    eventName,
+    payload,
+    createdAt: new Date().toISOString(),
+  })}\n`
+
+  await writeFile(WORKFLOW_EVENTS_FILE, line, { flag: 'a' })
+}

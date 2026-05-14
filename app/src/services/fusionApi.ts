@@ -27,6 +27,23 @@ interface LocalModelPayload {
   modelUrl: string;
 }
 
+export type WorkflowStatus = 'queued' | 'processing' | 'completed' | 'failed';
+
+export interface WorkflowJob {
+  id: string;
+  prompt: string;
+  provider: string;
+  template: string;
+  status: WorkflowStatus;
+  stage: string;
+  progress: number;
+  costEstimateCny: number;
+  createdAt: string;
+  updatedAt: string;
+  error?: string;
+  result?: DemoModelPayload;
+}
+
 export function apiUrl(path: string) {
   if (/^https?:\/\//i.test(path)) return path;
   return `${API_BASE.replace(/\/$/, '')}${path.startsWith('/') ? path : `/${path}`}`;
@@ -60,6 +77,39 @@ export async function uploadLocalModel(file: File): Promise<CellModel> {
     imageHint: 'dna',
     template: 'dna',
   });
+}
+
+export async function createTextToCellJob(input: {
+  prompt: string;
+  provider?: string;
+  template?: string;
+}): Promise<WorkflowJob> {
+  const response = await fetch(apiUrl('/api/workflows/text-to-cell'), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(input),
+  });
+  const payload = await readApiResponse<{ job: WorkflowJob }>(response);
+  return payload.job;
+}
+
+export async function fetchWorkflowJob(jobId: string): Promise<WorkflowJob> {
+  const response = await fetch(apiUrl(`/api/jobs/${encodeURIComponent(jobId)}`));
+  const payload = await readApiResponse<{ job: WorkflowJob }>(response);
+  return payload.job;
+}
+
+export async function fetchWorkflowJobs(limit = 12): Promise<WorkflowJob[]> {
+  const response = await fetch(apiUrl(`/api/jobs?limit=${limit}`));
+  const payload = await readApiResponse<{ jobs: WorkflowJob[] }>(response);
+  return payload.jobs;
+}
+
+export function workflowJobToCellModel(job: WorkflowJob): CellModel | null {
+  if (job.status !== 'completed' || !job.result?.modelUrl) return null;
+  return toCellModel(job.result);
 }
 
 async function readApiResponse<T>(response: Response): Promise<T> {

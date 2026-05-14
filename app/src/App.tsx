@@ -8,14 +8,32 @@ import { getLoadEntry, loadModel, preloadModel } from './lib/modelLoader';
 import type { CellModel } from './data/models';
 import './app.css';
 
+const GENERATED_MODELS_STORAGE_KEY = 'learning-cell-generated-models';
+
+function readStoredGeneratedModels() {
+  try {
+    const stored = localStorage.getItem(GENERATED_MODELS_STORAGE_KEY);
+    if (!stored) return [];
+    const parsed = JSON.parse(stored) as CellModel[];
+    return Array.isArray(parsed) ? parsed.filter((model) => model?.id && model?.modelUrl).slice(0, 12) : [];
+  } catch {
+    localStorage.removeItem(GENERATED_MODELS_STORAGE_KEY);
+    return [];
+  }
+}
+
 function App() {
   const [activeId, setActiveId] = useState<string>(DEFAULT_MODEL_ID);
-  const [generatedModels, setGeneratedModels] = useState<CellModel[]>([]);
+  const [generatedModels, setGeneratedModels] = useState<CellModel[]>(readStoredGeneratedModels);
   const allModels = useMemo(() => [...MODELS, ...generatedModels], [generatedModels]);
   const activeModel = useMemo(
     () => allModels.find((m) => m.id === activeId) ?? MODELS[0],
     [activeId, allModels]
   );
+
+  useEffect(() => {
+    localStorage.setItem(GENERATED_MODELS_STORAGE_KEY, JSON.stringify(generatedModels.slice(0, 12)));
+  }, [generatedModels]);
 
   const handleModelsLoaded = (models: CellModel[]) => {
     setGeneratedModels((current) => {
@@ -29,7 +47,7 @@ function App() {
   };
 
   const handleModelCreated = (model: CellModel) => {
-    setGeneratedModels((current) => [model, ...current.filter((item) => item.id !== model.id)].slice(0, 8));
+    setGeneratedModels((current) => [model, ...current.filter((item) => item.id !== model.id)].slice(0, 12));
   };
 
   // 启动加载编排：

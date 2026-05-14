@@ -6,6 +6,15 @@ export const BODY_LIMIT = 28 * 1024 * 1024
 export const MODEL_UPLOAD_LIMIT = 180 * 1024 * 1024
 export const LOCAL_MODEL_DIR = path.resolve(process.env.LOCAL_MODEL_DIR || '.generated-models')
 export const CELLFORGE_MODEL_DIR = path.resolve(process.env.CELLFORGE_MODEL_DIR || '../3DCellForge/public/generated-models')
+export const WORKFLOW_STORE_DIR = path.resolve(process.env.WORKFLOW_STORE_DIR || '.workflow-store')
+export const WORKFLOW_JOBS_FILE = path.join(WORKFLOW_STORE_DIR, 'jobs.json')
+export const WORKFLOW_EVENTS_FILE = path.join(WORKFLOW_STORE_DIR, 'job-events.jsonl')
+export const MOCK_WORKFLOW_STEP_DELAY = Number(process.env.MOCK_WORKFLOW_STEP_DELAY || 650)
+export const HUNYUAN_3D_MODEL_COST_CNY = Number(process.env.HUNYUAN_3D_MODEL_COST_CNY || 1)
+export const TENCENT_HUNYUAN_CONFIGURED = Boolean(
+  process.env.TENCENT_SECRET_ID && process.env.TENCENT_SECRET_KEY && process.env.TENCENT_HUNYUAN_3D_ENDPOINT
+)
+export const SUPPORTED_WORKFLOW_PROVIDERS = ['local-demo', 'tencent-hunyuan']
 
 export const DEMO_MODELS = [
   {

@@ -1,7 +1,16 @@
 import http from 'node:http'
-import { API_HOST, API_PORT, CELLFORGE_MODEL_DIR, LOCAL_MODEL_DIR } from './server/config.mjs'
-import { sendJson, setCorsHeaders } from './server/http-utils.mjs'
+import {
+  API_HOST,
+  API_PORT,
+  CELLFORGE_MODEL_DIR,
+  LOCAL_MODEL_DIR,
+  TENCENT_HUNYUAN_CONFIGURED,
+  WORKFLOW_STORE_DIR,
+} from './server/config.mjs'
+import { readJsonBody, sendJson, setCorsHeaders } from './server/http-utils.mjs'
+import { createWorkflowJob, getWorkflowJob, listWorkflowJobs } from './server/job-store.mjs'
 import { getDemoModels, importLocalModel, serveDemoModel, serveLocalModel } from './server/model-store.mjs'
+import { startWorkflowJob } from './server/workflow-runner.mjs'
 
 const server = http.createServer(async (request, response) => {
   try {
@@ -21,10 +30,11 @@ const server = http.createServer(async (request, response) => {
         service: 'LearningCell fusion API',
         localModelDir: LOCAL_MODEL_DIR,
         cellforgeModelDir: CELLFORGE_MODEL_DIR,
+        workflowStoreDir: WORKFLOW_STORE_DIR,
         providers: {
           demo: true,
           localGlb: true,
-          tencentHunyuan: false,
+          tencentHunyuan: TENCENT_HUNYUAN_CONFIGURED,
         },
       })
       return
@@ -47,6 +57,24 @@ const server = http.createServer(async (request, response) => {
 
     if (request.method === 'GET' && url.pathname.startsWith('/api/3d/local-model/')) {
       await serveLocalModel(url, response)
+      return
+    }
+
+    if (request.method === 'POST' && url.pathname === '/api/workflows/text-to-cell') {
+      const job = await createWorkflowJob(await readJsonBody(request))
+      startWorkflowJob(job)
+      sendJson(response, 202, { job })
+      return
+    }
+
+    if (request.method === 'GET' && url.pathname === '/api/jobs') {
+      sendJson(response, 200, { jobs: await listWorkflowJobs(url.searchParams.get('limit') || 20) })
+      return
+    }
+
+    if (request.method === 'GET' && url.pathname.startsWith('/api/jobs/')) {
+      const jobId = decodeURIComponent(url.pathname.replace('/api/jobs/', ''))
+      sendJson(response, 200, { job: await getWorkflowJob(jobId) })
       return
     }
 
