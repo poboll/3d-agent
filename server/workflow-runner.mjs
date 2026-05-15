@@ -47,7 +47,7 @@ async function runLocalDemoWorkflow(job) {
     {
       status: 'processing',
       progress: 22,
-      stage: '正在整理文本提示词，生成适合图片到 3D 的结构描述。',
+      stage: '已接收确认参考图，正在整理适合图生 3D 的结构描述。',
     },
     'prompt-refined'
   )
@@ -58,7 +58,7 @@ async function runLocalDemoWorkflow(job) {
     {
       status: 'processing',
       progress: 48,
-      stage: '参考图阶段已模拟完成，正在进入 3D 生成与模型缓存。',
+      stage: '参考图预处理已完成，正在提交图生 3D 建模任务。',
     },
     'reference-image-ready'
   )
@@ -94,10 +94,10 @@ async function runLocalDemoWorkflow(job) {
       result: {
         id: `generated-${job.id}`,
         name: `AI 生成：${getTemplateDisplayName(job.template)}`,
-        subtitle: '文本生成生物模型',
+        subtitle: '图生 3D 建模结果',
         category: 'AI 生成示意模型',
         accent: demoModel.accent,
-        description: `根据「${job.prompt}」创建的本地演示模型。当前版本复用 3DCellForge 缓存 GLB 验证端到端链路，真实 provider 接入后将替换为云端生成结果。`,
+        description: `根据「${job.prompt}」确认参考图后创建的本地演示模型。当前版本复用 3DCellForge 缓存 GLB 验证端到端链路，真实 provider 接入后将替换为云端图生 3D 结果。`,
         fileName: targetName,
         fileSize: info.size,
         imageHint: job.template,

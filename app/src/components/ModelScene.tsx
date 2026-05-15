@@ -55,7 +55,7 @@ export function ModelScene({
 
   useFrame((_, delta) => {
     if (autoRotate && groupRef.current) {
-      groupRef.current.rotation.y += delta * 0.25;
+      groupRef.current.rotation.y += delta * 0.18;
     }
   });
 

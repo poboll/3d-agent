@@ -1,39 +1,57 @@
 :root {
-  /* 主色调：温润的米白 + 自然系点缀 */
-  --bg-cream: #f6efe2;
-  --bg-paper: #faf5ea;
-  --bg-card: rgba(255, 252, 244, 0.92);
-  --bg-soft: rgba(255, 252, 244, 0.6);
-  --bg-deep: #efe7d6;
+  --paper: #eef3f0;
+  --paper-2: #dde7e2;
+  --paper-3: #c9d7d0;
+  --paper-warm: #fbfcf8;
+  --sumi: #142126;
+  --sumi-soft: #24343b;
+  --ink-mute: #667477;
+  --ink-whisper: #98a5a3;
+  --vermilion: #c76f59;
+  --sage: #5f8a78;
+  --sage-soft: rgba(95, 138, 120, 0.12);
+  --aqua: #88b8ab;
+  --lab-blue: #5d7580;
+  --danger: #a64a43;
+  --hairline: rgba(20, 33, 38, 0.14);
+  --hairline-2: rgba(20, 33, 38, 0.08);
 
-  --ink-900: #2c2a2e;
-  --ink-700: #4a4753;
-  --ink-500: #6f6b78;
-  --ink-300: #aaa5b3;
+  --bg-cream: var(--paper);
+  --bg-paper: var(--paper-warm);
+  --bg-card: rgba(252, 250, 244, 0.78);
+  --bg-soft: rgba(243, 239, 231, 0.62);
+  --bg-deep: var(--paper-2);
 
-  --accent: #7fb069;
-  --accent-deep: #4f7a47;
-  --plum: #6f3aa3;
-  --rose: #c46b7a;
-  --amber: #c98a3a;
-  --sky: #5b8db8;
+  --ink-900: var(--sumi);
+  --ink-800: var(--sumi-soft);
+  --ink-700: var(--sumi-soft);
+  --ink-500: var(--ink-mute);
+  --ink-300: var(--ink-whisper);
 
-  --border-soft: rgba(70, 60, 80, 0.08);
-  --border-strong: rgba(70, 60, 80, 0.18);
-  --shadow-soft: 0 12px 32px -16px rgba(70, 60, 80, 0.18),
-    0 2px 6px -2px rgba(70, 60, 80, 0.08);
-  --shadow-card: 0 22px 60px -30px rgba(70, 60, 80, 0.22),
-    0 4px 14px -4px rgba(70, 60, 80, 0.08);
+  --accent: var(--sage);
+  --accent-deep: #505845;
+  --plum: var(--vermilion);
+  --rose: var(--vermilion);
+  --amber: #8c7046;
+  --sky: var(--sage);
 
-  --radius-sm: 10px;
-  --radius-md: 16px;
-  --radius-lg: 24px;
-  --radius-xl: 32px;
+  --border-soft: var(--hairline-2);
+  --border-strong: var(--hairline);
+  --shadow-soft: 0 10px 28px -24px rgba(28, 28, 26, 0.34);
+  --shadow-card: 0 18px 42px -34px rgba(28, 28, 26, 0.38);
 
-  --font-sans: 'Noto Sans SC', system-ui, 'Helvetica Neue', 'PingFang SC',
-    'Microsoft YaHei', sans-serif;
-  --font-serif: 'Noto Serif SC', 'STSong', 'Songti SC', Georgia, serif;
-  --font-hand: 'Caveat', 'Noto Serif SC', cursive;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 8px;
+
+  --font-sans: 'Noto Sans SC', 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', system-ui, sans-serif;
+  --font-serif: 'Noto Serif JP', 'Noto Serif SC', 'Songti SC', 'STSong',
+    Georgia, serif;
+  --font-hand: var(--font-serif);
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, 'Liberation Mono',
+    monospace;
 
   color-scheme: light;
   color: var(--ink-700);
@@ -57,18 +75,45 @@ body,
 
 body {
   background:
-    radial-gradient(1200px 600px at 80% -10%, rgba(127, 176, 105, 0.16), transparent 60%),
-    radial-gradient(900px 600px at -10% 100%, rgba(196, 107, 122, 0.14), transparent 60%),
-    radial-gradient(900px 700px at 50% 50%, rgba(255, 248, 230, 0.6), transparent 70%),
-    linear-gradient(180deg, var(--bg-cream) 0%, var(--bg-paper) 100%);
+    radial-gradient(820px 460px at 13% 18%, rgba(95, 138, 120, 0.085), transparent 62%),
+    radial-gradient(760px 520px at 88% 72%, rgba(199, 111, 89, 0.055), transparent 66%),
+    radial-gradient(900px 680px at 50% 48%, rgba(93, 117, 128, 0.045), transparent 70%),
+    linear-gradient(180deg, #eef3f0 0%, #fbfcf8 100%);
   color: var(--ink-700);
   overflow-x: hidden;
+}
+
+body::before,
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+body::before {
+  z-index: 0;
+  opacity: 0.28;
+  background-image:
+    linear-gradient(rgba(20, 33, 38, 0.028) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(20, 33, 38, 0.02) 1px, transparent 1px);
+  background-size: 34px 34px, 34px 34px;
+  mix-blend-mode: multiply;
+}
+
+body::after {
+  z-index: 0;
+  opacity: 0.36;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.82' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.08 0 0 0 0 0.13 0 0 0 0 0.13 0 0 0 0.045 0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+  mix-blend-mode: multiply;
 }
 
 #root {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  position: relative;
+  z-index: 1;
 }
 
 a {

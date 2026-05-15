@@ -2,9 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { DEFAULT_MODEL_ID, MODELS } from './data/models';
 import { Sidebar } from './components/Sidebar';
 import { ModelViewer } from './components/ModelViewer';
-import { InfoPanel } from './components/InfoPanel';
 import { GenerationPanel } from './components/GenerationPanel';
-import { getLoadEntry, loadModel, preloadModel } from './lib/modelLoader';
+import { MaAboutPanel } from './components/MaAboutPanel';
 import type { CellModel } from './data/models';
 import './app.css';
 
@@ -25,11 +24,21 @@ function readStoredGeneratedModels() {
 function App() {
   const [activeId, setActiveId] = useState<string>(DEFAULT_MODEL_ID);
   const [generatedModels, setGeneratedModels] = useState<CellModel[]>(readStoredGeneratedModels);
+  const [route, setRoute] = useState(() => (window.location.hash === '#about-ma' ? 'about' : 'workbench'));
   const allModels = useMemo(() => [...MODELS, ...generatedModels], [generatedModels]);
   const activeModel = useMemo(
     () => allModels.find((m) => m.id === activeId) ?? MODELS[0],
     [activeId, allModels]
   );
+
+  useEffect(() => {
+    const syncRoute = () => {
+      setRoute(window.location.hash === '#about-ma' ? 'about' : 'workbench');
+    };
+
+    window.addEventListener('hashchange', syncRoute);
+    return () => window.removeEventListener('hashchange', syncRoute);
+  }, []);
 
   useEffect(() => {
     localStorage.setItem(GENERATED_MODELS_STORAGE_KEY, JSON.stringify(generatedModels.slice(0, 12)));
@@ -50,114 +59,64 @@ function App() {
     setGeneratedModels((current) => [model, ...current.filter((item) => item.id !== model.id)].slice(0, 12));
   };
 
-  // 启动加载编排：
-  //   1. 立刻启动默认模型的下载（也由 ModelViewer 内的 useModel 触发，这里做兜底）；
-  //   2. 等默认模型解析完成（或 5s 超时）后，按顺序串行预加载其它模型，
-  //      避免多个 ~10MB 文件同时下载抢占带宽。
-  useEffect(() => {
-    let cancelled = false;
-
-    const firstEntry = loadModel(activeModel.modelUrl, {
-      fileSize: activeModel.fileSize,
-    });
-
-    let started = false;
-    const queueOthers = () => {
-      if (cancelled || started) return;
-      started = true;
-      const queue = MODELS.filter((m) => m.id !== activeModel.id);
-      let i = 0;
-      const next = () => {
-        if (cancelled || i >= queue.length) return;
-        const m = queue[i++];
-        preloadModel(m.modelUrl, { fileSize: m.fileSize });
-        const entry = getLoadEntry(m.modelUrl);
-        entry?.promise.finally(() => {
-          if (cancelled) return;
-          setTimeout(next, 120);
-        });
-      };
-      next();
-    };
-
-    const timer = setTimeout(queueOthers, 5000);
-    firstEntry.promise
-      .then(() => {
-        clearTimeout(timer);
-        queueOthers();
-      })
-      .catch(() => {
-        clearTimeout(timer);
-        queueOthers();
-      });
-
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-    // 仅在挂载时触发，用户后续切换模型不会重启队列
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   return (
     <div className="app-shell">
       <header className="topbar">
+        <a className="topbar-kicker" href="#workbench" aria-label="返回工作台">
+          N° 07 · CELL PLANT FORGE · 2026
+        </a>
         <div className="brand">
-          <div className="brand-mark" aria-hidden="true">
-            <svg viewBox="0 0 48 48" width="36" height="36">
-              <defs>
-                <radialGradient id="bm" cx="50%" cy="45%" r="55%">
-                  <stop offset="0%" stopColor="#c8e6a0" />
-                  <stop offset="55%" stopColor="#7fb069" />
-                  <stop offset="100%" stopColor="#3f6b3a" />
-                </radialGradient>
-              </defs>
-              <circle cx="24" cy="24" r="22" fill="url(#bm)" />
-              <circle cx="24" cy="24" r="7" fill="#5c2a8c" opacity="0.85" />
-              <circle cx="14" cy="16" r="2.4" fill="#f1c40f" opacity="0.85" />
-              <circle cx="34" cy="14" r="1.8" fill="#e67e22" opacity="0.85" />
-              <circle cx="34" cy="32" r="2.2" fill="#1e88e5" opacity="0.85" />
-              <circle cx="14" cy="34" r="1.9" fill="#c0392b" opacity="0.85" />
-            </svg>
-          </div>
+          <div className="brand-mark" aria-hidden="true">間</div>
+          <span className="brand-rule" aria-hidden="true" />
           <div>
-            <h1 className="brand-title">细胞结构工坊</h1>
+            <h1 className="brand-title">间 MA · 生物工作台</h1>
             <p className="brand-tagline">
-              <span className="brand-pen">在显微镜下探索生命之美</span>
+              <span>MA CELL STUDIO</span>
               <span className="brand-sep">·</span>
-              <span>Cell Architecture Studio</span>
+              <span>Image confirmed before 3D</span>
             </p>
           </div>
         </div>
-        <div className="topbar-meta">
-          <span className="meta-pill">教学版 v1.0</span>
-          <span className="meta-text">支持 3D 旋转 · 中文教学</span>
-        </div>
+        <nav className="topbar-nav" aria-label="界面区域">
+          <a href="#workbench">Workbench</a>
+          <a href="#generate">Workflow</a>
+          <a href="#specimens">Specimens</a>
+          <a href="#about-ma">About</a>
+          <span>Local API</span>
+        </nav>
+        <div className="hanko-mark" aria-hidden="true">間</div>
       </header>
 
-      <main className="layout">
-        <Sidebar models={allModels} activeId={activeId} onSelect={setActiveId} />
+      {route === 'about' ? (
+        <main className="about-route">
+          <MaAboutPanel />
+        </main>
+      ) : (
+        <main className="layout" id="workbench">
+          <aside className="control-rail" id="generate">
+            <GenerationPanel
+              generatedModels={generatedModels}
+              onModelsLoaded={handleModelsLoaded}
+              onModelCreated={handleModelCreated}
+              onSelect={setActiveId}
+            />
+            <Sidebar models={allModels} activeId={activeId} onSelect={setActiveId} />
+          </aside>
 
-        <section
-          className="stage"
-          style={{ '--accent': activeModel.accent } as React.CSSProperties}
-        >
-          <ModelViewer key={activeModel.id} model={activeModel} />
-        </section>
-
-        <div className="right-rail">
-          <GenerationPanel
-            generatedModels={generatedModels}
-            onModelsLoaded={handleModelsLoaded}
-            onModelCreated={handleModelCreated}
-            onSelect={setActiveId}
-          />
-          <InfoPanel model={activeModel} />
-        </div>
-      </main>
+          <section
+            className="stage"
+            id="specimens"
+            style={{ '--accent': activeModel.accent } as React.CSSProperties}
+          >
+            <ModelViewer key={activeModel.id} model={activeModel} />
+          </section>
+        </main>
+      )}
 
       <footer className="footer">
-        <span>© {new Date().getFullYear()} 细胞结构工坊 · 用于课堂教学与科普展示</span>
+        <span>© {new Date().getFullYear()} MA CELL STUDIO</span>
+        <span>TEXT / IMAGE / 3D · TEACHING WORKBENCH</span>
+        <span>LearningCell × 3DCellForge</span>
       </footer>
     </div>
   );

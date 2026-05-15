@@ -9,7 +9,7 @@ export function InfoPanel({ model }: Props) {
     <aside className="info-panel" style={{ '--accent': model.accent } as React.CSSProperties}>
       <section className="info-card hero-card">
         <header>
-          <span className="card-eyebrow">{model.custom ? '生成模型' : '本节焦点'}</span>
+          <span className="card-eyebrow">{model.custom ? '§ 04 — GENERATED SPECIMEN' : '§ 04 — TEACHING NOTE'}</span>
           <h2>{model.name}</h2>
           <p className="info-tagline">{model.subtitle}</p>
         </header>
@@ -44,16 +44,16 @@ export function InfoPanel({ model }: Props) {
       </section>
 
       <section className="info-card">
-        <span className="card-eyebrow">概念解读</span>
+        <span className="card-eyebrow">CLASSROOM / 教学提示</span>
         <p className="info-description">{model.description}</p>
       </section>
 
       <section className="info-card">
-        <span className="card-eyebrow">关键结构</span>
+        <span className="card-eyebrow">STRUCTURE / 观察顺序</span>
         <ul className="feature-list">
-          {model.features.map((f) => (
+          {model.features.slice(0, 5).map((f, index) => (
             <li key={f.name}>
-              <span className="feature-dot" />
+              <span className="feature-dot">{index + 1}</span>
               <div>
                 <div className="feature-name">{f.name}</div>
                 <div className="feature-detail">{f.detail}</div>
@@ -64,12 +64,12 @@ export function InfoPanel({ model }: Props) {
       </section>
 
       <section className="info-card fun-card">
-        <span className="card-eyebrow">趣味知识</span>
+        <span className="card-eyebrow">ASK / 课堂提问</span>
         <p className="fun-text">{model.funFact}</p>
       </section>
 
       <section className="info-card occur-card">
-        <span className="card-eyebrow">分布与生境</span>
+        <span className="card-eyebrow">CONTEXT / 分布与生境</span>
         <p>{model.whereItOccurs.text}</p>
         <div className="habitat">{model.whereItOccurs.habitat}</div>
       </section>

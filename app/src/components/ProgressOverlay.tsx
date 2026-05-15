@@ -51,8 +51,8 @@ function CellRing() {
     <svg viewBox="0 0 80 80" width="80" height="80">
       <defs>
         <linearGradient id="ring" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#9bcf83" />
-          <stop offset="100%" stopColor="#5c7a8a" />
+          <stop offset="0%" stopColor="#5F8A78" />
+          <stop offset="100%" stopColor="#C76F59" />
         </linearGradient>
       </defs>
       <circle cx="40" cy="40" r="32" stroke="rgba(0,0,0,0.06)" strokeWidth="6" fill="none" />
@@ -77,11 +77,11 @@ function CellRing() {
           repeatCount="indefinite"
         />
       </circle>
-      <circle cx="40" cy="40" r="9" fill="#5c2a8c" opacity="0.7" />
-      <circle cx="28" cy="32" r="2.5" fill="#f1c40f" />
-      <circle cx="52" cy="30" r="2" fill="#e67e22" />
-      <circle cx="52" cy="50" r="2.4" fill="#1e88e5" />
-      <circle cx="28" cy="52" r="2.2" fill="#c0392b" />
+      <circle cx="40" cy="40" r="9" fill="#142126" opacity="0.64" />
+      <circle cx="28" cy="32" r="2.5" fill="#C76F59" />
+      <circle cx="52" cy="30" r="2" fill="#5F8A78" />
+      <circle cx="52" cy="50" r="2.4" fill="#88B8AB" opacity="0.82" />
+      <circle cx="28" cy="52" r="2.2" fill="#5F8A78" opacity="0.72" />
     </svg>
   );
 }

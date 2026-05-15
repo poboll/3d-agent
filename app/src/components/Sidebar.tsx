@@ -1,5 +1,4 @@
 import type { CellModel } from '../data/models';
-import { useModel } from '../hooks/useModel';
 
 interface Props {
   models: CellModel[];
@@ -8,18 +7,16 @@ interface Props {
 }
 
 export function Sidebar({ models, activeId, onSelect }: Props) {
-  const officialModels = models.filter((model) => !model.custom);
-  const generatedModels = models.filter((model) => model.custom);
-
   return (
-    <aside className="sidebar">
+    <aside className="sidebar" aria-label="模型索引">
       <div className="sidebar-section official-section">
         <header className="sidebar-header">
           <span className="dot" />
-          细 胞 类 型
+          <span className="sidebar-label-main">SPECIMEN INDEX</span>
+          <span className="sidebar-label-sub">标本索引</span>
         </header>
         <ul className="cell-list">
-          {officialModels.map((m) => (
+          {models.map((m) => (
             <CellItem
               key={m.id}
               model={m}
@@ -29,25 +26,6 @@ export function Sidebar({ models, activeId, onSelect }: Props) {
           ))}
         </ul>
       </div>
-
-      {generatedModels.length > 0 && (
-        <div className="sidebar-section generated-section">
-          <header className="sidebar-header generated-header">
-            <span className="dot" />
-            生成模型
-          </header>
-          <ul className="cell-list">
-            {generatedModels.map((m) => (
-              <CellItem
-                key={m.id}
-                model={m}
-                active={m.id === activeId}
-                onSelect={() => onSelect(m.id)}
-              />
-            ))}
-          </ul>
-        </div>
-      )}
     </aside>
   );
 }
@@ -61,15 +39,6 @@ function CellItem({
   active: boolean;
   onSelect: () => void;
 }) {
-  const { status, progress } = useModel(model.modelUrl, {
-    autoStart: false,
-    fileSize: model.fileSize,
-  });
-  const downloaded = status === 'done';
-  const downloading = status === 'downloading' || status === 'parsing';
-  const queued = status === 'idle';
-  const percent = Math.round(progress * 100);
-
   return (
     <li>
       <button
@@ -86,20 +55,10 @@ function CellItem({
           <div className="cell-name">{model.name}</div>
           <div className="cell-sub">{model.custom ? model.source ?? model.subtitle : model.subtitle}</div>
           <div className="cell-status">
-            {downloaded && (
-              <span className="status-chip ok">
-                <Check /> 已就绪
-              </span>
-            )}
-            {downloading && (
-              <span className="status-chip loading">
-                <span className="mini-bar">
-                  <span className="mini-fill" style={{ width: `${percent}%` }} />
-                </span>
-                {percent}%
-              </span>
-            )}
-            {queued && <span className="status-chip idle">排队中</span>}
+            <span className={`status-chip ${active ? 'ok' : 'idle'}`}>
+              {active && <Check />}
+              {model.custom ? '生成' : active ? '查看中' : '标本'}
+            </span>
           </div>
         </div>
       </button>

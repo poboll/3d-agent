@@ -1,6 +1,6 @@
 import { Suspense, useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { Environment, OrbitControls, ContactShadows } from '@react-three/drei';
+import { OrbitControls } from '@react-three/drei';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import type { CellModel } from '../data/models';
 import { useModel } from '../hooks/useModel';
@@ -32,41 +32,29 @@ export function ModelViewer({ model }: Props) {
   return (
     <div className="viewer">
       <Canvas
-        shadows="percentage"
-        dpr={[1, 2]}
-        camera={{ position: [0, 0, 4.4], fov: 45 }}
-        gl={{ antialias: true, preserveDrawingBuffer: true }}
+        frameloop={autoRotate ? 'always' : 'demand'}
+        dpr={[1, 1.35]}
+        camera={{ position: [0, 0, 4.6], fov: 42 }}
+        gl={{
+          antialias: false,
+          powerPreference: 'low-power',
+          preserveDrawingBuffer: false,
+        }}
       >
-        <ambientLight intensity={0.55} />
-        <directionalLight
-          position={[5, 6, 4]}
-          intensity={1.1}
-          castShadow
-          shadow-mapSize-width={1024}
-          shadow-mapSize-height={1024}
-        />
-        <directionalLight position={[-3, 2, -4]} intensity={0.35} />
-
-        <Suspense fallback={null}>
-          <Environment preset="studio" environmentIntensity={0.55} />
-        </Suspense>
+        <ambientLight intensity={0.82} />
+        <directionalLight position={[4, 5, 5]} intensity={1.05} />
+        <directionalLight position={[-4, 1, -3]} intensity={0.38} />
 
         {isReady && entry?.gltf && (
-          <ModelScene
-            gltf={entry.gltf}
-            autoRotate={false}
-            initialRotationY={model.defaultRotationY}
-            displayScale={model.displayScale}
-          />
+          <Suspense fallback={null}>
+            <ModelScene
+              gltf={entry.gltf}
+              autoRotate={autoRotate}
+              initialRotationY={model.defaultRotationY}
+              displayScale={model.displayScale}
+            />
+          </Suspense>
         )}
-
-        <ContactShadows
-          position={[0, -1.35, 0]}
-          opacity={0.32}
-          scale={6}
-          blur={2.4}
-          far={3.2}
-        />
 
         <OrbitControls
           ref={controlsRef}
@@ -75,23 +63,50 @@ export function ModelViewer({ model }: Props) {
           dampingFactor={0.08}
           minDistance={1.5}
           maxDistance={9}
-          autoRotate={autoRotate}
-          autoRotateSpeed={0.7}
         />
       </Canvas>
 
-      {/* 浮层标题（左上） */}
-      <div className="overlay-heading">
+      <div className="stage-info stage-info-main">
+        <span className="stage-kicker">§ 02 — MODEL CARD</span>
         <h2 className="overlay-title">{model.name}</h2>
         <p className="overlay-sub">{model.subtitle}</p>
+        <dl className="stage-meta-grid">
+          <div>
+            <dt>类别</dt>
+            <dd>{model.category}</dd>
+          </div>
+          <div>
+            <dt>尺寸</dt>
+            <dd>{model.size}</dd>
+          </div>
+          <div>
+            <dt>光镜可见</dt>
+            <dd>{model.visibleInLM}</dd>
+          </div>
+        </dl>
       </div>
 
-      {/* 浮层提示（弱化为左下角的灰色细字） */}
+      <div className="stage-info stage-info-steps" aria-label="观察顺序">
+        <span className="stage-kicker">OBSERVE / 观察顺序</span>
+        <ol>
+          {model.features.slice(0, 4).map((feature, index) => (
+            <li key={feature.name}>
+              <span>{index + 1}</span>
+              <strong>{feature.name}</strong>
+            </li>
+          ))}
+        </ol>
+      </div>
+
+      <div className="stage-info stage-info-note">
+        <span className="stage-kicker">TEACHING NOTE</span>
+        <p>{model.description}</p>
+      </div>
+
       <p className="overlay-tip" aria-hidden="true">
         拖拽旋转 · 滚轮缩放 · 右键平移
       </p>
 
-      {/* 浮层工具栏（底部居中） */}
       <div className="overlay-toolbar">
         <button
           type="button"
