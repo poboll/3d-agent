@@ -25,19 +25,74 @@
 
 ## 本地开发
 
+当前仓库已经加入融合后端，推荐在项目根目录启动：
+
 ```bash
-cd app
-npm install
-npm run dev
+npm --prefix app install
+npm run dev:api
+npm run dev:app
+```
+
+默认地址：
+
+- 前端：`http://127.0.0.1:5173/`
+- 后端：`http://127.0.0.1:8791/`
+
+如果 8791 或 5173 已被占用，可以临时指定端口：
+
+```bash
+API_PORT=8792 npm run dev:api
+VITE_API_BASE=http://127.0.0.1:8792 npm --prefix app run dev -- --host 127.0.0.1 --port 5174
 ```
 
 构建：
 
 ```bash
-cd app
 npm run build
-npm run preview   # 本地预览构建产物
+npm --prefix app run preview   # 本地预览构建产物
 ```
+
+API 测试：
+
+```bash
+npm run test:api
+```
+
+## 融合生成工作流
+
+本项目当前采用 LearningCell 作为主展示壳，吸收 3DCellForge 的生成模型缓存思路，已经具备以下能力：
+
+- 加载 `../3DCellForge/public/generated-models/` 下的缓存 GLB 样例。
+- 上传本地 `.glb/.gltf` 并加入左侧“生成模型”列表。
+- 输入文本创建生成任务，后端记录任务状态并写入本地任务库。
+- 本地演示 provider 会复用 3DCellForge 缓存 GLB，模拟“文本描述 -> 参考图阶段 -> 3D 生成 -> GLB 缓存 -> 前端查看”的完整闭环。
+- 页面刷新后会从浏览器本地存储恢复最近加入的生成模型。
+
+运行后可用接口：
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| `GET` | `/api/health` | 后端健康检查与 provider 配置状态 |
+| `GET` | `/api/3d/demo-models` | 读取 3DCellForge 缓存样例 |
+| `POST` | `/api/3d/local-model?fileName=xxx.glb` | 上传本地 GLB/GLTF |
+| `POST` | `/api/workflows/text-to-cell` | 创建文本生成生物模型任务 |
+| `GET` | `/api/jobs` | 查看最近生成任务 |
+| `GET` | `/api/jobs/:jobId` | 查看单个任务状态 |
+
+运行时会生成两个本地目录，均已加入 `.gitignore`：
+
+- `.generated-models/`：保存导入或生成后的 GLB/GLTF。
+- `.workflow-store/`：保存任务 JSON 与事件日志。
+
+腾讯混元生 3D provider 已预留配置检测入口：
+
+```bash
+TENCENT_SECRET_ID=xxx
+TENCENT_SECRET_KEY=xxx
+TENCENT_HUNYUAN_3D_ENDPOINT=xxx
+```
+
+当前版本不会真实调用腾讯云，也不会产生云 API 费用；真实接入需要继续补签名、提交任务、轮询任务、下载模型四段逻辑。
 
 ## 部署到 GitHub Pages
 
