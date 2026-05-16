@@ -1,20 +1,20 @@
 :root {
-  --paper: #f5f1e8;
-  --paper-2: #ede7d7;
-  --paper-3: #e4dcc6;
-  --paper-warm: #fffaf0;
-  --sumi: #1d1c18;
-  --sumi-soft: #2d2b25;
-  --ink-mute: #6c6659;
-  --ink-whisper: #9c9483;
-  --vermilion: #9c4938;
-  --sage: #667957;
-  --sage-soft: rgba(102, 121, 87, 0.12);
-  --aqua: #90a99a;
-  --lab-blue: #6f7f84;
+  --paper: #f4efe3;
+  --paper-2: #e9dfca;
+  --paper-3: #d9c9aa;
+  --paper-warm: #fff9eb;
+  --sumi: #1e241b;
+  --sumi-soft: #30392c;
+  --ink-mute: #6a6657;
+  --ink-whisper: #9a927e;
+  --vermilion: #9c4633;
+  --sage: #40583c;
+  --sage-soft: rgba(64, 88, 60, 0.13);
+  --aqua: #7f9788;
+  --lab-blue: #687b78;
   --danger: #9d332f;
-  --hairline: rgba(29, 28, 24, 0.14);
-  --hairline-2: rgba(29, 28, 24, 0.08);
+  --hairline: rgba(30, 36, 27, 0.15);
+  --hairline-2: rgba(30, 36, 27, 0.08);
 
   --bg-cream: var(--paper);
   --bg-paper: var(--paper-warm);
@@ -75,9 +75,9 @@ body,
 
 body {
   background:
-    radial-gradient(900px 460px at 14% 18%, rgba(156, 73, 56, 0.045), transparent 62%),
-    radial-gradient(760px 520px at 88% 74%, rgba(102, 121, 87, 0.06), transparent 66%),
-    radial-gradient(900px 680px at 50% 48%, rgba(29, 28, 24, 0.028), transparent 70%),
+    radial-gradient(900px 460px at 12% 16%, rgba(156, 70, 51, 0.045), transparent 62%),
+    radial-gradient(820px 560px at 88% 74%, rgba(64, 88, 60, 0.085), transparent 66%),
+    radial-gradient(900px 680px at 50% 48%, rgba(30, 36, 27, 0.03), transparent 70%),
     linear-gradient(180deg, var(--paper) 0%, var(--paper-warm) 100%);
   color: var(--ink-700);
   overflow-x: hidden;
@@ -95,8 +95,8 @@ body::before {
   z-index: 0;
   opacity: 0.36;
   background-image:
-    linear-gradient(rgba(29, 28, 24, 0.024) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(29, 28, 24, 0.018) 1px, transparent 1px);
+    linear-gradient(rgba(30, 36, 27, 0.024) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(30, 36, 27, 0.018) 1px, transparent 1px);
   background-size: 32px 32px, 32px 32px;
   mix-blend-mode: multiply;
 }
@@ -104,7 +104,7 @@ body::before {
 body::after {
   z-index: 0;
   opacity: 0.48;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.88' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.12 0 0 0 0 0.11 0 0 0 0 0.09 0 0 0 0.052 0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.88' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.12 0 0 0 0 0.11 0 0 0 0 0.085 0 0 0 0.052 0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
   mix-blend-mode: multiply;
 }
 

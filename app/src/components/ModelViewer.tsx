@@ -84,43 +84,6 @@ export function ModelViewer({ model }: Props) {
         />
       </Canvas>
 
-      <div className="stage-info stage-info-main">
-        <span className="stage-kicker">§ 02 — MODEL CARD</span>
-        <h2 className="overlay-title">{model.name}</h2>
-        <p className="overlay-sub">{model.subtitle}</p>
-        <dl className="stage-meta-grid">
-          <div>
-            <dt>类别</dt>
-            <dd>{model.category}</dd>
-          </div>
-          <div>
-            <dt>尺寸</dt>
-            <dd>{model.size}</dd>
-          </div>
-          <div>
-            <dt>光镜可见</dt>
-            <dd>{model.visibleInLM}</dd>
-          </div>
-        </dl>
-      </div>
-
-      <div className="stage-info stage-info-steps" aria-label="观察顺序">
-        <span className="stage-kicker">OBSERVE / 观察顺序</span>
-        <ol>
-          {model.features.slice(0, 4).map((feature, index) => (
-            <li key={feature.name}>
-              <span>{index + 1}</span>
-              <strong>{feature.name}</strong>
-            </li>
-          ))}
-        </ol>
-      </div>
-
-      <div className="stage-info stage-info-note">
-        <span className="stage-kicker">TEACHING NOTE</span>
-        <p>{model.description}</p>
-      </div>
-
       <p className="overlay-tip" aria-hidden="true">
         拖拽旋转 · 滚轮缩放 · 右键平移
       </p>

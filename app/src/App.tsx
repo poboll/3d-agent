@@ -93,23 +93,27 @@ function App() {
         </main>
       ) : (
         <main className="layout" id="workbench">
-          <aside className="control-rail" id="generate">
+          <aside className="control-rail left-rail" id="generate">
             <GenerationPanel
               generatedModels={generatedModels}
               onModelsLoaded={handleModelsLoaded}
               onModelCreated={handleModelCreated}
               onSelect={setActiveId}
             />
-            <Sidebar models={allModels} activeId={activeId} onSelect={setActiveId} />
           </aside>
 
           <section
             className="stage"
-            id="specimens"
+            id="stage"
             style={{ '--accent': activeModel.accent } as React.CSSProperties}
           >
             <ModelViewer key={activeModel.id} model={activeModel} />
           </section>
+
+          <aside className="right-rail" id="specimens">
+            <ModelInspector model={activeModel} />
+            <Sidebar models={allModels} activeId={activeId} onSelect={setActiveId} />
+          </aside>
         </main>
       )}
 
@@ -119,6 +123,57 @@ function App() {
         <span>LearningCell × 3DCellForge</span>
       </footer>
     </div>
+  );
+}
+
+function ModelInspector({ model }: { model: CellModel }) {
+  return (
+    <section className="model-inspector" aria-label="当前模型说明">
+      <div className="inspector-head">
+        <span className="inspector-kicker">§ 02 — SPECIMEN CARD</span>
+        <h2>{model.name}</h2>
+        <p>{model.subtitle}</p>
+      </div>
+
+      <dl className="inspector-meta">
+        <div>
+          <dt>类别</dt>
+          <dd>{model.category}</dd>
+        </div>
+        <div>
+          <dt>尺寸</dt>
+          <dd>{model.size}</dd>
+        </div>
+        <div>
+          <dt>位置</dt>
+          <dd>{model.location}</dd>
+        </div>
+        <div>
+          <dt>光镜可见</dt>
+          <dd>{model.visibleInLM}</dd>
+        </div>
+      </dl>
+
+      <div className="teaching-note">
+        <span>TEACHING NOTE</span>
+        <p>{model.description}</p>
+      </div>
+
+      <div className="observe-card">
+        <span>OBSERVE / 观察顺序</span>
+        <ol>
+          {model.features.slice(0, 5).map((feature, index) => (
+            <li key={feature.name}>
+              <i>{String(index + 1).padStart(2, '0')}</i>
+              <div>
+                <strong>{feature.name}</strong>
+                <small>{feature.detail}</small>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </section>
   );
 }
 
