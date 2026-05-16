@@ -210,7 +210,7 @@ body {
   border: 1px solid var(--hairline);
   border-radius: 8px;
   background:
-    linear-gradient(180deg, rgba(251, 252, 248, 0.86), rgba(238, 246, 241, 0.74)),
+    linear-gradient(180deg, rgba(255, 250, 240, 0.86), rgba(240, 234, 219, 0.72)),
     var(--paper-warm);
 }
 
@@ -594,10 +594,10 @@ body {
   border: 1px solid var(--hairline);
   border-radius: 8px;
   background:
-    radial-gradient(74% 70% at 48% 46%, rgba(95, 138, 120, 0.08), transparent 56%),
-    radial-gradient(34% 34% at 70% 72%, rgba(199, 111, 89, 0.055), transparent 70%),
-    repeating-linear-gradient(135deg, rgba(20, 33, 38, 0.022) 0 12px, transparent 12px 24px),
-    linear-gradient(180deg, rgba(251, 252, 248, 0.98), rgba(229, 239, 233, 0.86));
+    radial-gradient(76% 72% at 48% 46%, rgba(102, 121, 87, 0.09), transparent 58%),
+    radial-gradient(34% 34% at 72% 72%, rgba(156, 73, 56, 0.055), transparent 70%),
+    repeating-linear-gradient(135deg, rgba(29, 28, 24, 0.024) 0 12px, transparent 12px 24px),
+    linear-gradient(180deg, rgba(255, 250, 240, 0.98), rgba(237, 231, 215, 0.88));
 }
 
 .stage::before {
@@ -607,7 +607,7 @@ body {
   aspect-ratio: 1.26;
   left: 50%;
   top: 50%;
-  background-image: url("data:image/svg+xml,%3Csvg width='760' height='604' viewBox='0 0 760 604' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M376 27C536 19 703 139 718 297C735 476 562 584 371 570C169 555 38 441 42 294C46 136 194 36 376 27Z' fill='none' stroke='%235f8a78' stroke-opacity='.25' stroke-width='2.6' stroke-linecap='round'/%3E%3Cpath d='M383 43C521 29 678 128 698 284C720 456 548 548 379 542C197 536 68 434 64 299C60 151 208 57 383 43Z' fill='none' stroke='%23c76f59' stroke-opacity='.12' stroke-width='1.5' stroke-linecap='round' stroke-dasharray='420 42 180 24'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg width='760' height='604' viewBox='0 0 760 604' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M376 27C536 19 703 139 718 297C735 476 562 584 371 570C169 555 38 441 42 294C46 136 194 36 376 27Z' fill='none' stroke='%23667957' stroke-opacity='.25' stroke-width='2.6' stroke-linecap='round'/%3E%3Cpath d='M383 43C521 29 678 128 698 284C720 456 548 548 379 542C197 536 68 434 64 299C60 151 208 57 383 43Z' fill='none' stroke='%239c4938' stroke-opacity='.13' stroke-width='1.5' stroke-linecap='round' stroke-dasharray='420 42 180 24'/%3E%3C/svg%3E");
   background-position: center;
   background-repeat: no-repeat;
   background-size: contain;
@@ -617,7 +617,7 @@ body {
 }
 
 .stage::before {
-  filter: drop-shadow(0 16px 42px rgba(95, 138, 120, 0.08));
+  filter: drop-shadow(0 16px 42px rgba(102, 121, 87, 0.08));
 }
 
 .stage::after {
@@ -645,11 +645,11 @@ body {
 .stage-info {
   position: absolute;
   z-index: 4;
-  border: 1px solid rgba(20, 33, 38, 0.12);
+  border: 1px solid rgba(29, 28, 24, 0.12);
   border-radius: 8px;
-  background: rgba(251, 252, 248, 0.72);
+  background: rgba(255, 250, 240, 0.74);
   backdrop-filter: blur(10px);
-  box-shadow: 0 18px 46px -40px rgba(20, 33, 38, 0.42);
+  box-shadow: 0 18px 46px -40px rgba(29, 28, 24, 0.42);
 }
 
 .stage-kicker {
@@ -908,7 +908,7 @@ body {
   padding: 12px;
   border: 1px solid var(--hairline);
   border-radius: 8px;
-  background: rgba(251, 252, 248, 0.72);
+  background: rgba(255, 250, 240, 0.74);
   overflow: hidden;
 }
 
@@ -976,13 +976,13 @@ body {
 .cell-item:hover,
 .cell-item:focus-visible {
   border-color: var(--hairline);
-  background: rgba(221, 231, 226, 0.58);
+  background: rgba(237, 231, 215, 0.58);
   transform: translateY(-1px);
 }
 
 .cell-item.active {
-  border-color: rgba(95, 138, 120, 0.46);
-  background: rgba(221, 231, 226, 0.8);
+  border-color: rgba(102, 121, 87, 0.46);
+  background: rgba(237, 231, 215, 0.82);
   box-shadow: inset 3px 0 0 var(--sage);
 }
 

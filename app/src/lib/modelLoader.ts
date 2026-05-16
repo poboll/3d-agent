@@ -159,8 +159,8 @@ export function cloneScene(gltf: GLTF): THREE.Group {
   cloned.traverse((obj) => {
     if ((obj as THREE.Mesh).isMesh) {
       const mesh = obj as THREE.Mesh;
-      mesh.castShadow = false;
-      mesh.receiveShadow = false;
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
       mesh.frustumCulled = true;
     }
   });

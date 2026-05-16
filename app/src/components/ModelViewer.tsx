@@ -1,6 +1,6 @@
 import { Suspense, useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls } from '@react-three/drei';
+import { ContactShadows, Environment, OrbitControls } from '@react-three/drei';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import type { CellModel } from '../data/models';
 import { useModel } from '../hooks/useModel';
@@ -33,17 +33,27 @@ export function ModelViewer({ model }: Props) {
     <div className="viewer">
       <Canvas
         frameloop={autoRotate ? 'always' : 'demand'}
-        dpr={[1, 1.35]}
-        camera={{ position: [0, 0, 4.6], fov: 42 }}
+        shadows="percentage"
+        dpr={[1, 2]}
+        camera={{ position: [0, 0, 4.4], fov: 45 }}
         gl={{
-          antialias: false,
-          powerPreference: 'low-power',
-          preserveDrawingBuffer: false,
+          antialias: true,
+          preserveDrawingBuffer: true,
         }}
       >
-        <ambientLight intensity={0.82} />
-        <directionalLight position={[4, 5, 5]} intensity={1.05} />
-        <directionalLight position={[-4, 1, -3]} intensity={0.38} />
+        <ambientLight intensity={0.55} />
+        <directionalLight
+          position={[5, 6, 4]}
+          intensity={1.1}
+          castShadow
+          shadow-mapSize-width={1024}
+          shadow-mapSize-height={1024}
+        />
+        <directionalLight position={[-3, 2, -4]} intensity={0.35} />
+
+        <Suspense fallback={null}>
+          <Environment preset="studio" environmentIntensity={0.55} />
+        </Suspense>
 
         {isReady && entry?.gltf && (
           <Suspense fallback={null}>
@@ -55,6 +65,14 @@ export function ModelViewer({ model }: Props) {
             />
           </Suspense>
         )}
+
+        <ContactShadows
+          position={[0, -1.35, 0]}
+          opacity={0.32}
+          scale={6}
+          blur={2.4}
+          far={3.2}
+        />
 
         <OrbitControls
           ref={controlsRef}
