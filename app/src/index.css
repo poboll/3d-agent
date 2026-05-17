@@ -3,18 +3,17 @@
   --paper-2: #ede7d7;
   --paper-3: #e4dcc6;
   --paper-warm: #fffaf0;
-  --sumi: #1d1c18;
-  --sumi-soft: #2d2b25;
-  --ink-mute: #6c6659;
-  --ink-whisper: #9c9483;
-  --vermilion: #9c4938;
-  --sage: #667957;
-  --sage-soft: rgba(102, 121, 87, 0.12);
-  --aqua: #90a99a;
-  --lab-blue: #6f7f84;
+  --sumi: #1c1c1a;
+  --sumi-soft: #2b2a26;
+  --ink-mute: #6a665c;
+  --ink-whisper: #9a9487;
+  --vermilion: #8b3a2e;
+  --mineral: #59646a;
+  --mineral-soft: rgba(89, 100, 106, 0.12);
+  --moss: #4a5d3a;
   --danger: #9d332f;
-  --hairline: rgba(29, 28, 24, 0.14);
-  --hairline-2: rgba(29, 28, 24, 0.08);
+  --hairline: rgba(28, 28, 26, 0.14);
+  --hairline-2: rgba(28, 28, 26, 0.08);
 
   --bg-cream: var(--paper);
   --bg-paper: var(--paper-warm);
@@ -28,12 +27,12 @@
   --ink-500: var(--ink-mute);
   --ink-300: var(--ink-whisper);
 
-  --accent: var(--sage);
-  --accent-deep: #505845;
+  --accent: var(--vermilion);
+  --accent-deep: #5a2b25;
   --plum: var(--vermilion);
   --rose: var(--vermilion);
   --amber: #8c7046;
-  --sky: var(--sage);
+  --sky: var(--mineral);
 
   --border-soft: var(--hairline-2);
   --border-strong: var(--hairline);
@@ -75,9 +74,9 @@ body,
 
 body {
   background:
-    radial-gradient(900px 460px at 14% 18%, rgba(156, 73, 56, 0.045), transparent 62%),
-    radial-gradient(760px 520px at 88% 74%, rgba(102, 121, 87, 0.06), transparent 66%),
-    radial-gradient(900px 680px at 50% 48%, rgba(29, 28, 24, 0.028), transparent 70%),
+    radial-gradient(900px 460px at 14% 18%, rgba(139, 58, 46, 0.036), transparent 62%),
+    radial-gradient(780px 520px at 88% 74%, rgba(89, 100, 106, 0.042), transparent 66%),
+    radial-gradient(900px 680px at 50% 48%, rgba(28, 28, 26, 0.026), transparent 70%),
     linear-gradient(180deg, var(--paper) 0%, var(--paper-warm) 100%);
   color: var(--ink-700);
   overflow-x: hidden;

@@ -34,7 +34,7 @@ export function ModelViewer({ model }: Props) {
       <Canvas
         frameloop={autoRotate ? 'always' : 'demand'}
         shadows="percentage"
-        dpr={[1, 2]}
+        dpr={[1, 1.5]}
         camera={{ position: [0, 0, 4.4], fov: 45 }}
         gl={{
           antialias: true,

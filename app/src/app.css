@@ -1,13 +1,13 @@
 /* ========== App Shell ========== */
 .app-shell {
   position: relative;
-  width: min(100%, 1780px);
+  width: min(100%, 1840px);
   height: 100vh;
   margin: 0 auto;
-  padding: 18px 30px 12px;
+  padding: 18px 28px 12px;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: 16px;
+  gap: 14px;
   overflow: hidden;
 }
 
@@ -171,12 +171,12 @@ body {
 /* ========== Workbench Layout ========== */
 .layout {
   display: grid;
-  grid-template-columns: minmax(312px, 360px) minmax(0, 1fr);
-  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(292px, 330px) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) clamp(244px, 27vh, 292px);
   grid-template-areas:
     "controls stage"
     "specimens specimens";
-  gap: 18px;
+  gap: 14px 16px;
   min-height: 0;
   min-width: 0;
   max-width: 100%;
@@ -202,16 +202,17 @@ body {
 .generation-panel {
   height: 100%;
   min-height: 0;
-  padding: 16px;
+  padding: 15px;
   display: flex;
   flex-direction: column;
   gap: 11px;
   overflow-y: auto;
   border: 1px solid var(--hairline);
-  border-radius: 8px;
+  border-radius: 4px;
   background:
-    linear-gradient(180deg, rgba(255, 250, 240, 0.86), rgba(240, 234, 219, 0.72)),
+    linear-gradient(180deg, rgba(255, 250, 240, 0.86), rgba(237, 231, 217, 0.68)),
     var(--paper-warm);
+  box-shadow: inset 0 1px 0 rgba(255, 250, 240, 0.65);
 }
 
 .generation-eyebrow,
@@ -227,7 +228,7 @@ body {
 .hero-card h2,
 .about-panel h2 {
   color: var(--sumi);
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 500;
   letter-spacing: 0.04em;
 }
@@ -237,8 +238,8 @@ body {
 .occur-card p,
 .about-panel p {
   color: var(--ink-mute);
-  font-size: 13px;
-  line-height: 1.7;
+  font-size: 12.5px;
+  line-height: 1.62;
 }
 
 .generation-panel > div:first-child p {
@@ -248,7 +249,7 @@ body {
 .workflow-ladder {
   list-style: none;
   margin: 0;
-  padding: 10px 0;
+  padding: 8px 0;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0 12px;
@@ -259,9 +260,9 @@ body {
 .workflow-ladder li {
   position: relative;
   display: grid;
-  grid-template-columns: 28px 1fr;
-  gap: 8px;
-  padding: 7px 0;
+  grid-template-columns: 22px 1fr;
+  gap: 6px;
+  padding: 6px 0;
   color: var(--ink-whisper);
 }
 
@@ -279,7 +280,7 @@ body {
   display: block;
   color: var(--sumi-soft);
   font-family: var(--font-sans);
-  font-size: 12px;
+  font-size: 11.2px;
   font-weight: 600;
   letter-spacing: 0;
   text-transform: none;
@@ -287,10 +288,10 @@ body {
 
 .workflow-ladder small {
   display: block;
-  margin-top: 3px;
+  margin-top: 2px;
   color: var(--ink-whisper);
   font-family: var(--font-sans);
-  font-size: 10.5px;
+  font-size: 9.4px;
   letter-spacing: 0;
   text-transform: none;
 }
@@ -343,7 +344,7 @@ body {
 }
 
 .generation-field textarea {
-  min-height: 78px;
+  min-height: 68px;
   resize: vertical;
   padding: 11px 12px;
   line-height: 1.55;
@@ -374,18 +375,18 @@ body {
 
 .reference-card {
   display: grid;
-  grid-template-columns: 104px minmax(0, 1fr);
+  grid-template-columns: 92px minmax(0, 1fr);
   gap: 11px;
   padding: 9px;
   border: 1px solid var(--hairline);
-  border-radius: 6px;
+  border-radius: 4px;
   background:
     repeating-linear-gradient(135deg, rgba(28, 28, 26, 0.026) 0 10px, transparent 10px 20px),
     rgba(244, 239, 229, 0.58);
 }
 
 .reference-preview {
-  min-height: 82px;
+  min-height: 74px;
   border: 1px solid var(--hairline-2);
   background: rgba(252, 250, 244, 0.72);
   overflow: hidden;
@@ -395,12 +396,12 @@ body {
   display: block;
   width: 100%;
   height: 100%;
-  min-height: 82px;
+  min-height: 74px;
   object-fit: cover;
 }
 
 .reference-empty {
-  min-height: 82px;
+  min-height: 74px;
   display: grid;
   place-content: center;
   gap: 6px;
@@ -453,16 +454,16 @@ body {
 .generation-actions {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  gap: 6px;
 }
 
 .generation-primary,
 .generation-secondary {
-  min-height: 34px;
+  min-height: 30px;
   border: 1px solid var(--hairline);
   border-radius: 4px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 9.2px;
   font-weight: 700;
   letter-spacing: 0.08em;
   line-height: 1.25;
@@ -592,25 +593,27 @@ body {
   min-height: 0;
   overflow: hidden;
   border: 1px solid var(--hairline);
-  border-radius: 8px;
+  border-radius: 4px;
   background:
-    radial-gradient(68% 68% at 52% 48%, rgba(64, 88, 60, 0.11), transparent 60%),
-    radial-gradient(34% 34% at 74% 72%, rgba(156, 70, 51, 0.055), transparent 70%),
-    repeating-linear-gradient(135deg, rgba(30, 36, 27, 0.022) 0 12px, transparent 12px 24px),
-    linear-gradient(180deg, rgba(255, 249, 235, 0.98), rgba(233, 223, 202, 0.88));
+    radial-gradient(54% 54% at 50% 47%, rgba(255, 250, 240, 0.62), transparent 64%),
+    radial-gradient(58% 62% at 52% 50%, rgba(89, 100, 106, 0.09), transparent 62%),
+    radial-gradient(34% 34% at 76% 74%, rgba(139, 58, 46, 0.048), transparent 70%),
+    repeating-linear-gradient(135deg, rgba(28, 28, 26, 0.019) 0 12px, transparent 12px 24px),
+    linear-gradient(180deg, rgba(255, 249, 235, 0.98), rgba(232, 223, 203, 0.9));
   box-shadow:
-    inset 0 0 0 12px rgba(255, 249, 235, 0.22),
-    0 22px 64px -54px rgba(30, 36, 27, 0.5);
+    inset 0 0 0 14px rgba(255, 249, 235, 0.2),
+    inset 0 -38px 80px -70px rgba(28, 28, 26, 0.26),
+    0 22px 64px -54px rgba(28, 28, 26, 0.46);
 }
 
 .stage::before {
   content: '';
   position: absolute;
-  width: min(62vw, 760px);
+  width: min(68vw, 880px);
   aspect-ratio: 1.26;
   left: 50%;
   top: 50%;
-  background-image: url("data:image/svg+xml,%3Csvg width='760' height='604' viewBox='0 0 760 604' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M376 27C536 19 703 139 718 297C735 476 562 584 371 570C169 555 38 441 42 294C46 136 194 36 376 27Z' fill='none' stroke='%2340583c' stroke-opacity='.24' stroke-width='2.6' stroke-linecap='round'/%3E%3Cpath d='M383 43C521 29 678 128 698 284C720 456 548 548 379 542C197 536 68 434 64 299C60 151 208 57 383 43Z' fill='none' stroke='%239c4633' stroke-opacity='.13' stroke-width='1.5' stroke-linecap='round' stroke-dasharray='420 42 180 24'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg width='880' height='698' viewBox='0 0 880 698' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M437 31C618 24 810 161 831 344C852 548 650 675 426 660C195 644 41 510 48 340C54 159 226 42 437 31Z' fill='none' stroke='%231c1c1a' stroke-opacity='.18' stroke-width='2.2' stroke-linecap='round'/%3E%3Cpath d='M444 52C603 36 784 151 806 329C832 529 633 637 437 628C226 619 78 501 74 346C70 175 242 67 444 52Z' fill='none' stroke='%238b3a2e' stroke-opacity='.11' stroke-width='1.4' stroke-linecap='round' stroke-dasharray='420 42 180 24'/%3E%3Cpath d='M426 72C560 70 709 163 731 316C755 484 601 587 428 586C240 584 126 477 126 349C126 197 260 75 426 72Z' fill='none' stroke='%2359646a' stroke-opacity='.08' stroke-width='1.2' stroke-linecap='round' stroke-dasharray='260 30 120 18'/%3E%3C/svg%3E");
   background-position: center;
   background-repeat: no-repeat;
   background-size: contain;
@@ -620,7 +623,7 @@ body {
 }
 
 .stage::before {
-  filter: drop-shadow(0 16px 42px rgba(64, 88, 60, 0.08));
+  filter: drop-shadow(0 16px 42px rgba(28, 28, 26, 0.055));
 }
 
 .stage::after {
@@ -648,17 +651,17 @@ body {
 .stage-info {
   position: absolute;
   z-index: 4;
-  border: 1px solid rgba(29, 28, 24, 0.12);
-  border-radius: 8px;
-  background: rgba(255, 249, 235, 0.76);
-  backdrop-filter: blur(10px);
-  box-shadow: 0 18px 46px -40px rgba(29, 28, 24, 0.42);
+  border: 1px solid rgba(28, 28, 26, 0.11);
+  border-radius: 4px;
+  background: rgba(255, 250, 240, 0.58);
+  backdrop-filter: blur(7px);
+  box-shadow: 0 16px 40px -38px rgba(28, 28, 26, 0.38);
   transition: opacity 0.18s ease, transform 0.18s ease;
   pointer-events: auto;
 }
 
 .viewer:hover .stage-info {
-  opacity: 0.32;
+  opacity: 0.16;
   transform: translateY(-4px);
   pointer-events: none;
 }
@@ -674,10 +677,10 @@ body {
 }
 
 .stage-info-main {
-  top: 22px;
-  left: 24px;
-  width: min(238px, 26%);
-  padding: 12px 13px;
+  top: 20px;
+  left: 22px;
+  width: min(220px, 24%);
+  padding: 10px 12px;
 }
 
 .stage-info-steps {
@@ -690,26 +693,26 @@ body {
 
 .overlay-title {
   color: var(--sumi);
-  font-size: clamp(22px, 2.2vw, 32px);
+  font-size: clamp(20px, 2vw, 28px);
   font-weight: 500;
   letter-spacing: 0.04em;
   line-height: 1.02;
 }
 
 .overlay-sub {
-  margin-top: 7px;
+  margin-top: 6px;
   color: var(--vermilion);
   font-family: var(--font-serif);
-  font-size: 15px;
+  font-size: 14px;
   font-style: italic;
 }
 
 .stage-meta-grid {
-  margin: 11px 0 0;
-  padding-top: 9px;
+  margin: 9px 0 0;
+  padding-top: 8px;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px 13px;
+  gap: 7px 10px;
   border-top: 1px solid var(--hairline-2);
 }
 
@@ -728,7 +731,7 @@ body {
 .stage-meta-grid dd {
   margin: 3px 0 0;
   color: var(--sumi-soft);
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 600;
 }
 
@@ -737,7 +740,7 @@ body {
   left: 28px;
   bottom: 30px;
   z-index: 4;
-  color: rgba(28, 28, 26, 0.42);
+  color: rgba(28, 28, 26, 0.36);
   font-family: var(--font-mono);
   font-size: 10px;
   letter-spacing: 0.12em;
@@ -753,9 +756,9 @@ body {
   gap: 8px;
   padding: 6px;
   border: 1px solid var(--hairline);
-  border-radius: 6px;
-  background: rgba(252, 250, 244, 0.82);
-  backdrop-filter: blur(8px);
+  border-radius: 4px;
+  background: rgba(255, 250, 240, 0.7);
+  backdrop-filter: blur(7px);
   transform: translateX(-50%);
 }
 
@@ -864,19 +867,20 @@ body {
 }
 
 .sidebar-section {
-  height: 206px;
+  height: 100%;
+  min-height: 0;
   padding: 12px 14px;
   display: grid;
-  grid-template-columns: minmax(330px, 0.72fr) minmax(0, 1.28fr);
+  grid-template-columns: minmax(300px, 0.62fr) minmax(0, 1.38fr);
   grid-template-rows: auto minmax(0, 1fr);
   column-gap: 14px;
   border: 1px solid var(--hairline);
-  border-radius: 8px;
+  border-radius: 4px;
   background:
     linear-gradient(180deg, rgba(255, 249, 235, 0.82), rgba(233, 223, 202, 0.54)),
     rgba(255, 249, 235, 0.74);
   overflow: hidden;
-  box-shadow: 0 18px 46px -40px rgba(30, 36, 27, 0.42);
+  box-shadow: 0 18px 46px -40px rgba(28, 28, 26, 0.38);
 }
 
 .generated-section {
@@ -917,9 +921,9 @@ body {
 .specimen-summary {
   min-height: 0;
   display: grid;
-  grid-template-columns: 78px minmax(0, 1fr);
+  grid-template-columns: 82px minmax(0, 1fr);
   grid-template-rows: auto auto;
-  gap: 7px 12px;
+  gap: 8px 12px;
   align-items: stretch;
   margin-bottom: 0;
   padding-right: 14px;
@@ -930,7 +934,7 @@ body {
 .specimen-summary-image {
   grid-row: 1 / 3;
   border: 1px solid var(--hairline-2);
-  border-radius: 5px;
+  border-radius: 3px;
   background: var(--paper-2);
   overflow: hidden;
 }
@@ -966,14 +970,13 @@ body {
 }
 
 .specimen-summary-copy p {
-  display: -webkit-box;
+  display: block;
   margin-top: 4px;
+  max-height: 4.25em;
   overflow: hidden;
   color: var(--ink-mute);
-  font-size: 11.5px;
-  line-height: 1.45;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  font-size: 11px;
+  line-height: 1.42;
 }
 
 .specimen-summary-meta {
@@ -987,7 +990,7 @@ body {
 .specimen-summary-meta div {
   min-width: 0;
   flex: 1 1 0;
-  padding: 4px 7px;
+  padding: 4px 7px 5px;
   border: 1px solid var(--hairline-2);
   background: rgba(255, 249, 235, 0.5);
 }
@@ -1001,10 +1004,10 @@ body {
 
 .specimen-summary-meta dd {
   display: block;
-  margin: 4px 0 0;
+  margin: 3px 0 0;
   overflow: hidden;
   color: var(--sumi-soft);
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 700;
   line-height: 1.25;
   text-overflow: ellipsis;
@@ -1014,18 +1017,18 @@ body {
 .specimen-learning {
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(120px, 0.65fr) minmax(170px, 0.9fr) minmax(180px, 0.95fr) minmax(300px, 1.7fr);
-  gap: 10px;
+  grid-template-columns: minmax(132px, 0.68fr) minmax(190px, 0.95fr) minmax(210px, 1fr) minmax(340px, 1.72fr);
+  gap: 9px;
   overflow: hidden;
 }
 
 .learning-card {
   min-width: 0;
   min-height: 0;
-  padding: 10px;
+  padding: 9px 10px;
   border: 1px solid var(--hairline-2);
-  border-radius: 6px;
-  background: rgba(255, 249, 235, 0.46);
+  border-radius: 4px;
+  background: rgba(255, 249, 235, 0.42);
   overflow: hidden;
 }
 
@@ -1076,24 +1079,24 @@ body {
 
 .concept-card p,
 .note-card p {
-  display: -webkit-box;
+  display: block;
   overflow: hidden;
   color: var(--sumi-soft);
-  font-size: 11.5px;
-  line-height: 1.55;
-  -webkit-box-orient: vertical;
+  font-size: 11.2px;
+  line-height: 1.48;
 }
 
 .concept-card p {
-  -webkit-line-clamp: 4;
+  max-height: 7.4em;
 }
 
-.note-card {
+.note-card,
+.concept-card {
   overflow-y: auto;
 }
 
 .note-card p {
-  -webkit-line-clamp: unset;
+  padding-right: 4px;
 }
 
 .note-card em {
@@ -1109,6 +1112,7 @@ body {
 .index-card {
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 
 .cell-list {
@@ -1117,7 +1121,7 @@ body {
   padding: 0 2px 4px 0;
   list-style: none;
   display: grid;
-  grid-template-columns: repeat(2, minmax(112px, 1fr));
+  grid-template-columns: repeat(3, minmax(108px, 1fr));
   gap: 6px;
   align-content: start;
   overflow-x: hidden;
@@ -1148,9 +1152,9 @@ body {
 }
 
 .cell-item.active {
-  border-color: rgba(102, 121, 87, 0.46);
+  border-color: rgba(139, 58, 46, 0.34);
   background: rgba(237, 231, 215, 0.82);
-  box-shadow: inset 3px 0 0 var(--sage);
+  box-shadow: inset 3px 0 0 var(--vermilion);
 }
 
 .cell-thumb {
@@ -1175,7 +1179,7 @@ body {
   top: 2px;
   right: 2px;
   padding: 1px 3px;
-  background: var(--sage);
+  background: var(--vermilion);
   color: var(--paper-warm);
   font-family: var(--font-mono);
   font-size: 7px;
@@ -1206,9 +1210,6 @@ body {
 
 .cell-status {
   display: none;
-  display: flex;
-  align-items: center;
-  gap: 6px;
 }
 
 .status-chip {
@@ -1223,8 +1224,8 @@ body {
 }
 
 .status-chip.ok {
-  background: rgba(122, 130, 108, 0.14);
-  color: var(--sage);
+  background: rgba(139, 58, 46, 0.1);
+  color: var(--vermilion);
 }
 
 .status-chip.loading {
@@ -1525,6 +1526,10 @@ body {
   }
 
   .workflow-ladder li:nth-child(n + 2) {
+    border-top: 1px solid var(--hairline-2);
+  }
+
+  .workflow-ladder li:nth-child(n + 3) {
     border-top: 1px solid var(--hairline-2);
   }
 

@@ -63,7 +63,7 @@ export const MODELS: CellModel[] = [
     imageUrl: asset('images/plant-cell.jpg'),
     fileSize: 6030628,
     defaultRotationY: -Math.PI / 4,
-    displayScale: 1.4,
+    displayScale: 1.5,
   },
   {
     id: 'animal-cell',
@@ -94,7 +94,7 @@ export const MODELS: CellModel[] = [
     imageUrl: asset('images/animal-cell.jpg'),
     fileSize: 10673912,
     defaultRotationY: -Math.PI / 4,
-    displayScale: 1.4,
+    displayScale: 1.5,
   },
   {
     id: 'white-blood-cell',
@@ -124,7 +124,7 @@ export const MODELS: CellModel[] = [
     imageUrl: asset('images/white-blood-cell.jpg'),
     fileSize: 10812336,
     defaultRotationY: -Math.PI / 4,
-    displayScale: 1.4,
+    displayScale: 1.5,
   },
   {
     id: 'neuron',
@@ -154,7 +154,7 @@ export const MODELS: CellModel[] = [
     imageUrl: asset('images/neuron.jpg'),
     fileSize: 7359744,
     defaultRotationY: -Math.PI / 4,
-    displayScale: 1.8,
+    displayScale: 1.82,
   },
   {
     id: 'dna',
@@ -183,7 +183,7 @@ export const MODELS: CellModel[] = [
     imageUrl: asset('images/dna.jpg'),
     fileSize: 9977020,
     defaultRotationY: 0,
-    displayScale: 1.2,
+    displayScale: 1.3,
   },
 ];
 
