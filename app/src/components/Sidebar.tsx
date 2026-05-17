@@ -39,16 +39,43 @@ export function Sidebar({ models, activeId, onSelect }: Props) {
             </dl>
           </section>
         )}
-        <ul className="cell-list">
-          {models.map((m) => (
-            <CellItem
-              key={m.id}
-              model={m}
-              active={m.id === activeId}
-              onSelect={() => onSelect(m.id)}
-            />
-          ))}
-        </ul>
+        {activeModel && (
+          <section className="specimen-learning" aria-label="教学信息">
+            <article className="learning-card focus-card">
+              <span>FOCUS / 焦点</span>
+              <ol>
+                {activeModel.features.slice(0, 4).map((feature, index) => (
+                  <li key={feature.name}>
+                    <i>{index + 1}</i>
+                    <strong>{feature.name}</strong>
+                  </li>
+                ))}
+              </ol>
+            </article>
+            <article className="learning-card concept-card">
+              <span>CONCEPT / 概念解读</span>
+              <p>{activeModel.funFact}</p>
+            </article>
+            <article className="learning-card note-card">
+              <span>NOTE / 笔记</span>
+              <p>{activeModel.whereItOccurs.text}</p>
+              <em>{activeModel.whereItOccurs.habitat}</em>
+            </article>
+            <article className="learning-card index-card">
+              <span>INDEX / 标本</span>
+              <ul className="cell-list">
+                {models.map((m) => (
+                  <CellItem
+                    key={m.id}
+                    model={m}
+                    active={m.id === activeId}
+                    onSelect={() => onSelect(m.id)}
+                  />
+                ))}
+              </ul>
+            </article>
+          </section>
+        )}
       </div>
     </aside>
   );

@@ -84,12 +84,6 @@ export function ModelViewer({ model }: Props) {
         />
       </Canvas>
 
-      <div className="stage-image-card" aria-label={`${model.name} 参考图`}>
-        <span className="stage-kicker">IMAGE / REFERENCE</span>
-        <img src={model.imageUrl} alt={`${model.name}参考图`} loading="lazy" />
-        <strong>{model.custom ? model.source ?? '生成参考图' : '课程标本图'}</strong>
-      </div>
-
       <div className="stage-info stage-info-main">
         <span className="stage-kicker">§ 02 — MODEL CARD</span>
         <h2 className="overlay-title">{model.name}</h2>
@@ -108,23 +102,6 @@ export function ModelViewer({ model }: Props) {
             <dd>{model.visibleInLM}</dd>
           </div>
         </dl>
-      </div>
-
-      <div className="stage-info stage-info-steps" aria-label="观察顺序">
-        <span className="stage-kicker">OBSERVE / 观察顺序</span>
-        <ol>
-          {model.features.slice(0, 4).map((feature, index) => (
-            <li key={feature.name}>
-              <span>{index + 1}</span>
-              <strong>{feature.name}</strong>
-            </li>
-          ))}
-        </ol>
-      </div>
-
-      <div className="stage-info stage-info-note">
-        <span className="stage-kicker">TEACHING NOTE</span>
-        <p>{model.description}</p>
       </div>
 
       <p className="overlay-tip" aria-hidden="true">
