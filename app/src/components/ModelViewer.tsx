@@ -84,6 +84,12 @@ export function ModelViewer({ model }: Props) {
         />
       </Canvas>
 
+      <div className="stage-image-card" aria-label={`${model.name} 参考图`}>
+        <span className="stage-kicker">IMAGE / REFERENCE</span>
+        <img src={model.imageUrl} alt={`${model.name}参考图`} loading="lazy" />
+        <strong>{model.custom ? model.source ?? '生成参考图' : '课程标本图'}</strong>
+      </div>
+
       <div className="stage-info stage-info-main">
         <span className="stage-kicker">§ 02 — MODEL CARD</span>
         <h2 className="overlay-title">{model.name}</h2>

@@ -100,7 +100,6 @@ function App() {
               onModelCreated={handleModelCreated}
               onSelect={setActiveId}
             />
-            <Sidebar models={allModels} activeId={activeId} onSelect={setActiveId} />
           </aside>
 
           <section
@@ -110,6 +109,8 @@ function App() {
           >
             <ModelViewer key={activeModel.id} model={activeModel} />
           </section>
+
+          <Sidebar models={allModels} activeId={activeId} onSelect={setActiveId} />
         </main>
       )}
 

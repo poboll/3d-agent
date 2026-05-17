@@ -7,6 +7,8 @@ interface Props {
 }
 
 export function Sidebar({ models, activeId, onSelect }: Props) {
+  const activeModel = models.find((model) => model.id === activeId) ?? models[0];
+
   return (
     <aside className="sidebar" aria-label="模型索引">
       <div className="sidebar-section official-section">
@@ -15,6 +17,28 @@ export function Sidebar({ models, activeId, onSelect }: Props) {
           <span className="sidebar-label-main">SPECIMEN INDEX</span>
           <span className="sidebar-label-sub">标本索引</span>
         </header>
+        {activeModel && (
+          <section className="specimen-summary" aria-label="当前标本介绍">
+            <div className="specimen-summary-image">
+              <img src={activeModel.imageUrl} alt={`${activeModel.name}标本图`} loading="lazy" />
+            </div>
+            <div className="specimen-summary-copy">
+              <span>{activeModel.category}</span>
+              <strong>{activeModel.name}</strong>
+              <p>{activeModel.description}</p>
+            </div>
+            <dl className="specimen-summary-meta">
+              <div>
+                <dt>尺寸</dt>
+                <dd>{activeModel.size}</dd>
+              </div>
+              <div>
+                <dt>位置</dt>
+                <dd>{activeModel.location}</dd>
+              </div>
+            </dl>
+          </section>
+        )}
         <ul className="cell-list">
           {models.map((m) => (
             <CellItem
