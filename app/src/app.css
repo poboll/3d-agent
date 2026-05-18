@@ -642,10 +642,23 @@ body {
   height: 100%;
 }
 
+.viewer-canvas-zone {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+}
+
 .viewer canvas {
   display: block;
   width: 100% !important;
   height: 100% !important;
+}
+
+.stage-annotation {
+  transition:
+    opacity 0.22s ease,
+    transform 0.22s ease,
+    filter 0.22s ease;
 }
 
 .stage-info {
@@ -660,15 +673,20 @@ body {
   pointer-events: auto;
 }
 
-.viewer:hover .stage-info {
-  opacity: 0.16;
-  transform: translateY(-4px);
+.viewer.is-model-focus .stage-annotation {
+  opacity: 0.28;
+  filter: none;
+  transform: translateY(-2px);
   pointer-events: none;
+}
+
+.viewer.is-model-focus .viewer-canvas-zone {
+  z-index: 8;
 }
 
 .stage-kicker {
   display: block;
-  margin-bottom: 9px;
+  margin-bottom: 6px;
   color: var(--ink-whisper);
   font-family: var(--font-mono);
   font-size: 9px;
@@ -677,23 +695,15 @@ body {
 }
 
 .stage-info-main {
-  top: 20px;
+  top: 18px;
   left: 22px;
-  width: min(220px, 24%);
-  padding: 10px 12px;
-}
-
-.stage-info-steps {
-  display: none;
-}
-
-.stage-info-note {
-  display: none;
+  width: min(212px, 23%);
+  padding: 9px 11px;
 }
 
 .overlay-title {
   color: var(--sumi);
-  font-size: clamp(20px, 2vw, 28px);
+  font-size: clamp(19px, 1.75vw, 26px);
   font-weight: 500;
   letter-spacing: 0.04em;
   line-height: 1.02;
@@ -703,16 +713,16 @@ body {
   margin-top: 6px;
   color: var(--vermilion);
   font-family: var(--font-serif);
-  font-size: 14px;
+  font-size: 13px;
   font-style: italic;
 }
 
 .stage-meta-grid {
-  margin: 9px 0 0;
-  padding-top: 8px;
+  margin: 8px 0 0;
+  padding-top: 7px;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 7px 10px;
+  gap: 5px 8px;
   border-top: 1px solid var(--hairline-2);
 }
 
@@ -729,29 +739,30 @@ body {
 }
 
 .stage-meta-grid dd {
-  margin: 3px 0 0;
+  margin: 2px 0 0;
   color: var(--sumi-soft);
-  font-size: 10.5px;
+  font-size: 10px;
   font-weight: 600;
 }
 
 .overlay-tip {
   position: absolute;
-  left: 28px;
-  bottom: 30px;
-  z-index: 4;
+  left: 50%;
+  bottom: 66px;
+  z-index: 5;
   color: rgba(28, 28, 26, 0.36);
   font-family: var(--font-mono);
   font-size: 10px;
   letter-spacing: 0.12em;
   pointer-events: none;
+  transform: translateX(-50%);
 }
 
 .overlay-toolbar {
   position: absolute;
   left: 50%;
   bottom: 24px;
-  z-index: 4;
+  z-index: 9;
   display: flex;
   gap: 8px;
   padding: 6px;
@@ -760,6 +771,134 @@ body {
   background: rgba(255, 250, 240, 0.7);
   backdrop-filter: blur(7px);
   transform: translateX(-50%);
+}
+
+.stage-learning-panel {
+  position: absolute;
+  right: 22px;
+  top: 18px;
+  bottom: 58px;
+  z-index: 4;
+  width: min(238px, 26%);
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 10px;
+  pointer-events: auto;
+}
+
+.stage-side-card,
+.stage-note-panel {
+  border: 1px solid rgba(28, 28, 26, 0.11);
+  border-radius: 4px;
+  background:
+    linear-gradient(180deg, rgba(255, 250, 240, 0.64), rgba(237, 231, 217, 0.48)),
+    rgba(255, 250, 240, 0.54);
+  backdrop-filter: blur(7px);
+  box-shadow: 0 16px 40px -38px rgba(28, 28, 26, 0.38);
+}
+
+.stage-side-card {
+  min-height: 0;
+  padding: 8px 10px;
+  overflow: hidden;
+}
+
+.stage-focus-card ol {
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 3px;
+  list-style: none;
+}
+
+.stage-focus-card li {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  padding-top: 3px;
+  border-top: 1px solid var(--hairline-2);
+}
+
+.stage-focus-card li:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.stage-focus-card i {
+  color: var(--vermilion);
+  font-family: var(--font-serif);
+  font-size: 14px;
+  font-style: italic;
+  line-height: 1;
+}
+
+.stage-focus-card strong {
+  display: block;
+  color: var(--sumi);
+  font-family: var(--font-serif);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.stage-focus-card p {
+  display: none;
+}
+
+.stage-concept-card p {
+  color: var(--sumi-soft);
+  font-family: var(--font-serif);
+  font-size: clamp(13px, 1vw, 16px);
+  font-weight: 400;
+  line-height: 1.5;
+  max-height: 7.5em;
+  overflow: hidden;
+}
+
+.stage-concept-card p::first-letter {
+  color: var(--vermilion);
+  font-size: 1.9em;
+  line-height: 0.9;
+}
+
+.stage-note-panel {
+  position: absolute;
+  left: 24px;
+  bottom: 22px;
+  z-index: 4;
+  width: min(292px, 30%);
+  max-height: 88px;
+  padding: 9px 11px;
+  overflow-y: auto;
+  pointer-events: auto;
+}
+
+.stage-note-panel span {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--ink-whisper);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.stage-note-panel p {
+  color: var(--sumi-soft);
+  font-family: var(--font-serif);
+  font-size: 12.5px;
+  line-height: 1.42;
+}
+
+.stage-note-panel em {
+  display: block;
+  margin-top: 5px;
+  color: var(--vermilion);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-style: normal;
+  letter-spacing: 0.08em;
 }
 
 .tool-btn {
@@ -1017,8 +1156,8 @@ body {
 .specimen-learning {
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(132px, 0.68fr) minmax(190px, 0.95fr) minmax(210px, 1fr) minmax(340px, 1.72fr);
-  gap: 9px;
+  grid-template-columns: minmax(470px, 1.12fr) minmax(360px, 0.88fr);
+  gap: 10px;
   overflow: hidden;
 }
 
@@ -1042,73 +1181,6 @@ body {
   text-transform: uppercase;
 }
 
-.focus-card ol {
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 5px;
-  list-style: none;
-}
-
-.focus-card li {
-  display: grid;
-  grid-template-columns: 20px minmax(0, 1fr);
-  gap: 7px;
-  align-items: center;
-}
-
-.focus-card i {
-  width: 19px;
-  height: 19px;
-  display: grid;
-  place-items: center;
-  border: 1px solid var(--hairline);
-  color: var(--vermilion);
-  font-family: var(--font-mono);
-  font-size: 8px;
-  font-style: normal;
-}
-
-.focus-card strong {
-  overflow: hidden;
-  color: var(--sumi-soft);
-  font-size: 12px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.concept-card p,
-.note-card p {
-  display: block;
-  overflow: hidden;
-  color: var(--sumi-soft);
-  font-size: 11.2px;
-  line-height: 1.48;
-}
-
-.concept-card p {
-  max-height: 7.4em;
-}
-
-.note-card,
-.concept-card {
-  overflow-y: auto;
-}
-
-.note-card p {
-  padding-right: 4px;
-}
-
-.note-card em {
-  display: block;
-  margin-top: 7px;
-  color: var(--vermilion);
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-style: normal;
-  line-height: 1.4;
-}
-
 .index-card {
   display: flex;
   flex-direction: column;
@@ -1121,11 +1193,97 @@ body {
   padding: 0 2px 4px 0;
   list-style: none;
   display: grid;
-  grid-template-columns: repeat(3, minmax(108px, 1fr));
+  grid-template-columns: repeat(3, minmax(120px, 1fr));
   gap: 6px;
   align-content: start;
   overflow-x: hidden;
   overflow-y: auto;
+}
+
+.specimen-art-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(118px, 0.5fr) minmax(0, 1fr);
+  gap: 12px;
+  overflow: hidden;
+}
+
+.specimen-art-card::before {
+  content: '間';
+  position: absolute;
+  right: 12px;
+  bottom: -16px;
+  color: rgba(28, 28, 26, 0.045);
+  font-family: var(--font-serif);
+  font-size: 92px;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.specimen-art-card > span {
+  grid-column: 1 / -1;
+  margin-bottom: 0;
+}
+
+.art-card-grid {
+  position: relative;
+  z-index: 1;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border-right: 1px solid var(--hairline-2);
+  padding-right: 12px;
+  min-width: 0;
+}
+
+.art-display {
+  color: var(--sumi);
+  font-family: var(--font-serif);
+  font-size: clamp(25px, 2.35vw, 34px);
+  font-weight: 500;
+  line-height: 1.05;
+  letter-spacing: 0.06em;
+  writing-mode: horizontal-tb;
+  max-height: none;
+}
+
+.art-subtitle {
+  margin-top: 6px;
+  color: var(--vermilion);
+  font-family: var(--font-serif);
+  font-size: 13px;
+  font-style: italic;
+  line-height: 1.35;
+}
+
+.art-caption {
+  margin-top: auto;
+  color: var(--ink-whisper);
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.1em;
+  line-height: 1.45;
+  text-transform: uppercase;
+}
+
+.art-quote {
+  position: relative;
+  z-index: 1;
+  align-self: center;
+  max-height: 6.6em;
+  overflow: hidden;
+  color: var(--sumi-soft);
+  font-family: var(--font-serif);
+  font-size: clamp(14px, 1.2vw, 18px);
+  font-weight: 400;
+  line-height: 1.55;
+}
+
+.art-quote::first-letter {
+  color: var(--vermilion);
+  font-size: 2.4em;
+  line-height: 0.86;
 }
 
 .cell-item {
@@ -1376,12 +1534,22 @@ body {
     width: min(260px, 32%);
   }
 
-  .stage-info-steps {
-    display: none;
+  .stage-learning-panel {
+    width: min(238px, 29%);
   }
 
-  .stage-info-note {
-    display: none;
+  .stage-focus-card p {
+    -webkit-line-clamp: 1;
+  }
+
+  .stage-concept-card p {
+    font-size: 15px;
+    line-height: 1.55;
+  }
+
+  .stage-note-panel {
+    width: min(278px, 32%);
+    max-height: 112px;
   }
 
   .sidebar-section {
@@ -1393,7 +1561,7 @@ body {
   }
 
   .specimen-learning {
-    grid-template-columns: minmax(110px, 0.62fr) minmax(145px, 0.86fr) minmax(160px, 0.92fr) minmax(260px, 1.55fr);
+    grid-template-columns: minmax(360px, 1fr) minmax(310px, 0.86fr);
   }
 
   .cell-list {
@@ -1510,6 +1678,19 @@ body {
     min-height: 58vh;
   }
 
+  .stage-learning-panel {
+    top: auto;
+    right: 14px;
+    bottom: 78px;
+    width: min(300px, calc(50% - 22px));
+  }
+
+  .stage-note-panel {
+    left: 14px;
+    bottom: 78px;
+    width: min(300px, calc(50% - 22px));
+  }
+
   .control-rail {
     display: grid;
     gap: 12px;
@@ -1550,8 +1731,8 @@ body {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .index-card {
-    grid-column: 1 / -1;
+  .specimen-art-card {
+    min-height: 190px;
   }
 }
 
@@ -1633,6 +1814,20 @@ body {
     margin-top: 14px;
   }
 
+  .stage-learning-panel,
+  .stage-note-panel {
+    position: relative;
+    inset: auto;
+    width: auto;
+    max-width: none;
+    margin: 12px;
+  }
+
+  .stage-learning-panel {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
   .stage-kicker {
     margin-bottom: 7px;
     font-size: 8px;
@@ -1666,6 +1861,7 @@ body {
   .specimen-summary,
   .specimen-summary-meta,
   .specimen-learning,
+  .specimen-art-card,
   .about-principles {
     grid-template-columns: 1fr;
   }
@@ -1681,6 +1877,11 @@ body {
 
   .index-card {
     grid-column: auto;
+  }
+
+  .art-display {
+    writing-mode: horizontal-tb;
+    max-height: none;
   }
 
   .generation-controls .generation-field:last-child {

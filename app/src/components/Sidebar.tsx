@@ -41,26 +41,6 @@ export function Sidebar({ models, activeId, onSelect }: Props) {
         )}
         {activeModel && (
           <section className="specimen-learning" aria-label="教学信息">
-            <article className="learning-card focus-card">
-              <span>FOCUS / 焦点</span>
-              <ol>
-                {activeModel.features.slice(0, 4).map((feature, index) => (
-                  <li key={feature.name}>
-                    <i>{index + 1}</i>
-                    <strong>{feature.name}</strong>
-                  </li>
-                ))}
-              </ol>
-            </article>
-            <article className="learning-card concept-card">
-              <span>CONCEPT / 概念解读</span>
-              <p>{activeModel.funFact}</p>
-            </article>
-            <article className="learning-card note-card">
-              <span>NOTE / 笔记</span>
-              <p>{activeModel.whereItOccurs.text}</p>
-              <em>{activeModel.whereItOccurs.habitat}</em>
-            </article>
             <article className="learning-card index-card">
               <span>INDEX / 标本</span>
               <ul className="cell-list">
@@ -73,6 +53,15 @@ export function Sidebar({ models, activeId, onSelect }: Props) {
                   />
                 ))}
               </ul>
+            </article>
+            <article className="learning-card specimen-art-card">
+              <span>OBSERVATION SCRIPT / 观察字稿</span>
+              <div className="art-card-grid">
+                <p className="art-display">{activeModel.name}</p>
+                <p className="art-subtitle">{activeModel.subtitle}</p>
+                <p className="art-caption">{activeModel.category} · {activeModel.visibleInLM === '是' ? 'Light microscope ready' : activeModel.visibleInLM}</p>
+              </div>
+              <p className="art-quote">{activeModel.funFact}</p>
             </article>
           </section>
         )}

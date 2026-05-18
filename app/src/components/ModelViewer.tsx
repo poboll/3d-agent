@@ -17,6 +17,7 @@ export function ModelViewer({ model }: Props) {
     fileSize: model.fileSize,
   });
   const [autoRotate, setAutoRotate] = useState(false);
+  const [modelFocus, setModelFocus] = useState(false);
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
 
   const isReady = status === 'done' && !!entry?.gltf;
@@ -30,61 +31,67 @@ export function ModelViewer({ model }: Props) {
   };
 
   return (
-    <div className="viewer">
-      <Canvas
-        frameloop={autoRotate ? 'always' : 'demand'}
-        shadows="percentage"
-        dpr={[1, 1.5]}
-        camera={{ position: [0, 0, 4.4], fov: 45 }}
-        gl={{
-          antialias: true,
-          preserveDrawingBuffer: true,
-        }}
+    <div className={`viewer${modelFocus ? ' is-model-focus' : ''}`}>
+      <div
+        className="viewer-canvas-zone"
+        onPointerMove={() => setModelFocus(true)}
+        onPointerLeave={() => setModelFocus(false)}
       >
-        <ambientLight intensity={0.55} />
-        <directionalLight
-          position={[5, 6, 4]}
-          intensity={1.1}
-          castShadow
-          shadow-mapSize-width={1024}
-          shadow-mapSize-height={1024}
-        />
-        <directionalLight position={[-3, 2, -4]} intensity={0.35} />
+        <Canvas
+          frameloop={autoRotate ? 'always' : 'demand'}
+          shadows="percentage"
+          dpr={[1, 1.5]}
+          camera={{ position: [0, 0, 4.4], fov: 45 }}
+          gl={{
+            antialias: true,
+            preserveDrawingBuffer: true,
+          }}
+        >
+          <ambientLight intensity={0.55} />
+          <directionalLight
+            position={[5, 6, 4]}
+            intensity={1.1}
+            castShadow
+            shadow-mapSize-width={1024}
+            shadow-mapSize-height={1024}
+          />
+          <directionalLight position={[-3, 2, -4]} intensity={0.35} />
 
-        <Suspense fallback={null}>
-          <Environment preset="studio" environmentIntensity={0.55} />
-        </Suspense>
-
-        {isReady && entry?.gltf && (
           <Suspense fallback={null}>
-            <ModelScene
-              gltf={entry.gltf}
-              autoRotate={autoRotate}
-              initialRotationY={model.defaultRotationY}
-              displayScale={model.displayScale}
-            />
+            <Environment preset="studio" environmentIntensity={0.55} />
           </Suspense>
-        )}
 
-        <ContactShadows
-          position={[0, -1.35, 0]}
-          opacity={0.32}
-          scale={6}
-          blur={2.4}
-          far={3.2}
-        />
+          {isReady && entry?.gltf && (
+            <Suspense fallback={null}>
+              <ModelScene
+                gltf={entry.gltf}
+                autoRotate={autoRotate}
+                initialRotationY={model.defaultRotationY}
+                displayScale={model.displayScale}
+              />
+            </Suspense>
+          )}
 
-        <OrbitControls
-          ref={controlsRef}
-          makeDefault
-          enableDamping
-          dampingFactor={0.08}
-          minDistance={1.5}
-          maxDistance={9}
-        />
-      </Canvas>
+          <ContactShadows
+            position={[0, -1.35, 0]}
+            opacity={0.32}
+            scale={6}
+            blur={2.4}
+            far={3.2}
+          />
 
-      <div className="stage-info stage-info-main">
+          <OrbitControls
+            ref={controlsRef}
+            makeDefault
+            enableDamping
+            dampingFactor={0.08}
+            minDistance={1.5}
+            maxDistance={9}
+          />
+        </Canvas>
+      </div>
+
+      <div className="stage-annotation stage-info stage-info-main">
         <span className="stage-kicker">§ 02 — MODEL CARD</span>
         <h2 className="overlay-title">{model.name}</h2>
         <p className="overlay-sub">{model.subtitle}</p>
@@ -104,11 +111,43 @@ export function ModelViewer({ model }: Props) {
         </dl>
       </div>
 
+      <aside className="stage-annotation stage-learning-panel" aria-label="观察焦点与概念解读">
+        <article className="stage-side-card stage-focus-card">
+          <span className="stage-kicker">FOCUS / 焦点</span>
+          <ol>
+            {model.features.slice(0, 4).map((feature, index) => (
+              <li key={feature.name}>
+                <i>{String(index + 1).padStart(2, '0')}</i>
+                <div>
+                  <strong>{feature.name}</strong>
+                  <p>{feature.detail}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </article>
+
+        <article className="stage-side-card stage-concept-card">
+          <span className="stage-kicker">CONCEPT / 概念解读</span>
+          <p>{model.funFact}</p>
+        </article>
+      </aside>
+
+      <article className="stage-annotation stage-note-panel" aria-label="标本笔记">
+        <span>NOTE / 笔记</span>
+        <p>{model.whereItOccurs.text}</p>
+        <em>{model.whereItOccurs.habitat}</em>
+      </article>
+
       <p className="overlay-tip" aria-hidden="true">
         拖拽旋转 · 滚轮缩放 · 右键平移
       </p>
 
-      <div className="overlay-toolbar">
+      <div
+        className="overlay-toolbar"
+        onPointerEnter={() => setModelFocus(false)}
+        onPointerLeave={() => setModelFocus(true)}
+      >
         <button
           type="button"
           className={`tool-btn${autoRotate ? ' active' : ''}`}
