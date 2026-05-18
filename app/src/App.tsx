@@ -63,7 +63,7 @@ function App() {
     <div className="app-shell">
       <header className="topbar">
         <a className="topbar-kicker" href="#workbench" aria-label="返回工作台">
-          N° 07 · CELL PLANT FORGE · 2026
+          N° 07 · 细胞植物工坊 · 2026
         </a>
         <div className="brand">
           <div className="brand-mark" aria-hidden="true">間</div>
@@ -71,18 +71,18 @@ function App() {
           <div>
             <h1 className="brand-title">间 MA · 生物工作台</h1>
             <p className="brand-tagline">
-              <span>MA CELL STUDIO</span>
+              <span>细胞工坊</span>
               <span className="brand-sep">·</span>
-              <span>Image confirmed before 3D</span>
+              <span>先确认图片，再进入 3D</span>
             </p>
           </div>
         </div>
         <nav className="topbar-nav" aria-label="界面区域">
-          <a href="#workbench">Workbench</a>
-          <a href="#generate">Workflow</a>
-          <a href="#specimens">Specimens</a>
-          <a href="#about-ma">About</a>
-          <span>Local API</span>
+          <a href="#workbench">工作台</a>
+          <a href="#generate">生成流程</a>
+          <a href="#specimens">标本索引</a>
+          <a href="#about-ma">关于</a>
+          <span>本地接口</span>
         </nav>
         <div className="hanko-mark" aria-hidden="true">間</div>
       </header>
@@ -115,9 +115,9 @@ function App() {
       )}
 
       <footer className="footer">
-        <span>© {new Date().getFullYear()} MA CELL STUDIO</span>
-        <span>TEXT / IMAGE / 3D · TEACHING WORKBENCH</span>
-        <span>LearningCell × 3DCellForge</span>
+        <span>© {new Date().getFullYear()} 间 MA 细胞工坊</span>
+        <span>文本 / 图像 / 3D · 教学工作台</span>
+        <span>细胞工坊 × 三维生成</span>
       </footer>
     </div>
   );

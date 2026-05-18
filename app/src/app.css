@@ -656,9 +656,8 @@ body {
 
 .stage-annotation {
   transition:
-    opacity 0.22s ease,
     transform 0.22s ease,
-    filter 0.22s ease;
+    box-shadow 0.22s ease;
 }
 
 .stage-info {
@@ -674,9 +673,7 @@ body {
 }
 
 .viewer.is-model-focus .stage-annotation {
-  opacity: 0.28;
-  filter: none;
-  transform: translateY(-2px);
+  transform: none;
   pointer-events: none;
 }
 
@@ -775,14 +772,11 @@ body {
 
 .stage-learning-panel {
   position: absolute;
-  right: 22px;
+  right: 14px;
   top: 18px;
-  bottom: 58px;
   z-index: 4;
-  width: min(238px, 26%);
+  width: min(176px, 19%);
   display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
-  gap: 10px;
   pointer-events: auto;
 }
 
@@ -807,14 +801,14 @@ body {
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 3px;
+  gap: 2px;
   list-style: none;
 }
 
 .stage-focus-card li {
   display: grid;
-  grid-template-columns: 24px minmax(0, 1fr);
-  gap: 8px;
+  grid-template-columns: 21px minmax(0, 1fr);
+  gap: 6px;
   align-items: start;
   padding-top: 3px;
   border-top: 1px solid var(--hairline-2);
@@ -828,7 +822,7 @@ body {
 .stage-focus-card i {
   color: var(--vermilion);
   font-family: var(--font-serif);
-  font-size: 14px;
+  font-size: 12px;
   font-style: italic;
   line-height: 1;
 }
@@ -837,7 +831,7 @@ body {
   display: block;
   color: var(--sumi);
   font-family: var(--font-serif);
-  font-size: 12px;
+  font-size: 10.8px;
   font-weight: 600;
   line-height: 1.1;
 }
@@ -846,30 +840,14 @@ body {
   display: none;
 }
 
-.stage-concept-card p {
-  color: var(--sumi-soft);
-  font-family: var(--font-serif);
-  font-size: clamp(13px, 1vw, 16px);
-  font-weight: 400;
-  line-height: 1.5;
-  max-height: 7.5em;
-  overflow: hidden;
-}
-
-.stage-concept-card p::first-letter {
-  color: var(--vermilion);
-  font-size: 1.9em;
-  line-height: 0.9;
-}
-
 .stage-note-panel {
   position: absolute;
   left: 24px;
   bottom: 22px;
   z-index: 4;
-  width: min(292px, 30%);
-  max-height: 88px;
-  padding: 9px 11px;
+  width: min(232px, 23%);
+  max-height: 86px;
+  padding: 8px 10px;
   overflow-y: auto;
   pointer-events: auto;
 }
@@ -887,8 +865,8 @@ body {
 .stage-note-panel p {
   color: var(--sumi-soft);
   font-family: var(--font-serif);
-  font-size: 12.5px;
-  line-height: 1.42;
+  font-size: 11.5px;
+  line-height: 1.38;
 }
 
 .stage-note-panel em {
@@ -1008,7 +986,7 @@ body {
 .sidebar-section {
   height: 100%;
   min-height: 0;
-  padding: 12px 14px;
+  padding: 16px 14px 10px;
   display: grid;
   grid-template-columns: minmax(300px, 0.62fr) minmax(0, 1.38fr);
   grid-template-rows: auto minmax(0, 1fr);
@@ -1031,7 +1009,8 @@ body {
   grid-template-columns: 7px 1fr;
   gap: 6px 10px;
   align-items: center;
-  margin-bottom: 10px;
+  margin-top: 4px;
+  margin-bottom: 12px;
   padding-bottom: 7px;
   border-bottom: 1px solid var(--hairline-2);
   color: var(--ink-whisper);
@@ -1055,6 +1034,7 @@ body {
   font-size: 12px;
   letter-spacing: 0.12em;
   text-transform: none;
+  display: none;
 }
 
 .specimen-summary {
@@ -1542,14 +1522,9 @@ body {
     -webkit-line-clamp: 1;
   }
 
-  .stage-concept-card p {
-    font-size: 15px;
-    line-height: 1.55;
-  }
-
   .stage-note-panel {
-    width: min(278px, 32%);
-    max-height: 112px;
+    width: min(220px, 30%);
+    max-height: 96px;
   }
 
   .sidebar-section {

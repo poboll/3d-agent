@@ -14,7 +14,7 @@ export function Sidebar({ models, activeId, onSelect }: Props) {
       <div className="sidebar-section official-section">
         <header className="sidebar-header">
           <span className="dot" />
-          <span className="sidebar-label-main">SPECIMEN INDEX</span>
+          <span className="sidebar-label-main">标本索引</span>
           <span className="sidebar-label-sub">标本索引</span>
         </header>
         {activeModel && (
@@ -42,7 +42,7 @@ export function Sidebar({ models, activeId, onSelect }: Props) {
         {activeModel && (
           <section className="specimen-learning" aria-label="教学信息">
             <article className="learning-card index-card">
-              <span>INDEX / 标本</span>
+              <span>标本列表</span>
               <ul className="cell-list">
                 {models.map((m) => (
                   <CellItem
@@ -55,11 +55,11 @@ export function Sidebar({ models, activeId, onSelect }: Props) {
               </ul>
             </article>
             <article className="learning-card specimen-art-card">
-              <span>OBSERVATION SCRIPT / 观察字稿</span>
+              <span>观察字稿</span>
               <div className="art-card-grid">
                 <p className="art-display">{activeModel.name}</p>
                 <p className="art-subtitle">{activeModel.subtitle}</p>
-                <p className="art-caption">{activeModel.category} · {activeModel.visibleInLM === '是' ? 'Light microscope ready' : activeModel.visibleInLM}</p>
+                <p className="art-caption">{activeModel.category} · {activeModel.visibleInLM === '是' ? '光镜可见' : activeModel.visibleInLM}</p>
               </div>
               <p className="art-quote">{activeModel.funFact}</p>
             </article>

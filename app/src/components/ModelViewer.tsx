@@ -92,7 +92,7 @@ export function ModelViewer({ model }: Props) {
       </div>
 
       <div className="stage-annotation stage-info stage-info-main">
-        <span className="stage-kicker">§ 02 — MODEL CARD</span>
+        <span className="stage-kicker">§ 02 — 模型卡片</span>
         <h2 className="overlay-title">{model.name}</h2>
         <p className="overlay-sub">{model.subtitle}</p>
         <dl className="stage-meta-grid">
@@ -113,7 +113,7 @@ export function ModelViewer({ model }: Props) {
 
       <aside className="stage-annotation stage-learning-panel" aria-label="观察焦点与概念解读">
         <article className="stage-side-card stage-focus-card">
-          <span className="stage-kicker">FOCUS / 焦点</span>
+          <span className="stage-kicker">观察焦点</span>
           <ol>
             {model.features.slice(0, 4).map((feature, index) => (
               <li key={feature.name}>
@@ -126,15 +126,10 @@ export function ModelViewer({ model }: Props) {
             ))}
           </ol>
         </article>
-
-        <article className="stage-side-card stage-concept-card">
-          <span className="stage-kicker">CONCEPT / 概念解读</span>
-          <p>{model.funFact}</p>
-        </article>
       </aside>
 
       <article className="stage-annotation stage-note-panel" aria-label="标本笔记">
-        <span>NOTE / 笔记</span>
+        <span>标本笔记</span>
         <p>{model.whereItOccurs.text}</p>
         <em>{model.whereItOccurs.habitat}</em>
       </article>
