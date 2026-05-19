@@ -109,6 +109,8 @@ function CellItem({
   active: boolean;
   onSelect: () => void;
 }) {
+  const statusLabel = model.custom ? '生成模型' : active ? '当前观察' : model.category;
+
   return (
     <li>
       <button
@@ -117,6 +119,7 @@ function CellItem({
         onClick={onSelect}
         style={{ '--accent': model.accent } as React.CSSProperties}
       >
+        <span className="cell-item-index" aria-hidden="true">{model.custom ? 'GEN' : 'MA'}</span>
         <div className="cell-thumb">
           <img src={model.imageUrl} alt={model.name} loading="lazy" />
           {active && <span className="badge">当前</span>}
@@ -127,7 +130,7 @@ function CellItem({
           <div className="cell-status">
             <span className={`status-chip ${active ? 'ok' : 'idle'}`}>
               {active && <Check />}
-              {model.custom ? '生成' : active ? '查看中' : '标本'}
+              {statusLabel}
             </span>
           </div>
         </div>

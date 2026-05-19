@@ -43,63 +43,65 @@ export function ModelViewer({ model }: Props) {
 
   return (
     <div className={`viewer${modelFocus ? ' is-model-focus' : ''}`}>
-      <div
-        className="viewer-canvas-zone"
-        onPointerMove={() => setModelFocus(true)}
-        onPointerLeave={() => setModelFocus(false)}
-      >
-        <Canvas
-          frameloop={autoRotate ? 'always' : 'demand'}
-          shadows="percentage"
-          dpr={[1, 1.5]}
-          camera={{ position: [0, 0, 4.4], fov: 45 }}
-          gl={{
-            antialias: true,
-            preserveDrawingBuffer: true,
-          }}
+      <div className="viewer-interaction-frame">
+        <div
+          className="viewer-canvas-zone"
+          onPointerMove={() => setModelFocus(true)}
+          onPointerLeave={() => setModelFocus(false)}
         >
-          <ambientLight intensity={0.55} />
-          <directionalLight
-            position={[5, 6, 4]}
-            intensity={1.1}
-            castShadow
-            shadow-mapSize-width={1024}
-            shadow-mapSize-height={1024}
-          />
-          <directionalLight position={[-3, 2, -4]} intensity={0.35} />
+          <Canvas
+            frameloop={autoRotate ? 'always' : 'demand'}
+            shadows="percentage"
+            dpr={[1, 1.5]}
+            camera={{ position: [0, 0, 4.4], fov: 45 }}
+            gl={{
+              antialias: true,
+              preserveDrawingBuffer: true,
+            }}
+          >
+            <ambientLight intensity={0.55} />
+            <directionalLight
+              position={[5, 6, 4]}
+              intensity={1.1}
+              castShadow
+              shadow-mapSize-width={1024}
+              shadow-mapSize-height={1024}
+            />
+            <directionalLight position={[-3, 2, -4]} intensity={0.35} />
 
-          <Suspense fallback={null}>
-            <Environment preset="studio" environmentIntensity={0.55} />
-          </Suspense>
-
-          {isReady && entry?.gltf && (
             <Suspense fallback={null}>
-              <ModelScene
-                gltf={entry.gltf}
-                autoRotate={autoRotate}
-                initialRotationY={model.defaultRotationY}
-                displayScale={model.displayScale}
-              />
+              <Environment preset="studio" environmentIntensity={0.55} />
             </Suspense>
-          )}
 
-          <ContactShadows
-            position={[0, -1.35, 0]}
-            opacity={0.32}
-            scale={6}
-            blur={2.4}
-            far={3.2}
-          />
+            {isReady && entry?.gltf && (
+              <Suspense fallback={null}>
+                <ModelScene
+                  gltf={entry.gltf}
+                  autoRotate={autoRotate}
+                  initialRotationY={model.defaultRotationY}
+                  displayScale={model.displayScale}
+                />
+              </Suspense>
+            )}
 
-          <OrbitControls
-            ref={bindControls}
-            makeDefault
-            enableDamping
-            dampingFactor={0.08}
-            minDistance={1.5}
-            maxDistance={9}
-          />
-        </Canvas>
+            <ContactShadows
+              position={[0, -1.35, 0]}
+              opacity={0.32}
+              scale={6}
+              blur={2.4}
+              far={3.2}
+            />
+
+            <OrbitControls
+              ref={bindControls}
+              makeDefault
+              enableDamping
+              dampingFactor={0.08}
+              minDistance={1.5}
+              maxDistance={9}
+            />
+          </Canvas>
+        </div>
       </div>
 
       <div className="stage-annotation stage-info stage-info-main">
@@ -145,27 +147,28 @@ export function ModelViewer({ model }: Props) {
         <em>{model.whereItOccurs.habitat}</em>
       </article>
 
-      <p className="overlay-tip" aria-hidden="true">
-        拖拽旋转 · 滚轮缩放 · 右键平移 · 方向键平移
-      </p>
-
       <div
-        className="overlay-toolbar"
+        className="stage-control-strip"
         onPointerEnter={() => setModelFocus(false)}
         onPointerLeave={() => setModelFocus(true)}
       >
-        <button
-          type="button"
-          className={`tool-btn${autoRotate ? ' active' : ''}`}
-          onClick={() => setAutoRotate((v) => !v)}
-        >
-          <RotateIcon />
-          {autoRotate ? '暂停旋转' : '自动旋转'}
-        </button>
-        <button type="button" className="tool-btn" onClick={handleReset}>
-          <ResetIcon />
-          复位
-        </button>
+        <p className="overlay-tip" aria-hidden="true">
+          拖拽旋转 · 滚轮缩放 · 右键平移 · 方向键平移
+        </p>
+        <div className="overlay-toolbar">
+          <button
+            type="button"
+            className={`tool-btn${autoRotate ? ' active' : ''}`}
+            onClick={() => setAutoRotate((v) => !v)}
+          >
+            <RotateIcon />
+            {autoRotate ? '暂停旋转' : '自动旋转'}
+          </button>
+          <button type="button" className="tool-btn" onClick={handleReset}>
+            <ResetIcon />
+            复位
+          </button>
+        </div>
       </div>
 
       {!isReady && (
