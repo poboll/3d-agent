@@ -50,7 +50,7 @@ export function Sidebar({ models, activeId, onSelect, onOpenIndex }: Props) {
         )}
         {activeModel && (
           <section className="specimen-learning" aria-label="教学信息">
-            <article className="learning-card index-card">
+            <article className="learning-card index-card" id="specimen-index-card">
               <button type="button" className="card-title-button" onClick={onOpenIndex}>标本列表 · 搜索</button>
               <ul className="cell-list">
                 {models.map((m) => (
@@ -76,25 +76,23 @@ export function Sidebar({ models, activeId, onSelect, onOpenIndex }: Props) {
         )}
       </div>
       {imageOpen && activeModel && (
-        <div className="global-overlay image-preview-overlay" role="dialog" aria-modal="true" aria-label="标本图预览">
-          <section className="image-preview-panel">
-            <button type="button" className="overlay-close" onClick={() => setImageOpen(false)}>关闭</button>
-            <span className="overlay-eyebrow">标本图 · {activeModel.name}</span>
-            <div className="image-preview-frame">
+        <aside className="specimen-popover" role="dialog" aria-label="标本图预览">
+          <button type="button" className="specimen-popover-close" onClick={() => setImageOpen(false)}>关闭</button>
+          <span className="overlay-eyebrow">标本图 · {activeModel.name}</span>
+          <div className="image-preview-frame">
               <img
                 src={activeModel.imageUrl}
                 alt={`${activeModel.name}标本图`}
                 style={{ transform: `scale(${imageZoom})` }}
               />
-            </div>
-            <div className="image-preview-actions">
-              <button type="button" onClick={() => setImageZoom((zoom) => Math.max(0.8, Number((zoom - 0.2).toFixed(1))))}>缩小</button>
-              <span>{Math.round(imageZoom * 100)}%</span>
-              <button type="button" onClick={() => setImageZoom(1)}>原始大小</button>
-              <button type="button" onClick={() => setImageZoom((zoom) => Math.min(2.6, Number((zoom + 0.2).toFixed(1))))}>放大</button>
-            </div>
-          </section>
-        </div>
+          </div>
+          <div className="image-preview-actions">
+            <button type="button" onClick={() => setImageZoom((zoom) => Math.max(0.8, Number((zoom - 0.2).toFixed(1))))}>缩小</button>
+            <span>{Math.round(imageZoom * 100)}%</span>
+            <button type="button" onClick={() => setImageZoom(1)}>原始大小</button>
+            <button type="button" onClick={() => setImageZoom((zoom) => Math.min(2.6, Number((zoom + 0.2).toFixed(1))))}>放大</button>
+          </div>
+        </aside>
       )}
     </aside>
   );
