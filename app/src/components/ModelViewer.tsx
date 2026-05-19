@@ -1,4 +1,4 @@
-import { Suspense, useRef, useState } from 'react';
+import { Suspense, useCallback, useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { ContactShadows, Environment, OrbitControls } from '@react-three/drei';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
@@ -21,6 +21,17 @@ export function ModelViewer({ model }: Props) {
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
 
   const isReady = status === 'done' && !!entry?.gltf;
+
+  const bindControls = useCallback((controls: OrbitControlsImpl | null) => {
+    if (!controls) {
+      controlsRef.current?.stopListenToKeyEvents();
+      controlsRef.current = null;
+      return;
+    }
+    controlsRef.current = controls;
+    controls.keyPanSpeed = 10;
+    controls.listenToKeyEvents(window as unknown as HTMLElement);
+  }, []);
 
   const handleReset = () => {
     const controls = controlsRef.current;
@@ -81,7 +92,7 @@ export function ModelViewer({ model }: Props) {
           />
 
           <OrbitControls
-            ref={controlsRef}
+            ref={bindControls}
             makeDefault
             enableDamping
             dampingFactor={0.08}
@@ -135,7 +146,7 @@ export function ModelViewer({ model }: Props) {
       </article>
 
       <p className="overlay-tip" aria-hidden="true">
-        拖拽旋转 · 滚轮缩放 · 右键平移
+        拖拽旋转 · 滚轮缩放 · 右键平移 · 方向键平移
       </p>
 
       <div
@@ -153,7 +164,7 @@ export function ModelViewer({ model }: Props) {
         </button>
         <button type="button" className="tool-btn" onClick={handleReset}>
           <ResetIcon />
-          复位视角
+          复位
         </button>
       </div>
 

@@ -8,6 +8,30 @@ import type { CellModel } from './data/models';
 import './app.css';
 
 const GENERATED_MODELS_STORAGE_KEY = 'learning-cell-generated-models';
+const GUIDE_STORAGE_KEY = 'ma-cell-workflow-guide-seen';
+
+const GUIDE_STEPS = [
+  {
+    title: '第一步：写描述或上传图片',
+    body: '从左侧生成工坊开始，输入生物结构描述，也可以直接上传一张参考图。',
+  },
+  {
+    title: '第二步：确认参考图',
+    body: '文生图先产出初版图片，用户可以重试、接收或退回，确认后才进入 3D 建模。',
+  },
+  {
+    title: '第三步：图升 3D 建模',
+    body: '确认图片后再调用本地演示或混元 3D 服务，生成结果会下载并缓存到模型索引。',
+  },
+  {
+    title: '第四步：舞台观察模型',
+    body: '中间舞台用于旋转、缩放和复位视角，右侧观察焦点辅助课堂讲解。',
+  },
+  {
+    title: '第五步：标本检索与教学复盘',
+    body: '底部标本索引可以切换模型，右上角的标本索引入口可打开搜索遮罩快速定位。',
+  },
+];
 
 function readStoredGeneratedModels() {
   try {
@@ -21,10 +45,21 @@ function readStoredGeneratedModels() {
   }
 }
 
+function shouldShowInitialGuide() {
+  try {
+    return localStorage.getItem(GUIDE_STORAGE_KEY) !== '1';
+  } catch {
+    return false;
+  }
+}
+
 function App() {
   const [activeId, setActiveId] = useState<string>(DEFAULT_MODEL_ID);
   const [generatedModels, setGeneratedModels] = useState<CellModel[]>(readStoredGeneratedModels);
   const [route, setRoute] = useState(() => (window.location.hash === '#about-ma' ? 'about' : 'workbench'));
+  const [guideOpen, setGuideOpen] = useState(shouldShowInitialGuide);
+  const [guideStep, setGuideStep] = useState(0);
+  const [indexOpen, setIndexOpen] = useState(false);
   const allModels = useMemo(() => [...MODELS, ...generatedModels], [generatedModels]);
   const activeModel = useMemo(
     () => allModels.find((m) => m.id === activeId) ?? MODELS[0],
@@ -44,6 +79,15 @@ function App() {
     localStorage.setItem(GENERATED_MODELS_STORAGE_KEY, JSON.stringify(generatedModels.slice(0, 12)));
   }, [generatedModels]);
 
+  useEffect(() => {
+    if (!guideOpen) return;
+    try {
+      localStorage.setItem(GUIDE_STORAGE_KEY, '1');
+    } catch {
+      // Ignore storage failures; the guide can still be opened from the top bar.
+    }
+  }, [guideOpen]);
+
   const handleModelsLoaded = (models: CellModel[]) => {
     setGeneratedModels((current) => {
       const existingIds = new Set(current.map((model) => model.id));
@@ -57,6 +101,11 @@ function App() {
 
   const handleModelCreated = (model: CellModel) => {
     setGeneratedModels((current) => [model, ...current.filter((item) => item.id !== model.id)].slice(0, 12));
+  };
+
+  const openGuide = () => {
+    setGuideStep(0);
+    setGuideOpen(true);
   };
 
   return (
@@ -79,16 +128,16 @@ function App() {
         </div>
         <nav className="topbar-nav" aria-label="界面区域">
           <a href="#workbench">工作台</a>
-          <a href="#generate">生成流程</a>
-          <a href="#specimens">标本索引</a>
+          <button type="button" onClick={openGuide}>流程引导</button>
+          <button type="button" onClick={() => setIndexOpen(true)}>标本索引</button>
           <a href="#about-ma">关于</a>
-          <span>本地接口</span>
+          <a href="#about-ma">本地接口</a>
         </nav>
         <div className="hanko-mark" aria-hidden="true">間</div>
       </header>
 
       {route === 'about' ? (
-        <main className="about-route">
+        <main className="about-route" id="about-ma">
           <MaAboutPanel />
         </main>
       ) : (
@@ -110,7 +159,12 @@ function App() {
             <ModelViewer key={activeModel.id} model={activeModel} />
           </section>
 
-          <Sidebar models={allModels} activeId={activeId} onSelect={setActiveId} />
+          <Sidebar
+            models={allModels}
+            activeId={activeId}
+            onSelect={setActiveId}
+            onOpenIndex={() => setIndexOpen(true)}
+          />
         </main>
       )}
 
@@ -119,6 +173,124 @@ function App() {
         <span>文本 / 图像 / 3D · 教学工作台</span>
         <span>细胞工坊 × 三维生成</span>
       </footer>
+
+      {guideOpen && (
+        <GuideOverlay
+          step={guideStep}
+          onBack={() => setGuideStep((step) => Math.max(0, step - 1))}
+          onNext={() => {
+            if (guideStep >= GUIDE_STEPS.length - 1) {
+              setGuideOpen(false);
+              return;
+            }
+            setGuideStep((step) => step + 1);
+          }}
+          onClose={() => setGuideOpen(false)}
+        />
+      )}
+
+      {indexOpen && (
+        <SpecimenIndexOverlay
+          models={allModels}
+          activeId={activeId}
+          onClose={() => setIndexOpen(false)}
+          onSelect={(id) => {
+            setActiveId(id);
+            setIndexOpen(false);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function GuideOverlay({
+  step,
+  onBack,
+  onNext,
+  onClose,
+}: {
+  step: number;
+  onBack: () => void;
+  onNext: () => void;
+  onClose: () => void;
+}) {
+  const current = GUIDE_STEPS[step];
+  const isLast = step === GUIDE_STEPS.length - 1;
+
+  return (
+    <div className="global-overlay" role="dialog" aria-modal="true" aria-label="生成流程引导">
+      <section className="guide-panel">
+        <button type="button" className="overlay-close" onClick={onClose} aria-label="关闭引导">关闭</button>
+        <span className="overlay-eyebrow">生成流程引导 · {String(step + 1).padStart(2, '0')} / {String(GUIDE_STEPS.length).padStart(2, '0')}</span>
+        <h2>{current.title}</h2>
+        <p>{current.body}</p>
+        <div className="guide-steps" aria-hidden="true">
+          {GUIDE_STEPS.map((item, index) => (
+            <span className={index === step ? 'active' : ''} key={item.title} />
+          ))}
+        </div>
+        <div className="overlay-actions">
+          <button type="button" className="overlay-secondary" onClick={onBack} disabled={step === 0}>上一步</button>
+          <button type="button" className="overlay-primary" onClick={onNext}>{isLast ? '完成' : '下一步'}</button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function SpecimenIndexOverlay({
+  models,
+  activeId,
+  onSelect,
+  onClose,
+}: {
+  models: CellModel[];
+  activeId: string;
+  onSelect: (id: string) => void;
+  onClose: () => void;
+}) {
+  const [query, setQuery] = useState('');
+  const normalizedQuery = query.trim().toLowerCase();
+  const filteredModels = models.filter((model) => {
+    if (!normalizedQuery) return true;
+    return `${model.name} ${model.subtitle} ${model.category}`.toLowerCase().includes(normalizedQuery);
+  });
+
+  return (
+    <div className="global-overlay" role="dialog" aria-modal="true" aria-label="标本索引搜索">
+      <section className="index-overlay-panel">
+        <button type="button" className="overlay-close" onClick={onClose} aria-label="关闭标本索引">关闭</button>
+        <span className="overlay-eyebrow">标本索引 · 全局检索</span>
+        <h2>快速定位标本</h2>
+        <label className="index-search">
+          <span>搜索标本</span>
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="输入细胞名称、类别或关键词"
+            autoFocus
+          />
+        </label>
+        <div className="index-result-list">
+          {filteredModels.map((model) => (
+            <button
+              type="button"
+              className={`index-result${model.id === activeId ? ' active' : ''}`}
+              key={model.id}
+              onClick={() => onSelect(model.id)}
+            >
+              <img src={model.imageUrl} alt="" />
+              <span>
+                <strong>{model.name}</strong>
+                <em>{model.category} · {model.subtitle}</em>
+              </span>
+            </button>
+          ))}
+          {filteredModels.length === 0 && <p className="empty-result">没有找到匹配标本。</p>}
+        </div>
+        <p className="index-overlay-note">点击任一标本即可切换 3D 舞台；本索引包含内置模型和本地生成 / 导入模型。</p>
+      </section>
     </div>
   );
 }

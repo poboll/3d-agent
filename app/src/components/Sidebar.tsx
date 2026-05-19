@@ -1,13 +1,22 @@
+import { useState } from 'react';
 import type { CellModel } from '../data/models';
 
 interface Props {
   models: CellModel[];
   activeId: string;
   onSelect: (id: string) => void;
+  onOpenIndex: () => void;
 }
 
-export function Sidebar({ models, activeId, onSelect }: Props) {
+export function Sidebar({ models, activeId, onSelect, onOpenIndex }: Props) {
   const activeModel = models.find((model) => model.id === activeId) ?? models[0];
+  const [imageOpen, setImageOpen] = useState(false);
+  const [imageZoom, setImageZoom] = useState(1);
+
+  const openImage = () => {
+    setImageZoom(1);
+    setImageOpen(true);
+  };
 
   return (
     <aside className="sidebar" aria-label="模型索引">
@@ -19,9 +28,9 @@ export function Sidebar({ models, activeId, onSelect }: Props) {
         </header>
         {activeModel && (
           <section className="specimen-summary" aria-label="当前标本介绍">
-            <div className="specimen-summary-image">
+            <button type="button" className="specimen-summary-image" onClick={openImage} aria-label={`放大查看${activeModel.name}标本图`}>
               <img src={activeModel.imageUrl} alt={`${activeModel.name}标本图`} loading="lazy" />
-            </div>
+            </button>
             <div className="specimen-summary-copy">
               <span>{activeModel.category}</span>
               <strong>{activeModel.name}</strong>
@@ -42,7 +51,7 @@ export function Sidebar({ models, activeId, onSelect }: Props) {
         {activeModel && (
           <section className="specimen-learning" aria-label="教学信息">
             <article className="learning-card index-card">
-              <span>标本列表</span>
+              <button type="button" className="card-title-button" onClick={onOpenIndex}>标本列表 · 搜索</button>
               <ul className="cell-list">
                 {models.map((m) => (
                   <CellItem
@@ -66,6 +75,27 @@ export function Sidebar({ models, activeId, onSelect }: Props) {
           </section>
         )}
       </div>
+      {imageOpen && activeModel && (
+        <div className="global-overlay image-preview-overlay" role="dialog" aria-modal="true" aria-label="标本图预览">
+          <section className="image-preview-panel">
+            <button type="button" className="overlay-close" onClick={() => setImageOpen(false)}>关闭</button>
+            <span className="overlay-eyebrow">标本图 · {activeModel.name}</span>
+            <div className="image-preview-frame">
+              <img
+                src={activeModel.imageUrl}
+                alt={`${activeModel.name}标本图`}
+                style={{ transform: `scale(${imageZoom})` }}
+              />
+            </div>
+            <div className="image-preview-actions">
+              <button type="button" onClick={() => setImageZoom((zoom) => Math.max(0.8, Number((zoom - 0.2).toFixed(1))))}>缩小</button>
+              <span>{Math.round(imageZoom * 100)}%</span>
+              <button type="button" onClick={() => setImageZoom(1)}>原始大小</button>
+              <button type="button" onClick={() => setImageZoom((zoom) => Math.min(2.6, Number((zoom + 0.2).toFixed(1))))}>放大</button>
+            </div>
+          </section>
+        </div>
+      )}
     </aside>
   );
 }
