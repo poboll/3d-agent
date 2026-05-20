@@ -4,11 +4,14 @@ import { Sidebar } from './components/Sidebar';
 import { ModelViewer } from './components/ModelViewer';
 import { GenerationPanel } from './components/GenerationPanel';
 import { MaAboutPanel } from './components/MaAboutPanel';
+import { LocalApiPanel } from './components/LocalApiPanel';
 import type { CellModel } from './data/models';
 import './app.css';
 
 const GENERATED_MODELS_STORAGE_KEY = 'learning-cell-generated-models';
 const GUIDE_STORAGE_KEY = 'ma-cell-workflow-guide-seen';
+
+type Route = 'workbench' | 'about' | 'api';
 
 const GUIDE_STEPS = [
   {
@@ -63,14 +66,19 @@ function shouldShowInitialGuide() {
   }
 }
 
+function getRouteFromHash(): Route {
+  if (window.location.hash === '#about-ma') return 'about';
+  if (window.location.hash === '#local-api') return 'api';
+  return 'workbench';
+}
+
 function App() {
   const [activeId, setActiveId] = useState<string>(DEFAULT_MODEL_ID);
   const [generatedModels, setGeneratedModels] = useState<CellModel[]>(readStoredGeneratedModels);
-  const [route, setRoute] = useState(() => (
-    shouldShowInitialGuide() || window.location.hash !== '#about-ma' ? 'workbench' : 'about'
-  ));
+  const [route, setRoute] = useState<Route>(() => (shouldShowInitialGuide() ? 'workbench' : getRouteFromHash()));
   const [guideOpen, setGuideOpen] = useState(shouldShowInitialGuide);
   const [guideStep, setGuideStep] = useState(0);
+  const [indexFocusSignal, setIndexFocusSignal] = useState(0);
   const allModels = useMemo(() => [...MODELS, ...generatedModels], [generatedModels]);
   const activeModel = useMemo(
     () => allModels.find((m) => m.id === activeId) ?? MODELS[0],
@@ -79,7 +87,11 @@ function App() {
 
   useEffect(() => {
     const syncRoute = () => {
-      setRoute(window.location.hash === '#about-ma' ? 'about' : 'workbench');
+      const nextRoute = getRouteFromHash();
+      setRoute(nextRoute);
+      if (nextRoute !== 'workbench') {
+        setGuideOpen(false);
+      }
     };
 
     window.addEventListener('hashchange', syncRoute);
@@ -155,6 +167,7 @@ function App() {
   const focusSpecimenIndex = () => {
     setRoute('workbench');
     window.location.hash = '#workbench';
+    setIndexFocusSignal((signal) => signal + 1);
     window.requestAnimationFrame(() => {
       document.getElementById('specimen-index-card')?.scrollIntoView({
         behavior: 'smooth',
@@ -183,11 +196,11 @@ function App() {
           </div>
         </div>
         <nav className="topbar-nav" aria-label="界面区域">
-          <a href="#workbench">工作台</a>
-          <button type="button" onClick={openGuide}>流程引导</button>
+          <a className={route === 'workbench' ? 'active' : ''} href="#workbench">常驻工作台</a>
+          <button type="button" className={guideOpen ? 'active' : ''} onClick={openGuide}>流程引导</button>
           <button type="button" onClick={focusSpecimenIndex}>标本索引</button>
-          <a href="#about-ma">关于</a>
-          <a href="#about-ma">本地接口</a>
+          <a className={route === 'about' ? 'active' : ''} href="#about-ma">关于</a>
+          <a className={route === 'api' ? 'active' : ''} href="#local-api">本地接口</a>
         </nav>
         <div className="hanko-mark" aria-hidden="true">間</div>
       </header>
@@ -195,6 +208,10 @@ function App() {
       {route === 'about' ? (
         <main className="about-route" id="about-ma">
           <MaAboutPanel />
+        </main>
+      ) : route === 'api' ? (
+        <main className="about-route api-route" id="local-api">
+          <LocalApiPanel />
         </main>
       ) : (
         <main className="layout" id="workbench">
@@ -220,6 +237,8 @@ function App() {
             activeId={activeId}
             onSelect={setActiveId}
             onOpenIndex={focusSpecimenIndex}
+            guideOpen={guideOpen}
+            focusSignal={indexFocusSignal}
           />
         </main>
       )}

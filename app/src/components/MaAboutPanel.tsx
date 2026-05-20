@@ -8,11 +8,10 @@ export function MaAboutPanel() {
       </div>
       <div>
         <span className="card-eyebrow">§ WORKBENCH — MA CELL STUDIO</span>
-        <h2>一套从参考图确认到 3D 标本展示的教学工作台</h2>
+        <h2>面向课堂演示的细胞植物生成工作台</h2>
         <p>
-          间 MA 用于演示生物模型生成的完整链路：学生或老师先提交描述或图片，系统生成参考图，
-          人工确认后再进入图生 3D 建模。模型完成后会进入本地缓存和标本索引，用于课堂观察、
-          结构讲解和后续复盘。
+          间 MA 不是单纯的艺术落地页，而是一套用于讲解细胞结构、生成参考图并展示 3D 标本的工作台。
+          它把输入、图片确认、图生建模、缓存展示和课堂观察拆成清晰步骤，方便教师边演示边判断每一步是否可用。
         </p>
       </div>
       <div className="about-principles">
@@ -48,12 +47,10 @@ export function MaAboutPanel() {
         </div>
       </div>
       <div className="about-interface-note">
-        <span>本地接口说明</span>
+        <span>工作台边界</span>
         <p>
-          前端工作台默认运行在 <strong>http://127.0.0.1:5173</strong>，本地 API 默认运行在
-          <strong> http://127.0.0.1:8791</strong>。健康检查地址为
-          <strong> /api/health</strong>；前端通过 <strong>VITE_API_BASE</strong> 指向后端。
-          当前版本可以先走本地演示任务，后续再按预算接入真实图片模型和腾讯混元 3D 服务。
+          当前页面负责说明产品定位和课堂组件；接口地址、任务查询、上传模型和服务接入方式已经移到
+          <strong> 本地接口</strong> 页面，方便联调时单独查看。
         </p>
       </div>
       <a className="about-return" href="#workbench">返回工作台</a>

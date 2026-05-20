@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CellModel } from '../data/models';
 
 interface Props {
@@ -6,16 +6,60 @@ interface Props {
   activeId: string;
   onSelect: (id: string) => void;
   onOpenIndex: () => void;
+  guideOpen?: boolean;
+  focusSignal?: number;
 }
 
-export function Sidebar({ models, activeId, onSelect, onOpenIndex }: Props) {
+export function Sidebar({ models, activeId, onSelect, onOpenIndex, guideOpen = false, focusSignal = 0 }: Props) {
   const activeModel = models.find((model) => model.id === activeId) ?? models[0];
   const [imageOpen, setImageOpen] = useState(false);
   const [imageZoom, setImageZoom] = useState(1);
+  const [query, setQuery] = useState('');
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+
+  const normalizedQuery = query.trim().toLowerCase();
+  const filteredModels = useMemo(() => {
+    if (!normalizedQuery) return models;
+
+    return models.filter((model) => {
+      const searchableText = [
+        model.name,
+        model.subtitle,
+        model.category,
+        model.description,
+        model.size,
+        model.location,
+        model.visibleInLM,
+        model.source,
+        model.features.map((feature) => `${feature.name} ${feature.detail}`).join(' '),
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+      return searchableText.includes(normalizedQuery);
+    });
+  }, [models, normalizedQuery]);
+
+  useEffect(() => {
+    if (!focusSignal) return;
+    const timer = window.setTimeout(() => {
+      searchInputRef.current?.focus();
+    }, 160);
+
+    return () => window.clearTimeout(timer);
+  }, [focusSignal]);
 
   const openImage = () => {
     setImageZoom(1);
     setImageOpen(true);
+  };
+
+  const focusIndexSearch = () => {
+    onOpenIndex();
+    window.requestAnimationFrame(() => {
+      searchInputRef.current?.focus();
+    });
   };
 
   return (
@@ -52,16 +96,33 @@ export function Sidebar({ models, activeId, onSelect, onOpenIndex }: Props) {
         {activeModel && (
           <section className="specimen-learning" aria-label="教学信息">
             <article className="learning-card index-card" id="specimen-index-card">
-              <button type="button" className="card-title-button" onClick={onOpenIndex}>标本列表 · 搜索</button>
-              <ul className="cell-list">
-                {models.map((m) => (
-                  <CellItem
-                    key={m.id}
-                    model={m}
-                    active={m.id === activeId}
-                    onSelect={() => onSelect(m.id)}
+              <div className="index-toolbar">
+                <button type="button" className="card-title-button" onClick={focusIndexSearch}>标本列表 · 搜索</button>
+                <label className="specimen-search">
+                  <span>搜索</span>
+                  <input
+                    ref={searchInputRef}
+                    type="search"
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    placeholder="植物细胞 / 真核 / 叶绿体"
+                    aria-label="搜索标本列表"
                   />
-                ))}
+                </label>
+              </div>
+              <ul className="cell-list">
+                {filteredModels.length > 0 ? (
+                  filteredModels.map((m) => (
+                    <CellItem
+                      key={m.id}
+                      model={m}
+                      active={m.id === activeId}
+                      onSelect={() => onSelect(m.id)}
+                    />
+                  ))
+                ) : (
+                  <li className="cell-empty">没有找到匹配的标本</li>
+                )}
               </ul>
             </article>
             <article className="learning-card specimen-art-card">
@@ -76,7 +137,7 @@ export function Sidebar({ models, activeId, onSelect, onOpenIndex }: Props) {
           </section>
         )}
       </div>
-      {imageOpen && activeModel && (
+      {imageOpen && !guideOpen && activeModel && (
         <aside className="specimen-popover" role="dialog" aria-label="标本图预览">
           <button type="button" className="specimen-popover-close" onClick={() => setImageOpen(false)}>关闭</button>
           <span className="overlay-eyebrow">标本图 · {activeModel.name}</span>
@@ -108,7 +169,7 @@ function CellItem({
   active: boolean;
   onSelect: () => void;
 }) {
-  const statusLabel = model.custom ? '生成模型' : active ? '当前观察' : model.category;
+  const statusLabel = model.custom ? '生成' : model.category;
 
   return (
     <li>
@@ -118,9 +179,9 @@ function CellItem({
         onClick={onSelect}
         style={{ '--accent': model.accent } as React.CSSProperties}
       >
+        {active && <span className="cell-current-mark">当前观察</span>}
         <div className="cell-thumb">
           <img src={model.imageUrl} alt={model.name} loading="lazy" />
-          {active && <span className="badge">当前</span>}
         </div>
         <div className="cell-meta">
           <div className="cell-name">{model.name}</div>
