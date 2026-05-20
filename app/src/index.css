@@ -138,13 +138,17 @@ button {
 }
 
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
 }
+
 ::-webkit-scrollbar-thumb {
-  background: rgba(70, 60, 80, 0.18);
-  border-radius: 999px;
+  border: 3px solid transparent;
+  background: rgba(28, 28, 26, 0.26);
+  background-clip: content-box;
+  border-radius: 0;
 }
+
 ::-webkit-scrollbar-track {
   background: transparent;
 }

@@ -286,7 +286,7 @@ export function GenerationPanel({
         </label>
       </div>
 
-      <div className={`reference-card${referenceImage ? ' has-image' : ''}`}>
+      <div id="reference-step" className={`reference-card${referenceImage ? ' has-image' : ''}`}>
         <div className="reference-preview">
           {referenceImage ? (
             <img src={referenceImage.url} alt={referenceImage.title} />
@@ -305,7 +305,7 @@ export function GenerationPanel({
         </div>
       </div>
 
-      <div className="generation-actions">
+      <div className="generation-actions" id="workflow-actions">
         <button type="button" className="generation-primary" onClick={handleCreateReference} disabled={!canCreateReference}>
           生成参考图
         </button>

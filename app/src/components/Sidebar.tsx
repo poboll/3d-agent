@@ -29,6 +29,7 @@ export function Sidebar({ models, activeId, onSelect, onOpenIndex }: Props) {
         {activeModel && (
           <section className="specimen-summary" aria-label="当前标本介绍">
             <button type="button" className="specimen-summary-image" onClick={openImage} aria-label={`放大查看${activeModel.name}标本图`}>
+              <span className="specimen-summary-tag">{activeModel.category}</span>
               <img src={activeModel.imageUrl} alt={`${activeModel.name}标本图`} loading="lazy" />
             </button>
             <div className="specimen-summary-copy">

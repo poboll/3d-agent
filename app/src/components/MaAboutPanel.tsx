@@ -8,51 +8,52 @@ export function MaAboutPanel() {
       </div>
       <div>
         <span className="card-eyebrow">§ ABOUT — MA CELL STUDIO</span>
-        <h2>间，是给生成流程留下判断与教学的位置</h2>
+        <h2>间 MA，是面向生物教学的生成式 3D 工作台</h2>
         <p>
-          这个界面把侘寂纸面、朱印、圆相和细线分隔翻译成一个教学型生物工作台。它不把文本直接送入
-          3D 建模，而是保留“描述 / 上传、参考图、确认、图升建模、缓存展示”的中间判断环节，让老师或学生
-          能在课堂里解释每一步结果。
+          这个工作台服务于“文本或图片生成生物模型”的演示交付：先把描述转换为可确认的参考图，
+          再由用户判断是否进入图生 3D 建模，最后把生成结果缓存到本地标本索引，并在 3D 舞台中用于讲解。
+          它不是单纯展示页面，而是一套可以跑通输入、确认、建模、下载和教学观察的业务原型。
         </p>
       </div>
       <div className="about-principles">
         <div>
           <span>01</span>
-          <strong>纸面</strong>
-          <p>用浅纸色和细线压住界面噪音，让 3D 模型成为主角。</p>
+          <strong>输入</strong>
+          <p>支持生物结构描述和参考图片上传，用于植物细胞、动物细胞、神经元等教学场景。</p>
         </div>
         <div>
           <span>02</span>
-          <strong>确认</strong>
-          <p>文生图之后由用户接收、退回或重试，确认后才进入图生 3D。</p>
+          <strong>参考图</strong>
+          <p>文生图阶段可接入 GPT Image、Gemini 或 NanoBanana2；未配置服务时使用本地演示图。</p>
         </div>
         <div>
           <span>03</span>
-          <strong>教学</strong>
-          <p>模型、结构、课堂提问和任务状态都围绕教学演示组织。</p>
+          <strong>人工确认</strong>
+          <p>图片可以重试、接收或退回，避免把不合格的初稿直接送去付费 3D 建模。</p>
         </div>
         <div>
           <span>04</span>
-          <strong>本地接口</strong>
-          <p>前端默认运行在 5173，API 默认运行在 8791，适合先用本地演示和缓存模型验收流程。</p>
+          <strong>图生 3D</strong>
+          <p>建模层预留腾讯混元 3D 接口，同时保留本地模拟任务，方便先验收流程再接付费服务。</p>
         </div>
         <div>
           <span>05</span>
-          <strong>服务接入</strong>
-          <p>当前保留 GPT Image、Gemini、NanoBanana2 与腾讯混元入口，未配置密钥时走本地模拟结果。</p>
+          <strong>缓存展示</strong>
+          <p>完成后的 GLB/GLTF 模型进入标本索引，前端可以切换、观察、复位视角和演示结构重点。</p>
         </div>
         <div>
           <span>06</span>
-          <strong>交付边界</strong>
-          <p>系统先保证可运行、可教学、可扩展，真实付费建模服务可在后续按预算打开。</p>
+          <strong>教学组件</strong>
+          <p>模型卡片、观察焦点、标本笔记、标本列表和局部预览共同组成课堂可讲解的工作区。</p>
         </div>
       </div>
       <div className="about-interface-note">
-        <span>LOCAL STACK</span>
+        <span>本地接口说明</span>
         <p>
-          工作台地址：<strong>http://127.0.0.1:5173</strong>。后端健康检查：
-          <strong> http://127.0.0.1:8791/api/health</strong>。前端通过 VITE_API_BASE 指向 API；
-          默认流程会先生成或上传参考图，再创建 3D 任务并把结果写入模型索引。
+          前端工作台默认运行在 <strong>http://127.0.0.1:5173</strong>，本地 API 默认运行在
+          <strong> http://127.0.0.1:8791</strong>。健康检查地址为
+          <strong> /api/health</strong>；前端通过 <strong>VITE_API_BASE</strong> 指向后端。
+          当前版本可以先走本地演示任务，后续再按预算接入真实图片模型和腾讯混元 3D 服务。
         </p>
       </div>
       <a className="about-return" href="#workbench">返回工作台</a>

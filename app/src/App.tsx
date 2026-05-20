@@ -14,22 +14,32 @@ const GUIDE_STEPS = [
   {
     title: '第一步：写描述或上传图片',
     body: '从左侧生成工坊开始，输入生物结构描述，也可以直接上传一张参考图。',
+    targetId: 'generate',
+    targetLabel: '生成工坊',
   },
   {
     title: '第二步：确认参考图',
     body: '文生图先产出初版图片，用户可以重试、接收或退回，确认后才进入 3D 建模。',
+    targetId: 'reference-step',
+    targetLabel: '参考图确认区',
   },
   {
     title: '第三步：图升 3D 建模',
     body: '确认图片后再调用本地演示或混元 3D 服务，生成结果会下载并缓存到模型索引。',
+    targetId: 'workflow-actions',
+    targetLabel: '图升建模按钮',
   },
   {
     title: '第四步：舞台观察模型',
     body: '中间舞台用于旋转、缩放和复位视角，右侧观察焦点辅助课堂讲解。',
+    targetId: 'model-stage',
+    targetLabel: '3D 模型舞台',
   },
   {
     title: '第五步：标本检索与教学复盘',
-    body: '底部标本索引可以切换模型，右上角的标本索引入口可打开搜索遮罩快速定位。',
+    body: '底部标本索引用两行列表切换模型，点击标本图会打开局部预览，不打断工作台。',
+    targetId: 'specimen-index-card',
+    targetLabel: '底部标本列表',
   },
 ];
 
@@ -56,7 +66,9 @@ function shouldShowInitialGuide() {
 function App() {
   const [activeId, setActiveId] = useState<string>(DEFAULT_MODEL_ID);
   const [generatedModels, setGeneratedModels] = useState<CellModel[]>(readStoredGeneratedModels);
-  const [route, setRoute] = useState(() => (window.location.hash === '#about-ma' ? 'about' : 'workbench'));
+  const [route, setRoute] = useState(() => (
+    shouldShowInitialGuide() || window.location.hash !== '#about-ma' ? 'workbench' : 'about'
+  ));
   const [guideOpen, setGuideOpen] = useState(shouldShowInitialGuide);
   const [guideStep, setGuideStep] = useState(0);
   const allModels = useMemo(() => [...MODELS, ...generatedModels], [generatedModels]);
@@ -87,6 +99,37 @@ function App() {
     }
   }, [guideOpen]);
 
+  useEffect(() => {
+    if (!guideOpen) return;
+    const targetId = GUIDE_STEPS[guideStep]?.targetId;
+    if (!targetId) return;
+
+    if (window.location.hash !== '#workbench') {
+      window.history.replaceState(null, '', '#workbench');
+    }
+
+    const timer = window.setTimeout(() => {
+      const target = document.getElementById(targetId);
+      if (!target) return;
+      document.querySelectorAll('.guide-focus-target').forEach((element) => {
+        element.classList.remove('guide-focus-target');
+      });
+      target.classList.add('guide-focus-target');
+      target.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+        inline: 'nearest',
+      });
+    }, 80);
+
+    return () => {
+      window.clearTimeout(timer);
+      document.querySelectorAll('.guide-focus-target').forEach((element) => {
+        element.classList.remove('guide-focus-target');
+      });
+    };
+  }, [guideOpen, guideStep]);
+
   const handleModelsLoaded = (models: CellModel[]) => {
     setGeneratedModels((current) => {
       const existingIds = new Set(current.map((model) => model.id));
@@ -103,6 +146,8 @@ function App() {
   };
 
   const openGuide = () => {
+    setRoute('workbench');
+    window.location.hash = '#workbench';
     setGuideStep(0);
     setGuideOpen(true);
   };
@@ -164,7 +209,7 @@ function App() {
 
           <section
             className="stage"
-            id="specimens"
+            id="model-stage"
             style={{ '--accent': activeModel.accent } as React.CSSProperties}
           >
             <ModelViewer key={activeModel.id} model={activeModel} />
@@ -196,6 +241,7 @@ function App() {
             }
             setGuideStep((step) => step + 1);
           }}
+          onStepChange={setGuideStep}
           onClose={() => setGuideOpen(false)}
         />
       )}
@@ -208,35 +254,33 @@ function GuideOverlay({
   step,
   onBack,
   onNext,
+  onStepChange,
   onClose,
 }: {
   step: number;
   onBack: () => void;
   onNext: () => void;
+  onStepChange: (step: number) => void;
   onClose: () => void;
 }) {
   const current = GUIDE_STEPS[step];
   const isLast = step === GUIDE_STEPS.length - 1;
 
   return (
-    <div className="global-overlay" role="dialog" aria-modal="true" aria-label="生成流程引导">
+    <div className="global-overlay guide-overlay" role="dialog" aria-modal="true" aria-label="生成流程引导">
       <section className="guide-panel">
         <button type="button" className="overlay-close" onClick={onClose} aria-label="关闭引导">关闭</button>
         <span className="overlay-eyebrow">生成流程引导 · {String(step + 1).padStart(2, '0')} / {String(GUIDE_STEPS.length).padStart(2, '0')}</span>
         <h2>{current.title}</h2>
         <p>{current.body}</p>
+        <strong className="guide-target-label">当前定位：{current.targetLabel}</strong>
         <div className="guide-steps">
           {GUIDE_STEPS.map((item, index) => (
             <button
               type="button"
               className={index === step ? 'active' : ''}
               key={item.title}
-              onClick={() => {
-                for (let i = 0; i < Math.abs(index - step); i += 1) {
-                  if (index > step) onNext();
-                  else onBack();
-                }
-              }}
+              onClick={() => onStepChange(index)}
               aria-label={`查看${item.title}`}
             />
           ))}

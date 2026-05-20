@@ -1,6 +1,6 @@
 import { Suspense, useCallback, useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { ContactShadows, Environment, OrbitControls } from '@react-three/drei';
+import { ContactShadows, Environment, Lightformer, OrbitControls } from '@react-three/drei';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import type { CellModel } from '../data/models';
 import { useModel } from '../hooks/useModel';
@@ -69,9 +69,11 @@ export function ModelViewer({ model }: Props) {
             />
             <directionalLight position={[-3, 2, -4]} intensity={0.35} />
 
-            <Suspense fallback={null}>
-              <Environment preset="studio" environmentIntensity={0.55} />
-            </Suspense>
+            <Environment resolution={96} frames={1} environmentIntensity={0.58}>
+              <Lightformer form="rect" intensity={1.6} position={[0, 4, 4]} scale={[5, 2, 1]} />
+              <Lightformer form="rect" intensity={0.9} position={[-4, 2, -2]} scale={[3, 4, 1]} />
+              <Lightformer form="ring" intensity={0.55} position={[4, 1.5, -3]} scale={2.4} />
+            </Environment>
 
             {isReady && entry?.gltf && (
               <Suspense fallback={null}>
