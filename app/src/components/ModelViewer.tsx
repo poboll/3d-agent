@@ -18,6 +18,7 @@ export function ModelViewer({ model }: Props) {
   });
   const [autoRotate, setAutoRotate] = useState(false);
   const [modelFocus, setModelFocus] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
 
   const isReady = status === 'done' && !!entry?.gltf;
@@ -42,7 +43,7 @@ export function ModelViewer({ model }: Props) {
   };
 
   return (
-    <div className={`viewer${modelFocus ? ' is-model-focus' : ''}`}>
+    <div className={`viewer${modelFocus ? ' is-model-focus' : ''}${expanded ? ' is-stage-expanded' : ''}`}>
       <div className="viewer-interaction-frame">
         <div
           className="viewer-canvas-zone"
@@ -170,6 +171,14 @@ export function ModelViewer({ model }: Props) {
             <ResetIcon />
             复位
           </button>
+          <button
+            type="button"
+            className={`tool-btn${expanded ? ' active' : ''}`}
+            onClick={() => setExpanded((value) => !value)}
+          >
+            <ExpandIcon />
+            {expanded ? '收起' : '全局'}
+          </button>
         </div>
       </div>
 
@@ -201,6 +210,21 @@ function ResetIcon() {
       <path d="M6 9v6a6 6 0 0 0 6 6h3" />
       <path d="M21 12l-3 3-3-3" />
       <path d="M18 15V9a6 6 0 0 0-6-6H9" />
+    </svg>
+  );
+}
+
+function ExpandIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8 3H3v5" />
+      <path d="M3 3l7 7" />
+      <path d="M16 3h5v5" />
+      <path d="M21 3l-7 7" />
+      <path d="M8 21H3v-5" />
+      <path d="M3 21l7-7" />
+      <path d="M16 21h5v-5" />
+      <path d="M21 21l-7-7" />
     </svg>
   );
 }

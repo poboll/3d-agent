@@ -118,7 +118,6 @@ function CellItem({
         onClick={onSelect}
         style={{ '--accent': model.accent } as React.CSSProperties}
       >
-        <span className="cell-item-index" aria-hidden="true">{model.custom ? 'GEN' : 'MA'}</span>
         <div className="cell-thumb">
           <img src={model.imageUrl} alt={model.name} loading="lazy" />
           {active && <span className="badge">当前</span>}

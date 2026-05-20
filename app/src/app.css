@@ -37,11 +37,28 @@ body {
 
 .guide-overlay {
   z-index: 90;
-  place-items: end;
-  padding: 34px;
+  place-items: start end;
+  padding: 102px 34px 34px;
   background:
-    radial-gradient(560px 360px at 56% 42%, rgba(255, 250, 240, 0.14), transparent 74%),
-    rgba(28, 28, 26, 0.2);
+    radial-gradient(560px 360px at 56% 42%, rgba(251, 250, 244, 0.1), transparent 74%),
+    rgba(28, 31, 27, 0.1);
+  backdrop-filter: none;
+}
+
+.guide-target-generate,
+.guide-target-reference-step,
+.guide-target-workflow-actions {
+  place-items: start end;
+}
+
+.guide-target-model-stage {
+  place-items: end start;
+  padding: 34px 34px 34px;
+}
+
+.guide-target-specimen-index-card {
+  place-items: start end;
+  padding-top: 96px;
 }
 
 .guide-panel {
@@ -86,6 +103,9 @@ body {
   z-index: 120;
   width: min(430px, 100%);
   padding: 28px 30px 26px;
+  background:
+    repeating-linear-gradient(101deg, rgba(76, 91, 72, 0.02) 0 1px, transparent 1px 18px),
+    rgba(251, 250, 244, 0.94);
 }
 
 .guide-panel h2 {
@@ -177,8 +197,8 @@ body {
   outline: 1px solid rgba(139, 58, 46, 0.66);
   outline-offset: 7px;
   box-shadow:
-    0 0 0 9999px rgba(28, 28, 26, 0.18),
-    0 20px 64px -38px rgba(28, 28, 26, 0.56) !important;
+    0 0 0 4px rgba(251, 250, 244, 0.32),
+    0 18px 44px -34px rgba(28, 31, 27, 0.46) !important;
 }
 
 .app-shell::before {
@@ -383,7 +403,7 @@ body {
   border: 1px solid var(--hairline);
   border-radius: 4px;
   background:
-    linear-gradient(180deg, rgba(255, 250, 240, 0.86), rgba(237, 231, 217, 0.68)),
+    linear-gradient(180deg, rgba(251, 250, 244, 0.88), rgba(232, 230, 221, 0.66)),
     var(--paper-warm);
   box-shadow: inset 0 1px 0 rgba(255, 250, 240, 0.65);
 }
@@ -768,11 +788,12 @@ body {
   border: 1px solid rgba(28, 28, 26, 0.19);
   border-radius: 4px;
   background:
-    radial-gradient(54% 54% at 50% 47%, rgba(255, 250, 240, 0.62), transparent 64%),
-    radial-gradient(58% 62% at 52% 50%, rgba(89, 100, 106, 0.09), transparent 62%),
+    radial-gradient(54% 54% at 50% 47%, rgba(251, 250, 244, 0.62), transparent 64%),
+    radial-gradient(58% 62% at 52% 50%, rgba(95, 105, 103, 0.1), transparent 62%),
     radial-gradient(34% 34% at 76% 74%, rgba(139, 58, 46, 0.048), transparent 70%),
-    repeating-linear-gradient(135deg, rgba(28, 28, 26, 0.019) 0 12px, transparent 12px 24px),
-    linear-gradient(180deg, rgba(255, 249, 235, 0.98), rgba(232, 223, 203, 0.9));
+    repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.02) 0 1px, transparent 1px 18px),
+    repeating-linear-gradient(135deg, rgba(28, 31, 27, 0.018) 0 12px, transparent 12px 24px),
+    linear-gradient(180deg, rgba(250, 249, 243, 0.98), rgba(229, 228, 218, 0.9));
   box-shadow:
     inset 0 0 0 14px rgba(255, 249, 235, 0.2),
     inset 0 -38px 80px -70px rgba(28, 28, 26, 0.26),
@@ -782,7 +803,7 @@ body {
 .stage::before {
   content: '';
   position: absolute;
-  width: min(36vw, 420px);
+  width: min(42vw, 500px);
   aspect-ratio: 1.14;
   left: 50%;
   top: 50.5%;
@@ -815,6 +836,26 @@ body {
   height: 100%;
 }
 
+.viewer.is-stage-expanded {
+  position: fixed;
+  inset: 18px 24px;
+  z-index: 70;
+  border: 1px solid rgba(28, 31, 27, 0.16);
+  background:
+    repeating-linear-gradient(101deg, rgba(76, 91, 72, 0.018) 0 1px, transparent 1px 18px),
+    linear-gradient(180deg, rgba(251, 250, 244, 0.96), rgba(232, 230, 221, 0.9));
+  box-shadow: 0 32px 90px -58px rgba(28, 31, 27, 0.68);
+}
+
+.viewer.is-stage-expanded::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: rgba(242, 240, 232, 0.68);
+  backdrop-filter: blur(2px);
+}
+
 .viewer-interaction-frame {
   position: absolute;
   inset: 0;
@@ -845,7 +886,7 @@ body {
   z-index: 4;
   border: 1px solid rgba(28, 28, 26, 0.11);
   border-radius: 4px;
-  background: rgba(255, 250, 240, 0.58);
+  background: rgba(251, 250, 244, 0.58);
   backdrop-filter: blur(7px);
   box-shadow: 0 16px 40px -38px rgba(28, 28, 26, 0.38);
   transition: opacity 0.18s ease, transform 0.18s ease;
@@ -862,6 +903,18 @@ body {
   filter: drop-shadow(0 22px 38px rgba(28, 28, 26, 0.16));
 }
 
+.viewer.is-stage-expanded .viewer-canvas-zone {
+  filter: drop-shadow(0 24px 44px rgba(28, 31, 27, 0.14));
+}
+
+.viewer.is-stage-expanded .stage-info-main {
+  width: min(250px, 22%);
+}
+
+.viewer.is-stage-expanded .stage-learning-panel {
+  width: clamp(168px, 15vw, 260px);
+}
+
 .stage-kicker {
   display: block;
   margin-bottom: 6px;
@@ -875,8 +928,8 @@ body {
 .stage-info-main {
   top: 18px;
   left: 22px;
-  width: min(188px, 20%);
-  padding: 9px 11px;
+  width: min(220px, 24%);
+  padding: 9px 12px;
 }
 
 .overlay-title {
@@ -921,6 +974,8 @@ body {
   color: var(--sumi-soft);
   font-size: 10px;
   font-weight: 600;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .stage-control-strip {
@@ -956,17 +1011,17 @@ body {
   padding: 4px;
   border: 1px solid var(--hairline);
   border-radius: 4px;
-  background: rgba(255, 250, 240, 0.7);
+  background: rgba(251, 250, 244, 0.72);
   backdrop-filter: blur(7px);
   pointer-events: auto;
 }
 
 .stage-learning-panel {
   position: absolute;
-  right: 14px;
+  right: 10px;
   top: 20px;
   z-index: 4;
-  width: clamp(76px, 7.6vw, 96px);
+  width: clamp(120px, 16vw, 220px);
   display: grid;
   pointer-events: auto;
 }
@@ -976,8 +1031,8 @@ body {
   border: 1px solid rgba(28, 28, 26, 0.09);
   border-radius: 4px;
   background:
-    linear-gradient(180deg, rgba(255, 250, 240, 0.48), rgba(237, 231, 217, 0.34)),
-    rgba(255, 250, 240, 0.32);
+    linear-gradient(180deg, rgba(251, 250, 244, 0.5), rgba(232, 230, 221, 0.32)),
+    rgba(251, 250, 244, 0.34);
   backdrop-filter: blur(12px) saturate(1.08);
   box-shadow:
     inset 0 1px 0 rgba(255, 250, 240, 0.38),
@@ -1024,14 +1079,24 @@ body {
   display: block;
   color: var(--sumi);
   font-family: var(--font-serif);
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 600;
   line-height: 1.22;
   word-break: keep-all;
 }
 
 .stage-focus-card p {
-  display: none;
+  display: -webkit-box;
+  margin-top: 2px;
+  overflow: hidden;
+  color: var(--ink-mute);
+  font-family: var(--font-sans);
+  font-size: 8.4px;
+  line-height: 1.35;
+  letter-spacing: 0;
+  text-transform: none;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .stage-note-panel {
@@ -1047,7 +1112,7 @@ body {
   border: 0;
   border-left: 1px solid rgba(139, 58, 46, 0.34);
   border-radius: 0;
-  background: linear-gradient(90deg, rgba(255, 250, 240, 0.52), rgba(255, 250, 240, 0));
+  background: linear-gradient(90deg, rgba(251, 250, 244, 0.52), rgba(251, 250, 244, 0));
   backdrop-filter: none;
   box-shadow: none;
 }
@@ -1196,8 +1261,9 @@ body {
   border: 1px solid var(--hairline);
   border-radius: 4px;
   background:
-    linear-gradient(180deg, rgba(255, 249, 235, 0.82), rgba(233, 223, 202, 0.54)),
-    rgba(255, 249, 235, 0.74);
+    repeating-linear-gradient(101deg, rgba(76, 91, 72, 0.018) 0 1px, transparent 1px 18px),
+    linear-gradient(180deg, rgba(251, 250, 244, 0.84), rgba(229, 228, 218, 0.52)),
+    rgba(251, 250, 244, 0.74);
   overflow: hidden;
   box-shadow: 0 18px 46px -40px rgba(28, 28, 26, 0.38);
 }
@@ -1249,7 +1315,7 @@ body {
   margin-bottom: 0;
   padding-right: 10px;
   border-right: 1px solid var(--hairline-2);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .specimen-summary-image {
@@ -1330,11 +1396,13 @@ body {
 .specimen-summary-copy p {
   display: block;
   margin-top: 5px;
-  max-height: 4.1em;
-  overflow: hidden;
+  max-height: 5.55em;
+  overflow-y: auto;
   color: var(--ink-mute);
   font-size: 10.5px;
   line-height: 1.38;
+  padding-right: 4px;
+  scrollbar-width: thin;
 }
 
 .specimen-summary-meta {
@@ -1377,7 +1445,7 @@ body {
 .specimen-learning {
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(340px, 1.02fr) minmax(300px, 0.98fr);
+  grid-template-columns: minmax(240px, 0.68fr) minmax(380px, 1.32fr);
   gap: 10px;
   overflow: hidden;
 }
@@ -1388,7 +1456,9 @@ body {
   padding: 8px 9px;
   border: 1px solid var(--hairline-2);
   border-radius: 4px;
-  background: rgba(255, 249, 235, 0.42);
+  background:
+    repeating-linear-gradient(101deg, rgba(76, 91, 72, 0.016) 0 1px, transparent 1px 16px),
+    rgba(251, 250, 244, 0.44);
   overflow: hidden;
 }
 
@@ -1425,25 +1495,22 @@ body {
 
 .cell-list {
   flex: 1 1 auto;
+  width: min(100%, 292px);
   min-height: 0;
   margin: 0;
-  padding: 0 2px 9px 0;
+  padding: 0 5px 0 0;
   list-style: none;
-  display: grid;
-  grid-template-rows: repeat(2, minmax(46px, 1fr));
-  grid-auto-flow: column;
-  grid-auto-columns: 150px;
-  gap: 7px;
-  align-items: stretch;
-  align-content: stretch;
-  overflow-x: auto;
-  overflow-y: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-x: hidden;
+  overflow-y: auto;
   scrollbar-color: rgba(28, 28, 26, 0.34) transparent;
   scrollbar-width: thin;
 }
 
 .cell-list::-webkit-scrollbar {
-  height: 6px;
+  width: 6px;
 }
 
 .cell-list::-webkit-scrollbar-thumb {
@@ -1454,13 +1521,14 @@ body {
 
 .cell-list li {
   min-width: 0;
-  min-height: 0;
+  min-height: 42px;
+  flex: 0 0 auto;
 }
 
 .specimen-art-card {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(96px, 0.34fr) minmax(0, 1fr);
+  grid-template-columns: minmax(110px, 0.3fr) minmax(0, 1fr);
   gap: 12px;
   overflow: hidden;
 }
@@ -1548,16 +1616,16 @@ body {
 .cell-item {
   width: 100%;
   min-height: 0;
-  height: 100%;
+  height: 42px;
   display: grid;
-  grid-template-columns: 18px 32px minmax(0, 1fr);
+  grid-template-columns: 30px minmax(0, 1fr);
   gap: 6px;
   align-items: center;
   padding: 5px 6px;
   border: 1px solid rgba(28, 28, 26, 0.06);
   border-radius: 4px;
   background:
-    linear-gradient(180deg, rgba(255, 250, 240, 0.48), rgba(237, 231, 217, 0.3));
+    linear-gradient(180deg, rgba(251, 250, 244, 0.52), rgba(232, 230, 221, 0.28));
   color: inherit;
   text-align: left;
   box-shadow: inset 0 1px 0 rgba(255, 250, 240, 0.42);
@@ -1577,25 +1645,16 @@ body {
   border-color: rgba(139, 58, 46, 0.42);
   background:
     repeating-linear-gradient(135deg, rgba(139, 58, 46, 0.035) 0 9px, transparent 9px 18px),
-    rgba(255, 249, 235, 0.86);
+    rgba(251, 250, 244, 0.86);
   box-shadow:
     inset 3px 0 0 var(--vermilion),
     0 10px 24px -22px rgba(28, 28, 26, 0.48);
 }
 
-.cell-item-index {
-  color: rgba(139, 58, 46, 0.82);
-  font-family: var(--font-mono);
-  font-size: 7.5px;
-  letter-spacing: 0.08em;
-  writing-mode: vertical-rl;
-  text-transform: uppercase;
-}
-
 .cell-thumb {
   position: relative;
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   border: 1px solid rgba(28, 28, 26, 0.1);
   border-radius: 3px;
   background: var(--paper-2);
@@ -1698,7 +1757,7 @@ body {
   overflow: hidden;
   color: var(--sumi);
   font-family: var(--font-serif);
-  font-size: 11.3px;
+  font-size: 11px;
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1708,7 +1767,7 @@ body {
   margin-top: 2px;
   overflow: hidden;
   color: var(--ink-mute);
-  font-size: 8.5px;
+  font-size: 8.2px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1778,8 +1837,25 @@ body {
   border: 1px solid var(--hairline);
   border-radius: 8px;
   background:
-    repeating-linear-gradient(135deg, rgba(28, 28, 26, 0.026) 0 14px, transparent 14px 28px),
-    rgba(252, 250, 244, 0.76);
+    repeating-linear-gradient(112deg, rgba(89, 111, 85, 0.105) 0 1px, transparent 1px 22px),
+    repeating-linear-gradient(112deg, rgba(89, 111, 85, 0.032) 0 11px, transparent 11px 44px),
+    linear-gradient(180deg, rgba(244, 249, 242, 0.88), rgba(236, 244, 234, 0.74));
+  box-shadow: 0 18px 58px -48px rgba(28, 31, 27, 0.38);
+}
+
+.about-panel::before {
+  content: 'MA CELL WORKBENCH · LOCAL API · IMAGE TO MODEL · TEACHING SPECIMEN · ';
+  position: absolute;
+  inset: 24px 34px auto;
+  color: rgba(89, 111, 85, 0.11);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  line-height: 2.3;
+  transform: rotate(-4deg);
+  transform-origin: left top;
+  white-space: pre-wrap;
+  pointer-events: none;
 }
 
 .about-enso {
@@ -1804,9 +1880,9 @@ body {
 }
 
 .about-panel h2 {
-  max-width: 620px;
+  max-width: 720px;
   margin-top: 8px;
-  font-size: clamp(30px, 4vw, 48px);
+  font-size: clamp(28px, 3.4vw, 42px);
   line-height: 1.15;
 }
 
@@ -1858,8 +1934,8 @@ body {
   padding: 16px 18px;
   border: 1px solid var(--hairline-2);
   background:
-    repeating-linear-gradient(135deg, rgba(28, 28, 26, 0.02) 0 10px, transparent 10px 20px),
-    rgba(255, 249, 235, 0.52);
+    repeating-linear-gradient(112deg, rgba(89, 111, 85, 0.052) 0 1px, transparent 1px 16px),
+    rgba(248, 250, 245, 0.62);
 }
 
 .about-interface-note span {
@@ -1920,7 +1996,7 @@ body {
   }
 
   .stage-info-main {
-    width: min(176px, 22%);
+    width: min(210px, 25%);
   }
 
   .viewer-interaction-frame {
@@ -1928,7 +2004,7 @@ body {
   }
 
   .stage-learning-panel {
-    width: clamp(62px, 8vw, 82px);
+    width: clamp(116px, 16vw, 190px);
   }
 
   .stage-focus-card p {
@@ -1950,11 +2026,11 @@ body {
   }
 
   .specimen-learning {
-    grid-template-columns: minmax(320px, 1fr) minmax(300px, 0.9fr);
+    grid-template-columns: minmax(230px, 0.7fr) minmax(340px, 1.3fr);
   }
 
   .cell-list {
-    grid-auto-columns: 144px;
+    max-height: 136px;
   }
 
   .topbar {
@@ -2053,12 +2129,11 @@ body {
   .cell-list {
     height: auto;
     padding-bottom: 4px;
-    display: grid;
-    grid-template-rows: repeat(2, minmax(56px, 1fr));
-    grid-auto-flow: column;
-    grid-auto-columns: 156px;
-    overflow-x: auto;
-    overflow-y: hidden;
+    display: flex;
+    flex-direction: column;
+    max-height: 212px;
+    overflow-x: hidden;
+    overflow-y: auto;
   }
 
   .cell-item {
@@ -2094,7 +2169,7 @@ body {
     top: auto;
     right: 14px;
     bottom: 112px;
-    width: min(124px, calc(34% - 22px));
+    width: min(190px, calc(42% - 22px));
   }
 
   .stage-note-panel {

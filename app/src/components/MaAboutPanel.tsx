@@ -7,44 +7,44 @@ export function MaAboutPanel() {
         </svg>
       </div>
       <div>
-        <span className="card-eyebrow">§ ABOUT — MA CELL STUDIO</span>
-        <h2>间 MA，是面向生物教学的生成式 3D 工作台</h2>
+        <span className="card-eyebrow">§ WORKBENCH — MA CELL STUDIO</span>
+        <h2>一套从参考图确认到 3D 标本展示的教学工作台</h2>
         <p>
-          这个工作台服务于“文本或图片生成生物模型”的演示交付：先把描述转换为可确认的参考图，
-          再由用户判断是否进入图生 3D 建模，最后把生成结果缓存到本地标本索引，并在 3D 舞台中用于讲解。
-          它不是单纯展示页面，而是一套可以跑通输入、确认、建模、下载和教学观察的业务原型。
+          间 MA 用于演示生物模型生成的完整链路：学生或老师先提交描述或图片，系统生成参考图，
+          人工确认后再进入图生 3D 建模。模型完成后会进入本地缓存和标本索引，用于课堂观察、
+          结构讲解和后续复盘。
         </p>
       </div>
       <div className="about-principles">
         <div>
           <span>01</span>
-          <strong>输入</strong>
-          <p>支持生物结构描述和参考图片上传，用于植物细胞、动物细胞、神经元等教学场景。</p>
+          <strong>输入区</strong>
+          <p>支持文本描述和参考图片上传，可从植物细胞、动物细胞、神经元等模板开始。</p>
         </div>
         <div>
           <span>02</span>
-          <strong>参考图</strong>
-          <p>文生图阶段可接入 GPT Image、Gemini 或 NanoBanana2；未配置服务时使用本地演示图。</p>
+          <strong>参考图确认</strong>
+          <p>文生图阶段可接入 GPT Image、Gemini 或 NanoBanana2；本地演示模式会使用缓存图。</p>
         </div>
         <div>
           <span>03</span>
-          <strong>人工确认</strong>
-          <p>图片可以重试、接收或退回，避免把不合格的初稿直接送去付费 3D 建模。</p>
+          <strong>人工判断</strong>
+          <p>图片可以重试、接收或退回，避免把不合格初稿直接送入付费建模服务。</p>
         </div>
         <div>
           <span>04</span>
           <strong>图生 3D</strong>
-          <p>建模层预留腾讯混元 3D 接口，同时保留本地模拟任务，方便先验收流程再接付费服务。</p>
+          <p>建模层预留腾讯混元 3D 接口，同时保留本地模拟任务，便于先验收再接服务。</p>
         </div>
         <div>
           <span>05</span>
-          <strong>缓存展示</strong>
-          <p>完成后的 GLB/GLTF 模型进入标本索引，前端可以切换、观察、复位视角和演示结构重点。</p>
+          <strong>缓存与展示</strong>
+          <p>完成后的 GLB/GLTF 进入标本索引，前端可切换、观察、复位视角和放大舞台。</p>
         </div>
         <div>
           <span>06</span>
-          <strong>教学组件</strong>
-          <p>模型卡片、观察焦点、标本笔记、标本列表和局部预览共同组成课堂可讲解的工作区。</p>
+          <strong>课堂组件</strong>
+          <p>模型卡片、观察焦点、标本笔记、标本列表和局部预览组成可讲解的工作区。</p>
         </div>
       </div>
       <div className="about-interface-note">

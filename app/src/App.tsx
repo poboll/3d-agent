@@ -267,7 +267,12 @@ function GuideOverlay({
   const isLast = step === GUIDE_STEPS.length - 1;
 
   return (
-    <div className="global-overlay guide-overlay" role="dialog" aria-modal="true" aria-label="生成流程引导">
+    <div
+      className={`global-overlay guide-overlay guide-target-${current.targetId}`}
+      role="dialog"
+      aria-modal="true"
+      aria-label="生成流程引导"
+    >
       <section className="guide-panel">
         <button type="button" className="overlay-close" onClick={onClose} aria-label="关闭引导">关闭</button>
         <span className="overlay-eyebrow">生成流程引导 · {String(step + 1).padStart(2, '0')} / {String(GUIDE_STEPS.length).padStart(2, '0')}</span>
