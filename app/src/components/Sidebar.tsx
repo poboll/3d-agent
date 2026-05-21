@@ -72,25 +72,21 @@ export function Sidebar({ models, activeId, onSelect, onOpenIndex, guideOpen = f
         </header>
         {activeModel && (
           <section className="specimen-summary" aria-label="当前标本介绍">
-            <button type="button" className="specimen-summary-image" onClick={openImage} aria-label={`放大查看${activeModel.name}标本图`}>
-              <span className="specimen-summary-tag">{activeModel.category}</span>
-              <img src={activeModel.imageUrl} alt={`${activeModel.name}标本图`} loading="lazy" />
-            </button>
+            <div className="specimen-media-stack">
+              <button type="button" className="specimen-summary-image" onClick={openImage} aria-label={`放大查看${activeModel.name}标本图`}>
+                <span className="specimen-summary-tag">{activeModel.category}</span>
+                <img src={activeModel.imageUrl} alt={`${activeModel.name}标本图`} loading="lazy" />
+              </button>
+              <div className="specimen-location-note">
+                <span>位置</span>
+                <strong>{activeModel.location}</strong>
+              </div>
+            </div>
             <div className="specimen-summary-copy">
               <span>{activeModel.category}</span>
               <strong>{activeModel.name}</strong>
               <p>{activeModel.description}</p>
             </div>
-            <dl className="specimen-summary-meta">
-              <div>
-                <dt>尺寸</dt>
-                <dd>{activeModel.size}</dd>
-              </div>
-              <div>
-                <dt>位置</dt>
-                <dd>{activeModel.location}</dd>
-              </div>
-            </dl>
           </section>
         )}
         {activeModel && (
@@ -133,6 +129,11 @@ export function Sidebar({ models, activeId, onSelect, onOpenIndex, guideOpen = f
                 <p className="art-caption">{activeModel.category} · {activeModel.visibleInLM === '是' ? '光镜可见' : activeModel.visibleInLM}</p>
               </div>
               <p className="art-quote">{activeModel.funFact}</p>
+            </article>
+            <article className="learning-card specimen-habitat-card">
+              <span>分布与生境</span>
+              <p>{activeModel.whereItOccurs.text}</p>
+              <em>{activeModel.whereItOccurs.habitat}</em>
             </article>
           </section>
         )}

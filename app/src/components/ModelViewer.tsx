@@ -19,6 +19,8 @@ export function ModelViewer({ model }: Props) {
   const [autoRotate, setAutoRotate] = useState(false);
   const [modelFocus, setModelFocus] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [questionPinned, setQuestionPinned] = useState(false);
+  const [guidePinned, setGuidePinned] = useState(false);
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
 
   const isReady = status === 'done' && !!entry?.gltf;
@@ -127,28 +129,44 @@ export function ModelViewer({ model }: Props) {
         </dl>
       </div>
 
-      <aside className="stage-annotation stage-learning-panel" aria-label="观察焦点与概念解读">
-        <article className="stage-side-card stage-focus-card">
-          <span className="stage-kicker">观察焦点</span>
-          <ol>
-            {model.features.slice(0, 4).map((feature, index) => (
-              <li key={feature.name}>
-                <i>{String(index + 1).padStart(2, '0')}</i>
-                <div>
-                  <strong>{feature.name}</strong>
-                  <p>{feature.detail}</p>
-                </div>
-              </li>
-            ))}
-          </ol>
-        </article>
-      </aside>
-
       <article className="stage-annotation stage-note-panel" aria-label="标本笔记">
         <span>标本笔记</span>
         <p>{model.whereItOccurs.text}</p>
         <em>{model.whereItOccurs.habitat}</em>
       </article>
+
+      <aside
+        className={`stage-scroll-panel stage-question-scroll${questionPinned ? ' pinned' : ''}`}
+        aria-label="课堂提问"
+      >
+        <button type="button" onClick={() => setQuestionPinned((value) => !value)}>
+          课堂提问
+          <small>{questionPinned ? '固定' : '悬浮'}</small>
+        </button>
+        <div>
+          <span>提问线索</span>
+          <p>例如一片成熟的叶子里，可能含有数百万个叶绿体。</p>
+        </div>
+      </aside>
+
+      <aside
+        className={`stage-drawer stage-order-drawer${guidePinned ? ' pinned' : ''}`}
+        aria-label="教学提示与观察顺序"
+      >
+        <button type="button" onClick={() => setGuidePinned((value) => !value)}>
+          <span>教学提示</span>
+          <small>{guidePinned ? '已固定' : '观察顺序'}</small>
+        </button>
+        <ol>
+          {model.features.slice(0, 4).map((feature, index) => (
+            <li key={feature.name}>
+              <i>{String(index + 1).padStart(2, '0')}</i>
+              <span>{feature.name}</span>
+              <p>{feature.detail}</p>
+            </li>
+          ))}
+        </ol>
+      </aside>
 
       <div
         className="stage-control-strip"
