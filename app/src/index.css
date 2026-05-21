@@ -49,7 +49,8 @@
     'Microsoft YaHei', system-ui, sans-serif;
   --font-serif: 'Noto Serif JP', 'Noto Serif SC', 'Songti SC', 'STSong',
     Georgia, serif;
-  --font-hand: var(--font-serif);
+  --font-hand: 'Ma Shan Zheng', 'Klee One', 'LXGW WenKai', 'STKaiti',
+    'KaiTi', 'Yu Mincho', var(--font-serif);
   --font-mono: ui-monospace, SFMono-Regular, Menlo, 'Liberation Mono',
     monospace;
 

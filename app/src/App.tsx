@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { DEFAULT_MODEL_ID, MODELS } from './data/models';
 import { Sidebar } from './components/Sidebar';
 import { ModelViewer } from './components/ModelViewer';
@@ -12,6 +12,12 @@ const GENERATED_MODELS_STORAGE_KEY = 'learning-cell-generated-models';
 const GUIDE_STORAGE_KEY = 'ma-cell-workflow-guide-seen';
 
 type Route = 'workbench' | 'about' | 'api';
+
+interface GuideFrame {
+  spotlightStyle: CSSProperties;
+  panelStyle: CSSProperties;
+  placement: 'left' | 'right' | 'top' | 'bottom' | 'stage';
+}
 
 const GUIDE_STEPS = [
   {
@@ -72,12 +78,69 @@ function getRouteFromHash(): Route {
   return 'workbench';
 }
 
+function clamp(value: number, min: number, max: number) {
+  if (max < min) return min;
+  return Math.min(Math.max(value, min), max);
+}
+
+function buildGuideFrame(target: HTMLElement, targetId: string): GuideFrame {
+  const rect = target.getBoundingClientRect();
+  const safe = 18;
+  const gap = 18;
+  const focusPadding = targetId === 'model-stage' ? 10 : 8;
+  const focusLeft = clamp(rect.left - focusPadding, safe, window.innerWidth - safe);
+  const focusTop = clamp(rect.top - focusPadding, safe, window.innerHeight - safe);
+  const focusRight = clamp(rect.right + focusPadding, safe, window.innerWidth - safe);
+  const focusBottom = clamp(rect.bottom + focusPadding, safe, window.innerHeight - safe);
+  const panelWidth = Math.min(430, window.innerWidth - safe * 2);
+  const estimatedPanelHeight = targetId === 'model-stage' ? 344 : 326;
+
+  let left = focusRight + gap;
+  let top = focusTop + (focusBottom - focusTop) / 2 - estimatedPanelHeight / 2;
+  let placement: GuideFrame['placement'];
+
+  if (targetId === 'model-stage') {
+    placement = 'stage';
+    left = focusRight - panelWidth - 18;
+    top = focusTop + (focusBottom - focusTop) * 0.42 - estimatedPanelHeight / 2;
+  } else if (window.innerWidth - focusRight >= panelWidth + gap) {
+    placement = 'right';
+  } else if (focusLeft >= panelWidth + gap) {
+    placement = 'left';
+    left = focusLeft - panelWidth - gap;
+  } else if (window.innerHeight - focusBottom >= estimatedPanelHeight + gap) {
+    placement = 'bottom';
+    left = focusLeft + (focusRight - focusLeft) / 2 - panelWidth / 2;
+    top = focusBottom + gap;
+  } else {
+    placement = 'top';
+    left = focusLeft + (focusRight - focusLeft) / 2 - panelWidth / 2;
+    top = focusTop - estimatedPanelHeight - gap;
+  }
+
+  return {
+    placement,
+    spotlightStyle: {
+      left: focusLeft,
+      top: focusTop,
+      width: Math.max(48, focusRight - focusLeft),
+      height: Math.max(48, focusBottom - focusTop),
+    },
+    panelStyle: {
+      left: clamp(left, safe, window.innerWidth - panelWidth - safe),
+      top: clamp(top, safe, window.innerHeight - estimatedPanelHeight - safe),
+      width: panelWidth,
+    },
+  };
+}
+
 function App() {
   const [activeId, setActiveId] = useState<string>(DEFAULT_MODEL_ID);
   const [generatedModels, setGeneratedModels] = useState<CellModel[]>(readStoredGeneratedModels);
   const [route, setRoute] = useState<Route>(() => (shouldShowInitialGuide() ? 'workbench' : getRouteFromHash()));
   const [guideOpen, setGuideOpen] = useState(shouldShowInitialGuide);
   const [guideStep, setGuideStep] = useState(0);
+  const [guideFrame, setGuideFrame] = useState<GuideFrame | null>(null);
   const [indexFocusSignal, setIndexFocusSignal] = useState(0);
   const allModels = useMemo(() => [...MODELS, ...generatedModels], [generatedModels]);
   const activeModel = useMemo(
@@ -115,14 +178,22 @@ function App() {
     if (!guideOpen) return;
     const targetId = GUIDE_STEPS[guideStep]?.targetId;
     if (!targetId) return;
+    let disposed = false;
+    const timers: number[] = [];
 
     if (window.location.hash !== '#workbench') {
       window.history.replaceState(null, '', '#workbench');
     }
 
+    const updateFrame = () => {
+      const target = document.getElementById(targetId);
+      if (!target || disposed) return;
+      setGuideFrame(buildGuideFrame(target, targetId));
+    };
+
     const timer = window.setTimeout(() => {
       const target = document.getElementById(targetId);
-      if (!target) return;
+      if (!target || disposed) return;
       document.querySelectorAll('.guide-focus-target').forEach((element) => {
         element.classList.remove('guide-focus-target');
       });
@@ -132,10 +203,19 @@ function App() {
         block: 'center',
         inline: 'nearest',
       });
+      updateFrame();
+      timers.push(window.setTimeout(updateFrame, 280));
     }, 80);
+    timers.push(timer);
+
+    window.addEventListener('resize', updateFrame);
+    window.addEventListener('scroll', updateFrame, true);
 
     return () => {
-      window.clearTimeout(timer);
+      disposed = true;
+      timers.forEach((item) => window.clearTimeout(item));
+      window.removeEventListener('resize', updateFrame);
+      window.removeEventListener('scroll', updateFrame, true);
       document.querySelectorAll('.guide-focus-target').forEach((element) => {
         element.classList.remove('guide-focus-target');
       });
@@ -227,7 +307,7 @@ function App() {
           <section
             className="stage"
             id="model-stage"
-            style={{ '--accent': activeModel.accent } as React.CSSProperties}
+            style={{ '--accent': activeModel.accent } as CSSProperties}
           >
             <ModelViewer key={activeModel.id} model={activeModel} />
           </section>
@@ -262,6 +342,7 @@ function App() {
           }}
           onStepChange={setGuideStep}
           onClose={() => setGuideOpen(false)}
+          frame={guideFrame}
         />
       )}
 
@@ -275,24 +356,27 @@ function GuideOverlay({
   onNext,
   onStepChange,
   onClose,
+  frame,
 }: {
   step: number;
   onBack: () => void;
   onNext: () => void;
   onStepChange: (step: number) => void;
   onClose: () => void;
+  frame: GuideFrame | null;
 }) {
   const current = GUIDE_STEPS[step];
   const isLast = step === GUIDE_STEPS.length - 1;
 
   return (
     <div
-      className={`global-overlay guide-overlay guide-target-${current.targetId}`}
+      className={`guide-overlay guide-target-${current.targetId}`}
       role="dialog"
       aria-modal="true"
       aria-label="生成流程引导"
     >
-      <section className="guide-panel">
+      {frame && <div className={`guide-spotlight guide-spotlight-${frame.placement}`} style={frame.spotlightStyle} />}
+      <section className={`guide-panel guide-panel-${frame?.placement ?? 'floating'}`} style={frame?.panelStyle}>
         <button type="button" className="overlay-close" onClick={onClose} aria-label="关闭引导">关闭</button>
         <span className="overlay-eyebrow">生成流程引导 · {String(step + 1).padStart(2, '0')} / {String(GUIDE_STEPS.length).padStart(2, '0')}</span>
         <h2>{current.title}</h2>
