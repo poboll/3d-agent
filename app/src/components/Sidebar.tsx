@@ -83,7 +83,7 @@ export function Sidebar({ models, activeId, onSelect, onOpenIndex, guideOpen = f
               </div>
             </div>
             <div className="specimen-summary-copy">
-              <span>{activeModel.category}</span>
+              <span>{activeModel.category} / {activeModel.visibleInLM === '是' ? '光镜可见' : activeModel.visibleInLM}</span>
               <strong>{activeModel.name}</strong>
               <p>{activeModel.description}</p>
             </div>
@@ -172,7 +172,7 @@ function CellItem({
   active: boolean;
   onSelect: () => void;
 }) {
-  const statusLabel = model.custom ? '生成' : model.category;
+  const statusLabel = model.custom ? '生成模型' : model.category;
 
   return (
     <li>
@@ -182,19 +182,19 @@ function CellItem({
         onClick={onSelect}
         style={{ '--accent': model.accent } as React.CSSProperties}
       >
-        {active && <span className="cell-current-mark">当前观察</span>}
+        {active && <span className="cell-current-mark">当前</span>}
         <div className="cell-thumb">
           <img src={model.imageUrl} alt={model.name} loading="lazy" />
         </div>
         <div className="cell-meta">
-          <div className="cell-name">{model.name}</div>
-          <div className="cell-sub">{model.custom ? model.source ?? model.subtitle : model.subtitle}</div>
-          <div className="cell-status">
+          <div className="cell-title-row">
+            <div className="cell-name">{model.name}</div>
             <span className={`status-chip ${active ? 'ok' : 'idle'}`}>
               {active && <Check />}
               {statusLabel}
             </span>
           </div>
+          <div className="cell-sub">{model.custom ? model.source ?? model.subtitle : model.subtitle}</div>
         </div>
       </button>
     </li>

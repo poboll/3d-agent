@@ -19,7 +19,6 @@ export function ModelViewer({ model }: Props) {
   const [autoRotate, setAutoRotate] = useState(false);
   const [modelFocus, setModelFocus] = useState(false);
   const [expanded, setExpanded] = useState(false);
-  const [orderPinned, setOrderPinned] = useState(false);
   const [cluePinned, setCluePinned] = useState(false);
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
 
@@ -135,26 +134,20 @@ export function ModelViewer({ model }: Props) {
         <em>{model.whereItOccurs.habitat}</em>
       </article>
 
-      <aside
-        className={`stage-scroll-panel stage-order-scroll${orderPinned ? ' pinned' : ''}`}
-        aria-label="观察顺序"
-      >
-        <button type="button" onClick={() => setOrderPinned((value) => !value)}>
-          观察顺序
-          <small>{orderPinned ? '固定' : '悬浮'}</small>
-        </button>
-        <div>
-          <span>从整体到细节</span>
-          <ol>
-            {model.features.slice(0, 4).map((feature, index) => (
-              <li key={feature.name}>
-                <i>{String(index + 1).padStart(2, '0')}</i>
-                <strong>{feature.name}</strong>
-                <p>{feature.detail}</p>
-              </li>
-            ))}
-          </ol>
-        </div>
+      <aside className="stage-order-card" aria-label="观察顺序">
+        <header>
+          <span>观察顺序</span>
+          <small>固定</small>
+        </header>
+        <ol>
+          {model.features.slice(0, 4).map((feature, index) => (
+            <li key={feature.name}>
+              <i>{String(index + 1).padStart(2, '0')}</i>
+              <strong>{feature.name}</strong>
+              <p>{feature.detail}</p>
+            </li>
+          ))}
+        </ol>
       </aside>
 
       <aside
