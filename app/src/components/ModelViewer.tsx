@@ -19,8 +19,8 @@ export function ModelViewer({ model }: Props) {
   const [autoRotate, setAutoRotate] = useState(false);
   const [modelFocus, setModelFocus] = useState(false);
   const [expanded, setExpanded] = useState(false);
-  const [questionPinned, setQuestionPinned] = useState(false);
-  const [guidePinned, setGuidePinned] = useState(false);
+  const [orderPinned, setOrderPinned] = useState(false);
+  const [cluePinned, setCluePinned] = useState(false);
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
 
   const isReady = status === 'done' && !!entry?.gltf;
@@ -136,36 +136,39 @@ export function ModelViewer({ model }: Props) {
       </article>
 
       <aside
-        className={`stage-scroll-panel stage-question-scroll${questionPinned ? ' pinned' : ''}`}
-        aria-label="课堂提问"
+        className={`stage-scroll-panel stage-order-scroll${orderPinned ? ' pinned' : ''}`}
+        aria-label="观察顺序"
       >
-        <button type="button" onClick={() => setQuestionPinned((value) => !value)}>
-          课堂提问
-          <small>{questionPinned ? '固定' : '悬浮'}</small>
+        <button type="button" onClick={() => setOrderPinned((value) => !value)}>
+          观察顺序
+          <small>{orderPinned ? '固定' : '悬浮'}</small>
         </button>
         <div>
-          <span>提问线索</span>
-          <p>例如一片成熟的叶子里，可能含有数百万个叶绿体。</p>
+          <span>从整体到细节</span>
+          <ol>
+            {model.features.slice(0, 4).map((feature, index) => (
+              <li key={feature.name}>
+                <i>{String(index + 1).padStart(2, '0')}</i>
+                <strong>{feature.name}</strong>
+                <p>{feature.detail}</p>
+              </li>
+            ))}
+          </ol>
         </div>
       </aside>
 
       <aside
-        className={`stage-drawer stage-order-drawer${guidePinned ? ' pinned' : ''}`}
-        aria-label="教学提示与观察顺序"
+        className={`stage-drawer stage-question-drawer${cluePinned ? ' pinned' : ''}`}
+        aria-label="提问线索"
       >
-        <button type="button" onClick={() => setGuidePinned((value) => !value)}>
-          <span>教学提示</span>
-          <small>{guidePinned ? '已固定' : '观察顺序'}</small>
+        <button type="button" onClick={() => setCluePinned((value) => !value)}>
+          <span>提问线索</span>
+          <small>{cluePinned ? '已固定' : '轻提示'}</small>
         </button>
-        <ol>
-          {model.features.slice(0, 4).map((feature, index) => (
-            <li key={feature.name}>
-              <i>{String(index + 1).padStart(2, '0')}</i>
-              <span>{feature.name}</span>
-              <p>{feature.detail}</p>
-            </li>
-          ))}
-        </ol>
+        <div className="question-clue">
+          <span>课堂提问</span>
+          <p>例如一片成熟的叶子里，可能含有数百万个叶绿体。</p>
+        </div>
       </aside>
 
       <div

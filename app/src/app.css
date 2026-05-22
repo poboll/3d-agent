@@ -1063,7 +1063,7 @@ body {
   right: 22px;
   top: -2px;
   z-index: 12;
-  width: min(260px, 26%);
+  width: min(302px, 30%);
   max-height: 36px;
   overflow: hidden;
   transition: max-height 0.24s ease, box-shadow 0.24s ease;
@@ -1072,7 +1072,12 @@ body {
 
 .stage-scroll-panel:hover,
 .stage-scroll-panel.pinned {
-  max-height: 174px;
+  max-height: 256px;
+}
+
+.stage-order-scroll:hover,
+.stage-order-scroll.pinned {
+  max-height: 306px;
 }
 
 .stage-scroll-panel button,
@@ -1123,9 +1128,14 @@ body {
 
 .stage-scroll-panel:hover > div,
 .stage-scroll-panel.pinned > div {
-  max-height: 130px;
-  padding: 14px 16px 16px;
+  max-height: 214px;
+  padding: 12px 14px 14px;
   opacity: 1;
+}
+
+.stage-order-scroll:hover > div,
+.stage-order-scroll.pinned > div {
+  max-height: 264px;
 }
 
 .stage-scroll-panel span {
@@ -1141,6 +1151,51 @@ body {
   font-family: var(--font-hand);
   font-size: 15px;
   line-height: 1.6;
+}
+
+.stage-order-scroll ol {
+  margin: 9px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+  list-style: none;
+}
+
+.stage-order-scroll li {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 3px 8px;
+  padding: 6px 8px;
+  border-left: 1px solid rgba(139, 58, 46, 0.25);
+  background:
+    linear-gradient(90deg, rgba(255, 250, 240, 0.56), rgba(255, 250, 240, 0.16)),
+    rgba(223, 233, 220, 0.13);
+}
+
+.stage-order-scroll i {
+  grid-row: 1 / span 2;
+  color: var(--vermilion);
+  font-family: var(--font-serif);
+  font-size: 12px;
+  font-style: italic;
+  line-height: 1.1;
+}
+
+.stage-order-scroll strong {
+  color: var(--sumi);
+  font-family: var(--font-serif);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.stage-order-scroll li p {
+  margin-top: 0;
+  color: var(--ink-mute);
+  font-family: var(--font-sans);
+  font-size: 9px;
+  line-height: 1.35;
+  letter-spacing: 0;
 }
 
 .stage-drawer {
@@ -1221,6 +1276,54 @@ body {
   color: var(--ink-mute);
   font-size: 9px;
   line-height: 1.35;
+}
+
+.stage-question-drawer {
+  width: min(308px, 33%);
+  bottom: 58px;
+  transform: translateX(calc(100% - 112px));
+}
+
+.stage-question-drawer:hover,
+.stage-question-drawer.pinned {
+  max-height: 116px;
+  transform: translateX(0);
+}
+
+.stage-question-drawer .question-clue {
+  margin: 0;
+  padding: 10px 12px 12px;
+  border: 1px solid rgba(28, 31, 27, 0.12);
+  border-top: 0;
+  border-radius: 0 0 0 4px;
+  background:
+    radial-gradient(140px 90px at 92% 20%, rgba(139, 58, 46, 0.045), transparent 72%),
+    repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.018) 0 1px, transparent 1px 16px),
+    rgba(251, 250, 244, 0.83);
+  opacity: 0;
+  box-shadow: 0 18px 46px -38px rgba(28, 31, 27, 0.46);
+  transition: opacity 0.2s ease;
+}
+
+.stage-question-drawer:hover .question-clue,
+.stage-question-drawer.pinned .question-clue {
+  opacity: 1;
+}
+
+.stage-question-drawer .question-clue span {
+  color: var(--ink-whisper);
+  font-family: var(--font-mono);
+  font-size: 7.5px;
+  letter-spacing: 0.14em;
+}
+
+.stage-question-drawer .question-clue p {
+  margin-top: 5px;
+  color: rgba(43, 42, 38, 0.82);
+  font-family: "Klee One", "LXGW WenKai", "STKaiti", "KaiTi", var(--font-serif);
+  font-size: 10px;
+  line-height: 1.58;
+  letter-spacing: 0.04em;
 }
 
 .stage-side-card,
@@ -1503,22 +1606,40 @@ body {
 }
 
 .specimen-summary {
+  position: relative;
   min-height: 0;
   display: flex;
-  gap: 8px;
-  align-items: start;
+  gap: 10px;
+  align-items: stretch;
   margin-bottom: 0;
-  padding-right: 10px;
+  padding: 7px 10px 8px 0;
   border-right: 1px solid var(--hairline-2);
   overflow: visible;
+}
+
+.specimen-summary::after {
+  content: 'EUKARYOTA / PLANTAE';
+  position: absolute;
+  left: 72px;
+  right: 12px;
+  bottom: 7px;
+  overflow: hidden;
+  color: rgba(28, 31, 27, 0.16);
+  font-family: var(--font-mono);
+  font-size: 7px;
+  letter-spacing: 0.14em;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 .specimen-media-stack {
   flex: 0 0 62px;
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
   gap: 7px;
   min-width: 0;
+  min-height: 0;
 }
 
 .specimen-summary-image {
@@ -1541,6 +1662,8 @@ body {
 }
 
 .specimen-location-note {
+  flex: 1 1 auto;
+  min-height: 0;
   padding-left: 6px;
   border-left: 1px solid rgba(139, 58, 46, 0.24);
 }
@@ -1607,6 +1730,9 @@ body {
   min-height: 0;
   display: flex;
   flex-direction: column;
+  justify-content: stretch;
+  gap: 2px;
+  padding-bottom: 12px;
 }
 
 .specimen-summary-copy span {
@@ -1631,12 +1757,21 @@ body {
 .specimen-summary-copy p {
   display: block;
   margin-top: 5px;
-  max-height: 8.4em;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
   overflow-y: auto;
   color: var(--ink-mute);
   font-size: 10.5px;
   line-height: 1.38;
   padding-right: 8px;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 16px,
+    rgba(28, 31, 27, 0.055) 16px,
+    rgba(28, 31, 27, 0.055) 17px
+  );
   scrollbar-width: thin;
 }
 
@@ -1801,10 +1936,9 @@ body {
 .specimen-art-card {
   position: relative;
   display: flex;
-  flex: 0 1 24%;
-  flex-wrap: wrap;
-  align-items: start;
-  gap: 12px;
+  flex: 0 1 21%;
+  flex-direction: column;
+  gap: 7px;
   overflow: hidden;
 }
 
@@ -1812,45 +1946,55 @@ body {
   content: '間';
   position: absolute;
   right: 12px;
-  bottom: -16px;
+  bottom: -4px;
   color: rgba(28, 28, 26, 0.045);
   font-family: var(--font-serif);
-  font-size: 92px;
+  font-size: 76px;
   line-height: 1;
   pointer-events: none;
 }
 
 .specimen-art-card > span {
-  flex: 0 0 100%;
+  flex: 0 0 auto;
   margin-bottom: 0;
+}
+
+.art-card-body {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 78px minmax(0, 1fr);
+  gap: 8px;
+  align-items: stretch;
 }
 
 .art-card-grid {
   position: relative;
   z-index: 1;
-  flex: 0 0 68px;
-  align-self: stretch;
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
+  justify-content: space-between;
   border-right: 1px solid var(--hairline-2);
   padding-right: 10px;
   min-width: 0;
+  min-height: 0;
 }
 
 .art-display {
   color: var(--sumi);
   font-family: var(--font-hand);
-  font-size: clamp(14px, 1.08vw, 18px);
+  font-size: clamp(12px, 0.92vw, 15px);
   font-weight: 500;
   line-height: 1.12;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.02em;
   writing-mode: horizontal-tb;
   max-height: none;
 }
 
 .art-subtitle {
-  margin-top: 6px;
+  margin-top: 7px;
   color: var(--vermilion);
   font-family: var(--font-hand);
   font-size: 8.6px;
@@ -1871,35 +2015,55 @@ body {
 .art-quote {
   position: relative;
   z-index: 1;
-  flex: 1 1 0;
   min-width: 0;
-  align-self: start;
-  max-height: 7.7em;
+  min-height: 0;
+  max-height: none;
   overflow-y: auto;
   color: rgba(43, 42, 38, 0.9);
   font-family: var(--font-hand);
-  font-size: clamp(10.5px, 0.82vw, 13.5px);
+  font-size: clamp(9.5px, 0.7vw, 11.2px);
   font-weight: 400;
-  line-height: 1.66;
+  line-height: 1.55;
   letter-spacing: 0.04em;
   text-wrap: pretty;
+  padding-right: 6px;
+  display: flex;
+  align-items: center;
 }
 
 .specimen-habitat-card {
   position: relative;
-  flex: 0 1 19%;
-  min-width: 170px;
+  flex: 0 1 22%;
+  min-width: 184px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
+}
+
+.specimen-habitat-card::before {
+  content: '';
+  position: absolute;
+  left: 9px;
+  right: 9px;
+  top: 34px;
+  bottom: 33px;
+  border-top: 1px solid rgba(89, 111, 85, 0.12);
+  border-bottom: 1px solid rgba(89, 111, 85, 0.1);
+  pointer-events: none;
 }
 
 .specimen-habitat-card p {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  align-items: center;
   color: rgba(43, 42, 38, 0.84);
-  font-family: var(--font-hand);
-  font-size: clamp(12px, 0.9vw, 15px);
-  line-height: 1.66;
+  font-family: "Klee One", "LXGW WenKai", "Songti SC", var(--font-serif);
+  font-size: clamp(10.5px, 0.78vw, 12.5px);
+  line-height: 1.62;
+  letter-spacing: 0.025em;
+  text-wrap: pretty;
 }
 
 .specimen-habitat-card em {
@@ -1912,8 +2076,8 @@ body {
 
 .art-quote::first-letter {
   color: var(--vermilion);
-  font-size: 2.1em;
-  line-height: 0.86;
+  font-size: 1.65em;
+  line-height: 0.9;
 }
 
 .cell-item {

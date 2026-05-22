@@ -123,12 +123,14 @@ export function Sidebar({ models, activeId, onSelect, onOpenIndex, guideOpen = f
             </article>
             <article className="learning-card specimen-art-card">
               <span>观察字稿</span>
-              <div className="art-card-grid">
-                <p className="art-display">{activeModel.name}</p>
-                <p className="art-subtitle">{activeModel.subtitle}</p>
-                <p className="art-caption">{activeModel.category} · {activeModel.visibleInLM === '是' ? '光镜可见' : activeModel.visibleInLM}</p>
+              <div className="art-card-body">
+                <div className="art-card-grid">
+                  <p className="art-display">{activeModel.name}</p>
+                  <p className="art-subtitle">{activeModel.subtitle}</p>
+                  <p className="art-caption">{activeModel.category} · {activeModel.visibleInLM === '是' ? '光镜可见' : activeModel.visibleInLM}</p>
+                </div>
+                <p className="art-quote">{activeModel.funFact}</p>
               </div>
-              <p className="art-quote">{activeModel.funFact}</p>
             </article>
             <article className="learning-card specimen-habitat-card">
               <span>分布与生境</span>
