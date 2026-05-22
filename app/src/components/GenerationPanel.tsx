@@ -177,7 +177,7 @@ export function GenerationPanel({
       setStatus('还没有可接收的参考图，请先生成或上传一张图片。');
       return;
     }
-    setStatus('参考图已接收，可点击“确认图升建模”提交 3D 任务。');
+    setStatus('参考图已接收，可点击“确认图生建模”提交 3D 任务。');
   };
 
   const handleRejectReference = () => {
@@ -188,7 +188,7 @@ export function GenerationPanel({
 
   const handleConfirmModeling = async () => {
     if (!referenceImage) {
-      setStatus('需要先生成或上传参考图，再确认图升建模。');
+      setStatus('需要先生成或上传参考图，再确认图生建模。');
       return;
     }
 
@@ -322,7 +322,7 @@ export function GenerationPanel({
           退回图片
         </button>
         <button type="button" className="generation-primary confirm-action" onClick={handleConfirmModeling} disabled={!canConfirmModeling}>
-          确认图升建模
+          确认图生建模
         </button>
         <button type="button" className="generation-secondary" onClick={handleLoadDemo} disabled={busy}>
           加载样例

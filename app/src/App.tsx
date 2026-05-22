@@ -33,10 +33,10 @@ const GUIDE_STEPS = [
     targetLabel: '参考图确认区',
   },
   {
-    title: '第三步：图升 3D 建模',
+    title: '第三步：图生 3D 建模',
     body: '确认图片后再调用本地演示或混元 3D 服务，生成结果会下载并缓存到模型索引。',
     targetId: 'workflow-actions',
-    targetLabel: '图升建模按钮',
+    targetLabel: '图生建模按钮',
   },
   {
     title: '第四步：舞台观察模型',
@@ -92,8 +92,8 @@ function buildGuideFrame(target: HTMLElement, targetId: string): GuideFrame {
   const focusTop = clamp(rect.top - focusPadding, safe, window.innerHeight - safe);
   const focusRight = clamp(rect.right + focusPadding, safe, window.innerWidth - safe);
   const focusBottom = clamp(rect.bottom + focusPadding, safe, window.innerHeight - safe);
-  const panelWidth = Math.min(430, window.innerWidth - safe * 2);
-  const estimatedPanelHeight = targetId === 'model-stage' ? 344 : 326;
+  const panelWidth = Math.min(360, window.innerWidth - safe * 2);
+  const estimatedPanelHeight = targetId === 'model-stage' ? 276 : 258;
 
   let left = focusRight + gap;
   let top = focusTop + (focusBottom - focusTop) / 2 - estimatedPanelHeight / 2;
