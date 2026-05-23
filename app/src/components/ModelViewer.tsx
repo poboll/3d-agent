@@ -1,4 +1,5 @@
 import { Suspense, useCallback, useRef, useState } from 'react';
+import type { PointerEvent as ReactPointerEvent } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { ContactShadows, Environment, Lightformer, OrbitControls } from '@react-three/drei';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
@@ -19,6 +20,7 @@ export function ModelViewer({ model }: Props) {
   const [autoRotate, setAutoRotate] = useState(false);
   const [modelFocus, setModelFocus] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [clueOpen, setClueOpen] = useState(false);
   const [cluePinned, setCluePinned] = useState(false);
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
 
@@ -43,8 +45,23 @@ export function ModelViewer({ model }: Props) {
     controls.update();
   };
 
+  const handleViewerPointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+
+    if (target.closest('.stage-control-strip, .stage-question-drawer')) {
+      return;
+    }
+
+    setModelFocus(true);
+  }, []);
+
   return (
-    <div className={`viewer${modelFocus ? ' is-model-focus' : ''}${expanded ? ' is-stage-expanded' : ''}`}>
+    <div
+      className={`viewer${modelFocus ? ' is-model-focus' : ''}${expanded ? ' is-stage-expanded' : ''}`}
+      onPointerMove={handleViewerPointerMove}
+      onPointerLeave={() => setModelFocus(false)}
+    >
       <div className="viewer-interaction-frame">
         <div
           className="viewer-canvas-zone"
@@ -151,12 +168,17 @@ export function ModelViewer({ model }: Props) {
       </aside>
 
       <aside
-        className={`stage-drawer stage-question-drawer${cluePinned ? ' pinned' : ''}`}
+        className={`stage-drawer stage-question-drawer${clueOpen || cluePinned ? ' open' : ''}${cluePinned ? ' pinned' : ''}`}
         aria-label="提问线索"
+        onPointerEnter={() => {
+          setModelFocus(false);
+          setClueOpen(true);
+        }}
+        onPointerLeave={() => setClueOpen(false)}
       >
-        <button type="button" onClick={() => setCluePinned((value) => !value)}>
+        <button type="button" aria-expanded={clueOpen || cluePinned} onClick={() => setCluePinned((value) => !value)}>
           <span>提问线索</span>
-          <small>{cluePinned ? '已固定' : '轻提示'}</small>
+          <small>{cluePinned ? '已展开' : '点击展开'}</small>
         </button>
         <div className="question-clue">
           <span>课堂提问</span>
