@@ -835,11 +835,11 @@ body {
 .stage::before {
   content: '';
   position: absolute;
-  width: min(54vw, 720px);
-  aspect-ratio: 1.34;
+  width: min(52vw, 700px);
+  aspect-ratio: 1.38;
   left: 50%;
   top: 50.5%;
-  background-image: url("data:image/svg+xml,%3Csvg width='720' height='520' viewBox='0 0 720 520' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M462 76C575 86 660 166 664 264C669 376 543 446 391 443C225 440 91 348 82 244C75 156 181 83 333 69' fill='none' stroke='%231c1c1a' stroke-opacity='.16' stroke-width='6.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg width='700' height='506' viewBox='0 0 700 506' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M356 60C537 60 630 158 630 258C630 384 490 455 350 455C193 455 82 376 82 267C82 158 210 70 362 65' fill='none' stroke='%231c1c1a' stroke-opacity='.15' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-position: center;
   background-repeat: no-repeat;
   background-size: contain;
@@ -1826,24 +1826,23 @@ body {
     rgba(28, 31, 27, 0.05) 14px,
     rgba(28, 31, 27, 0.05) 15px
   );
-  scrollbar-gutter: stable;
   scrollbar-color: rgba(139, 58, 46, 0.5) transparent;
   scrollbar-width: thin;
 }
 
 .specimen-summary-copy p::-webkit-scrollbar {
-  width: 1px;
+  width: 7px;
 }
 
 .specimen-summary-copy p::-webkit-scrollbar-track {
-  background: rgba(28, 31, 27, 0.08);
+  background: transparent;
 }
 
 .specimen-summary-copy p::-webkit-scrollbar-thumb {
-  border: 0;
-  border-radius: 999px;
-  background: rgba(139, 58, 46, 0.62);
-  background-clip: border-box;
+  border: 3px solid transparent;
+  border-radius: 0;
+  background: rgba(139, 58, 46, 0.58);
+  background-clip: content-box;
 }
 
 .specimen-learning {
@@ -1987,23 +1986,23 @@ body {
   gap: 5px;
   overflow-x: hidden;
   overflow-y: auto;
-  scrollbar-gutter: stable;
   scrollbar-color: rgba(139, 58, 46, 0.5) transparent;
   scrollbar-width: thin;
 }
 
 .cell-list::-webkit-scrollbar {
-  width: 1px;
+  width: 7px;
 }
 
 .cell-list::-webkit-scrollbar-thumb {
-  border: 0;
-  border-radius: 999px;
-  background: rgba(139, 58, 46, 0.62);
+  border: 3px solid transparent;
+  border-radius: 0;
+  background: rgba(139, 58, 46, 0.58);
+  background-clip: content-box;
 }
 
 .cell-list::-webkit-scrollbar-track {
-  background: rgba(28, 31, 27, 0.08);
+  background: transparent;
 }
 
 .cell-list li {
