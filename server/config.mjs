@@ -38,7 +38,7 @@ export const DEMO_MODELS = [
     accent: '#e8859a',
     imageHint: 'animal-cell',
     description:
-      '来自 3DCellForge 的 epithelial cell 生成样例，用于演示外部 image-to-3D 生成资产如何被缓存并加载到 LearningCell 的 3D 舞台。',
+      '来自 3DCellForge 的 epithelial cell 生成样例，用于说明外部 image-to-3D 生成资产如何被缓存并加载到 LearningCell 的 3D 舞台。',
     template: 'animal-cell',
   },
 ]

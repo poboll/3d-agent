@@ -10,7 +10,7 @@ const endpoints = [
   {
     method: 'GET',
     path: '/api/3d/demo-models',
-    title: '读取演示模型',
+    title: '读取样例模型',
     note: '返回已经缓存好的 GLB/GLTF 模型列表，前端会合并进底部标本索引。',
   },
   {
@@ -35,7 +35,7 @@ const endpoints = [
     method: 'POST',
     path: '/api/3d/local-model?fileName=demo.glb',
     title: '上传本地模型',
-    note: '用于外包交付阶段的兜底演示：先把本地模型导入，再验证展示与缓存流程。',
+    note: '用于导入机构自有 GLB/GLTF 资产，验证资产入库、缓存与舞台展示流程。',
   },
 ];
 
@@ -47,7 +47,7 @@ export function LocalApiPanel() {
         <span className="card-eyebrow">§ LOCAL INTERFACE — WORKBENCH ADAPTER</span>
         <h2>本地接口与生成链路</h2>
         <p>
-          当前工作台先保留本地演示能力，接口形态按后续接入图片生成服务和腾讯混元 3D 服务预留。
+          当前工作台保留本地样例链路，接口形态按后续接入图片生成服务和腾讯混元 3D 服务预留。
           前端通过 <strong>VITE_API_BASE</strong> 指向本地后端，默认地址为 <strong>{API_BASE}</strong>。
         </p>
       </div>
@@ -60,6 +60,21 @@ export function LocalApiPanel() {
         <span>混元 3D 图生建模</span>
         <i />
         <span>下载缓存并展示</span>
+      </div>
+
+      <div className="api-status-grid" aria-label="接口接入状态">
+        <div>
+          <span>Runtime</span>
+          <strong>{API_BASE}</strong>
+        </div>
+        <div>
+          <span>Assets</span>
+          <strong>GLB / GLTF</strong>
+        </div>
+        <div>
+          <span>Workflow</span>
+          <strong>Text → Image → 3D</strong>
+        </div>
       </div>
 
       <div className="api-grid">
@@ -78,8 +93,8 @@ export function LocalApiPanel() {
       <div className="api-note">
         <span>联调建议</span>
         <p>
-          外包验收可以先跑本地演示任务，把工作台、标本索引、3D 舞台和任务历史打通；
-          真实付费服务接入时只需要替换后端 provider，实现图片生成、确认回调和建模结果缓存即可。
+          建议先完成本地样例任务，把工作台、标本索引、3D 舞台和任务历史打通；
+          生产服务接入时替换后端 provider，即可实现图片生成、确认回调和建模结果缓存。
         </p>
       </div>
 

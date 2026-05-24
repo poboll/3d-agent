@@ -232,7 +232,7 @@ export function GenerationPanel({
       <div>
         <span className="generation-eyebrow">§ 01 — WORKFLOW DESK</span>
         <h2>生成工坊</h2>
-        <p>文本或图片先形成参考图，确认后再交给图生 3D 服务，适合课堂里逐步演示。</p>
+        <p>文本或图片先形成参考图，确认后再交给图生 3D 服务，适合课堂里逐步讲解。</p>
       </div>
 
       <ol className="workflow-ladder" aria-label="生成流程">
@@ -280,7 +280,7 @@ export function GenerationPanel({
         <label className="generation-field compact">
           <span>3D PROVIDER</span>
           <select value={modelProvider} onChange={(event) => setModelProvider(event.target.value)}>
-            <option value="local-demo">本地演示</option>
+            <option value="local-demo">本地样例</option>
             <option value="tencent-hunyuan">腾讯混元</option>
           </select>
         </label>
@@ -411,7 +411,7 @@ const WORKFLOW_STEPS: Array<{
 }> = [
   { id: 'input', no: '01', title: '文本 / 图片输入', caption: '写描述或上传初图' },
   { id: 'image', no: '02', title: '文生图与确认', caption: '重试或接收参考图' },
-  { id: 'modeling', no: '03', title: '图生 3D 建模', caption: '混元服务 / 本地演示' },
+  { id: 'modeling', no: '03', title: '图生 3D 建模', caption: '混元服务 / 本地样例' },
   { id: 'done', no: '04', title: '下载缓存展示', caption: '进入 3D 舞台' },
 ];
 

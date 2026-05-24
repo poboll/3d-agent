@@ -1828,7 +1828,7 @@ body {
     rgba(28, 31, 27, 0.05) 15px
   );
   background-position: 0 14px;
-  scrollbar-color: rgba(139, 58, 46, 0.5) transparent;
+  scrollbar-color: rgba(28, 28, 26, 0.26) transparent;
   scrollbar-width: thin;
 }
 
@@ -1843,7 +1843,7 @@ body {
 .specimen-summary-copy p::-webkit-scrollbar-thumb {
   border: 3px solid transparent;
   border-radius: 0;
-  background: rgba(139, 58, 46, 0.58);
+  background: rgba(28, 28, 26, 0.26);
   background-clip: content-box;
 }
 
@@ -1988,7 +1988,7 @@ body {
   gap: 5px;
   overflow-x: hidden;
   overflow-y: auto;
-  scrollbar-color: rgba(139, 58, 46, 0.5) transparent;
+  scrollbar-color: rgba(28, 28, 26, 0.26) transparent;
   scrollbar-width: thin;
 }
 
@@ -1999,7 +1999,7 @@ body {
 .cell-list::-webkit-scrollbar-thumb {
   border: 3px solid transparent;
   border-radius: 0;
-  background: rgba(139, 58, 46, 0.58);
+  background: rgba(28, 28, 26, 0.26);
   background-clip: content-box;
 }
 
@@ -2154,11 +2154,12 @@ body {
   min-height: 0;
   display: flex;
   align-items: center;
-  color: rgba(43, 42, 38, 0.84);
-  font-family: "Klee One", "LXGW WenKai", "Songti SC", var(--font-serif);
-  font-size: clamp(10.6px, 0.78vw, 12.6px);
-  line-height: 1.58;
-  letter-spacing: 0.02em;
+  color: rgba(43, 42, 38, 0.9);
+  font-family: "LXGW WenKai", "Klee One", "Songti SC", var(--font-serif);
+  font-size: clamp(11.8px, 0.92vw, 14px);
+  font-weight: 500;
+  line-height: 1.64;
+  letter-spacing: 0.018em;
   text-wrap: pretty;
 }
 
@@ -2495,16 +2496,43 @@ body {
   line-height: 1.15;
 }
 
-.about-panel > div:not(.about-enso):not(.about-principles):not(.about-stamp):not(.about-interface-note) p {
+.about-panel > div:not(.about-enso):not(.about-product-strip):not(.about-principles):not(.about-stamp):not(.about-interface-note) p {
   max-width: 620px;
   margin-top: 18px;
   color: var(--sumi-soft);
   font-size: 15px;
 }
 
+.about-product-strip {
+  width: min(100%, 760px);
+  margin-top: 28px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-top: 1px solid rgba(28, 31, 27, 0.12);
+  border-bottom: 1px solid rgba(28, 31, 27, 0.08);
+  background:
+    repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.02) 0 1px, transparent 1px 18px),
+    rgba(251, 250, 244, 0.34);
+}
+
+.about-product-strip span {
+  min-width: 0;
+  padding: 12px 14px;
+  color: var(--sumi-soft);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.about-product-strip span + span {
+  border-left: 1px solid rgba(28, 31, 27, 0.08);
+}
+
 .about-principles {
   width: min(100%, 760px);
-  margin-top: 42px;
+  margin-top: 26px;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px 18px;
@@ -2670,11 +2698,54 @@ body {
   display: none;
 }
 
+.api-status-grid {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 820px);
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: 1.05fr 0.72fr 1fr;
+  border: 1px solid rgba(28, 31, 27, 0.08);
+  background:
+    repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.02) 0 1px, transparent 1px 18px),
+    rgba(251, 250, 244, 0.46);
+}
+
+.api-status-grid div {
+  min-width: 0;
+  padding: 11px 13px 12px;
+}
+
+.api-status-grid div + div {
+  border-left: 1px solid rgba(28, 31, 27, 0.08);
+}
+
+.api-status-grid span {
+  display: block;
+  color: var(--ink-whisper);
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.api-status-grid strong {
+  display: block;
+  margin-top: 5px;
+  overflow: hidden;
+  color: var(--sumi-soft);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .api-grid {
   position: relative;
   z-index: 1;
   width: min(100%, 820px);
-  margin-top: 26px;
+  margin-top: 18px;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
@@ -3128,8 +3199,23 @@ body {
   .generation-actions,
   .reference-card,
   .specimen-summary,
-  .about-principles {
+  .about-product-strip,
+  .about-principles,
+  .api-flow,
+  .api-status-grid,
+  .api-grid {
     grid-template-columns: 1fr;
+  }
+
+  .about-product-strip span + span,
+  .api-status-grid div + div {
+    border-left: 0;
+    border-top: 1px solid rgba(28, 31, 27, 0.08);
+  }
+
+  .api-panel {
+    min-height: auto;
+    padding: 34px 24px 92px;
   }
 
   .specimen-learning,

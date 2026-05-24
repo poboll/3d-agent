@@ -18,7 +18,7 @@ export function startWorkflowJob(job) {
       {
         status: 'failed',
         progress: 100,
-        stage: '腾讯混元生 3D provider 尚未配置，当前仅开放本地演示工作流。',
+        stage: '腾讯混元生 3D provider 尚未配置，当前仅开放本地样例工作流。',
         error: '缺少 TENCENT_SECRET_ID、TENCENT_SECRET_KEY 或 TENCENT_HUNYUAN_3D_ENDPOINT。',
       },
       'provider-not-configured'
@@ -97,12 +97,12 @@ async function runLocalDemoWorkflow(job) {
         subtitle: '图生 3D 建模结果',
         category: 'AI 生成示意模型',
         accent: demoModel.accent,
-        description: `根据「${job.prompt}」确认参考图后创建的本地演示模型。当前版本复用 3DCellForge 缓存 GLB 验证端到端链路，真实 provider 接入后将替换为云端图生 3D 结果。`,
+        description: `根据「${job.prompt}」确认参考图后创建的本地样例模型。当前版本复用 3DCellForge 缓存 GLB 验证端到端链路，生产 provider 接入后将替换为云端图生 3D 结果。`,
         fileName: targetName,
         fileSize: info.size,
         imageHint: job.template,
         template: job.template,
-        provider: '本地演示工作流',
+        provider: '本地样例工作流',
         modelUrl: `/api/3d/local-model/${encodeURIComponent(targetName)}`,
       },
     },

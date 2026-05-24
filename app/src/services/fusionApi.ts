@@ -140,7 +140,7 @@ function toCellModel(item: DemoModelPayload): CellModel {
     custom: true,
     source,
     generationStatus: `${source} · 已缓存`,
-    funFact: '这是接入生成工作流后的示意模型，适合用于演示 AI 生成资产如何进入课堂 3D 展示。',
+    funFact: '这是接入生成工作流后的样例模型，适合用于讲解 AI 生成资产如何进入课堂 3D 展示。',
     whereItOccurs: {
       text: '该模型来自生成或导入流程，可在后续版本中绑定更详细的生物学说明。',
       habitat: 'AI 生成资产 · 本地缓存',
