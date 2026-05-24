@@ -93,7 +93,7 @@ export function Sidebar({ models, activeId, onSelect, onOpenIndex, guideOpen = f
           <section className="specimen-learning" aria-label="教学信息">
             <article className="learning-card index-card" id="specimen-index-card">
               <div className="index-toolbar">
-                <button type="button" className="card-title-button" onClick={focusIndexSearch}>标本列表 · 搜索</button>
+                <button type="button" className="card-title-button" onClick={focusIndexSearch}>标本列表</button>
                 <label className="specimen-search">
                   <span>搜索</span>
                   <input
