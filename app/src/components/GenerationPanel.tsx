@@ -1,15 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
-import { getModelTemplate } from '../data/models';
 import type { CellModel } from '../data/models';
 import {
+  createReferenceImage,
   createTextToCellJob,
   fetchDemoGeneratedModels,
   fetchWorkflowJob,
   fetchWorkflowJobs,
   uploadLocalModel,
+  uploadReferenceImage,
   workflowJobToCellModel,
 } from '../services/fusionApi';
-import type { WorkflowJob } from '../services/fusionApi';
+import type { ReferenceImagePayload, WorkflowJob } from '../services/fusionApi';
 import { trackEvent } from '../lib/analytics';
 
 interface Props {
@@ -29,15 +30,13 @@ export function GenerationPanel({
 }: Props) {
   const modelInputRef = useRef<HTMLInputElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
-  const objectUrlRef = useRef<string | null>(null);
   const [status, setStatus] = useState('先得到一张可确认的参考图，再进入图生 3D 建模。');
   const [busy, setBusy] = useState(false);
   const [prompt, setPrompt] = useState('植物细胞 3D 教学模型，突出叶绿体、细胞壁和大型液泡');
-  const [imageProvider, setImageProvider] = useState('gpt-image');
-  const [modelProvider, setModelProvider] = useState('local-demo');
+  const [imageProvider, setImageProvider] = useState('openai');
+  const [modelProvider, setModelProvider] = useState('selfhost-triposg');
   const [template, setTemplate] = useState('plant-cell');
   const [referenceImage, setReferenceImage] = useState<ReferenceImage | null>(null);
-  const [referenceVersion, setReferenceVersion] = useState(0);
   const [activeJob, setActiveJob] = useState<WorkflowJob | null>(null);
   const [jobHistory, setJobHistory] = useState<WorkflowJob[]>([]);
 
@@ -54,12 +53,6 @@ export function GenerationPanel({
       });
     return () => {
       cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
     };
   }, []);
 
@@ -122,7 +115,7 @@ export function GenerationPanel({
       setStatus(models.length ? `已加载 ${models.length} 个缓存生成模型。` : '没有找到可用的缓存模型。');
       if (models[0]) onSelect(models[0].id);
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : '读取示例模型失败。');
+      setStatus(error instanceof Error ? error.message : '读取缓存模型失败。');
     } finally {
       setBusy(false);
     }
@@ -158,56 +151,79 @@ export function GenerationPanel({
     }
   };
 
-  const handleReferenceUpload = (file: File) => {
-    if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
-    const url = URL.createObjectURL(file);
-    objectUrlRef.current = url;
-    setReferenceImage({
-      url,
-      title: file.name,
-      source: '上传参考图',
-      note: '用户已上传初版图片，可直接确认进入图生 3D。',
-      uploaded: true,
-    });
-    setStatus('已接收上传图片，请确认结构方向后进入图生 3D。');
-    setActiveJob(null);
-    trackEvent('workflow_reference_upload', {
+  const handleReferenceUpload = async (file: File) => {
+    setBusy(true);
+    setStatus('正在写入参考图缓存...');
+    trackEvent('workflow_reference_upload_start', {
       fileName: file.name,
       fileSize: file.size,
       template,
     });
-    if (imageInputRef.current) imageInputRef.current.value = '';
+    try {
+      const reference = await uploadReferenceImage(file, {
+        prompt: prompt.trim() || `${file.name} 生物 3D 教学参考图`,
+        template,
+      });
+      setReferenceImage(toReferenceImage(reference, true));
+      setStatus('已接收上传图片，请确认结构方向后进入图生 3D。');
+      setActiveJob(null);
+      trackEvent('workflow_reference_upload', {
+        fileName: file.name,
+        fileSize: file.size,
+        template,
+        referenceId: reference.id,
+      });
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : '参考图上传失败。');
+      trackEvent('workflow_reference_upload_failed', {
+        fileName: file.name,
+        message: error instanceof Error ? error.message : 'unknown',
+      });
+    } finally {
+      setBusy(false);
+      if (imageInputRef.current) imageInputRef.current.value = '';
+    }
   };
 
-  const handleCreateReference = () => {
+  const handleCreateReference = async () => {
     if (!prompt.trim()) {
       setStatus('请先输入生物结构描述，或上传一张参考图。');
       return;
     }
 
-    if (objectUrlRef.current) {
-      URL.revokeObjectURL(objectUrlRef.current);
-      objectUrlRef.current = null;
-    }
-
-    const templateModel = getModelTemplate(template === 'auto' ? 'plant-cell' : template);
-    const nextVersion = referenceVersion + 1;
-    setReferenceVersion(nextVersion);
-    setReferenceImage({
-      url: templateModel.imageUrl,
-      title: `${templateModel.name} · 参考图 v${nextVersion}`,
-      source: getImageProviderName(imageProvider),
-      note: prompt.trim(),
-      uploaded: false,
-    });
-    setActiveJob(null);
-    setStatus(`${getImageProviderName(imageProvider)} 已产出参考图 v${nextVersion}，请检查后选择重试或确认建模。`);
-    trackEvent('workflow_reference_generate', {
+    setBusy(true);
+    setStatus(`${getImageProviderName(imageProvider)} 正在生成 3D-ready 单图参考图...`);
+    trackEvent('workflow_reference_generate_start', {
       template,
       imageProvider,
       promptLength: prompt.trim().length,
-      version: nextVersion,
     });
+    try {
+      const reference = await createReferenceImage({
+        prompt: prompt.trim(),
+        provider: imageProvider,
+        template,
+      });
+      setReferenceImage(toReferenceImage(reference, false));
+      setActiveJob(null);
+      setStatus(`${getImageProviderName(imageProvider)} 已产出参考图，请检查后选择重试或确认建模。`);
+      trackEvent('workflow_reference_generate', {
+        template,
+        imageProvider,
+        promptLength: prompt.trim().length,
+        referenceId: reference.id,
+        model: reference.model,
+      });
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : '参考图生成失败。');
+      trackEvent('workflow_reference_generate_failed', {
+        template,
+        imageProvider,
+        message: error instanceof Error ? error.message : 'unknown',
+      });
+    } finally {
+      setBusy(false);
+    }
   };
 
   const handleAcceptReference = () => {
@@ -251,6 +267,8 @@ export function GenerationPanel({
         prompt: fallbackPrompt,
         provider: modelProvider,
         template,
+        imageProvider,
+        referenceId: referenceImage.id,
       });
       setActiveJob(job);
       setJobHistory((current) => mergeJobs(job, current));
@@ -333,15 +351,14 @@ export function GenerationPanel({
         <label className="generation-field compact">
           <span>IMAGE MODEL</span>
           <select value={imageProvider} onChange={(event) => setImageProvider(event.target.value)}>
-            <option value="gpt-image">GPT Image</option>
-            <option value="gemini">Gemini Image</option>
-            <option value="nano-banana-2">NanoBanana2</option>
+            <option value="openai">OpenAI GPT Image</option>
           </select>
         </label>
         <label className="generation-field compact">
           <span>3D PROVIDER</span>
           <select value={modelProvider} onChange={(event) => setModelProvider(event.target.value)}>
-            <option value="local-demo">本地样例</option>
+            <option value="selfhost-triposg">本地 TripoSG + 混元贴图</option>
+            <option value="local-demo">本地缓存链路</option>
             <option value="tencent-hunyuan">腾讯混元</option>
           </select>
         </label>
@@ -362,7 +379,7 @@ export function GenerationPanel({
           <span>02 REFERENCE IMAGE</span>
           <strong>{referenceImage?.title ?? '先生成或上传初版图片'}</strong>
           {referenceImage && <em>{referenceImage.source}</em>}
-          <p>{referenceImage?.note ?? '图片确认通过后，才会进入混元 3D 图生建模与结果缓存。'}</p>
+          <p>{referenceImage?.note ?? '图片确认通过后，才会进入本地图生 3D 建模与结果缓存。'}</p>
         </div>
       </div>
 
@@ -386,7 +403,7 @@ export function GenerationPanel({
           确认图生建模
         </button>
         <button type="button" className="generation-secondary" onClick={handleLoadDemo} disabled={busy}>
-          加载样例
+          加载缓存
         </button>
         <button type="button" className="generation-secondary" onClick={() => modelInputRef.current?.click()} disabled={busy}>
           导入本地 GLB
@@ -398,7 +415,7 @@ export function GenerationPanel({
           hidden
           onChange={(event) => {
             const file = event.target.files?.[0];
-            if (file) handleReferenceUpload(file);
+            if (file) void handleReferenceUpload(file);
           }}
         />
         <input
@@ -457,11 +474,29 @@ function mergeJobs(job: WorkflowJob, jobs: WorkflowJob[]) {
 type WorkflowPhase = 'input' | 'image' | 'modeling' | 'done' | 'failed';
 
 interface ReferenceImage {
+  id: string;
   url: string;
   title: string;
   source: string;
   note: string;
   uploaded: boolean;
+  prompt?: string;
+  imagePrompt?: string;
+  model?: string;
+}
+
+function toReferenceImage(reference: ReferenceImagePayload, uploaded: boolean): ReferenceImage {
+  return {
+    id: reference.id,
+    url: reference.imageUrl,
+    title: reference.title,
+    source: reference.source,
+    note: reference.note,
+    uploaded,
+    prompt: reference.prompt,
+    imagePrompt: reference.imagePrompt,
+    model: reference.model,
+  };
 }
 
 const WORKFLOW_STEPS: Array<{
@@ -472,7 +507,7 @@ const WORKFLOW_STEPS: Array<{
 }> = [
   { id: 'input', no: '01', title: '文本 / 图片输入', caption: '写描述或上传初图' },
   { id: 'image', no: '02', title: '文生图与确认', caption: '重试或接收参考图' },
-  { id: 'modeling', no: '03', title: '图生 3D 建模', caption: '混元服务 / 本地样例' },
+  { id: 'modeling', no: '03', title: '图生 3D 建模', caption: '本地服务 / 缓存链路' },
   { id: 'done', no: '04', title: '下载缓存展示', caption: '进入 3D 舞台' },
 ];
 
@@ -502,7 +537,6 @@ function getStepClass(step: Exclude<WorkflowPhase, 'failed'>, phase: WorkflowPha
 }
 
 function getImageProviderName(provider: string) {
-  if (provider === 'gemini') return 'Gemini Image';
-  if (provider === 'nano-banana-2') return 'NanoBanana2';
-  return 'GPT Image';
+  if (provider === 'openai') return 'OpenAI GPT Image';
+  return '图片生成服务';
 }

@@ -1,7 +1,11 @@
 export type AnalyticsEventName =
   | 'workflow_prompt_focus'
+  | 'workflow_reference_generate_start'
   | 'workflow_reference_generate'
+  | 'workflow_reference_generate_failed'
+  | 'workflow_reference_upload_start'
   | 'workflow_reference_upload'
+  | 'workflow_reference_upload_failed'
   | 'workflow_reference_accept'
   | 'workflow_reference_reject'
   | 'workflow_model_confirm'

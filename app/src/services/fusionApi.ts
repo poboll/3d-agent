@@ -27,6 +27,23 @@ interface LocalModelPayload {
   modelUrl: string;
 }
 
+export interface ReferenceImagePayload {
+  id: string;
+  prompt: string;
+  template: string;
+  provider: string;
+  source: string;
+  title: string;
+  note: string;
+  fileName: string;
+  fileSize: number;
+  model: string;
+  imagePrompt?: string;
+  negativePrompt?: string;
+  imageUrl: string;
+  createdAt: string;
+}
+
 export type WorkflowStatus = 'queued' | 'processing' | 'completed' | 'failed';
 
 export interface WorkflowJob {
@@ -34,6 +51,9 @@ export interface WorkflowJob {
   prompt: string;
   provider: string;
   template: string;
+  imageProvider?: string;
+  referenceId?: string;
+  referenceImageUrl?: string;
   status: WorkflowStatus;
   stage: string;
   progress: number;
@@ -79,10 +99,54 @@ export async function uploadLocalModel(file: File): Promise<CellModel> {
   });
 }
 
+export async function createReferenceImage(input: {
+  prompt: string;
+  provider?: string;
+  template?: string;
+}): Promise<ReferenceImagePayload> {
+  const response = await fetch(apiUrl('/api/references/text-to-image'), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(input),
+  });
+  const payload = await readApiResponse<{ reference: ReferenceImagePayload }>(response);
+  return {
+    ...payload.reference,
+    imageUrl: apiUrl(payload.reference.imageUrl),
+  };
+}
+
+export async function uploadReferenceImage(file: File, input: {
+  prompt: string;
+  template?: string;
+}): Promise<ReferenceImagePayload> {
+  const query = new URLSearchParams({
+    fileName: file.name,
+    prompt: input.prompt,
+    template: input.template || 'auto',
+  });
+  const response = await fetch(apiUrl(`/api/references/upload?${query.toString()}`), {
+    method: 'POST',
+    headers: {
+      'Content-Type': file.type || 'image/png',
+    },
+    body: file,
+  });
+  const payload = await readApiResponse<{ reference: ReferenceImagePayload }>(response);
+  return {
+    ...payload.reference,
+    imageUrl: apiUrl(payload.reference.imageUrl),
+  };
+}
+
 export async function createTextToCellJob(input: {
   prompt: string;
   provider?: string;
   template?: string;
+  imageProvider?: string;
+  referenceId?: string;
 }): Promise<WorkflowJob> {
   const response = await fetch(apiUrl('/api/workflows/text-to-cell'), {
     method: 'POST',
@@ -140,7 +204,7 @@ function toCellModel(item: DemoModelPayload): CellModel {
     custom: true,
     source,
     generationStatus: `${source} · 已缓存`,
-    funFact: '这是接入生成工作流后的样例模型，适合用于讲解 AI 生成资产如何进入课堂 3D 展示。',
+    funFact: '这是接入生成工作流后的缓存模型，适合用于讲解 AI 生成资产如何进入课堂 3D 展示。',
     whereItOccurs: {
       text: '该模型来自生成或导入流程，可在后续版本中绑定更详细的生物学说明。',
       habitat: 'AI 生成资产 · 本地缓存',

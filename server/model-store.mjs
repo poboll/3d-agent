@@ -43,7 +43,7 @@ export async function serveDemoModel(url, response) {
   const fileName = sanitizeFileName(decodeURIComponent(url.pathname.replace('/api/3d/demo-model/', '')))
   const allowed = DEMO_MODELS.some((model) => model.fileName === fileName)
   if (!allowed) {
-    throw Object.assign(new Error('示例模型不存在。'), { status: 404 })
+    throw Object.assign(new Error('缓存模型不存在。'), { status: 404 })
   }
 
   await streamModelFile(path.join(CELLFORGE_MODEL_DIR, fileName), response)

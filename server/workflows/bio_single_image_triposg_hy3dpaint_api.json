@@ -1,0 +1,46 @@
+{
+  "1": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "bio_single_3d_ready_input.png"
+    }
+  },
+  "2": {
+    "class_type": "TripoSGImageTo3D",
+    "inputs": {
+      "image": [
+        "1",
+        0
+      ],
+      "seed": 42,
+      "num_inference_steps": 30,
+      "guidance_scale": 7.0,
+      "faces": 30000,
+      "output_prefix": "bio_single_raw"
+    }
+  },
+  "3": {
+    "class_type": "Hunyuan3DPaintExistingMesh",
+    "inputs": {
+      "model_3d": [
+        "2",
+        0
+      ],
+      "image": [
+        "1",
+        0
+      ],
+      "output_prefix": "bio_single_hy3dpaint_textured",
+      "recenter": true
+    }
+  },
+  "4": {
+    "class_type": "Preview3D",
+    "inputs": {
+      "model_file": [
+        "3",
+        0
+      ]
+    }
+  }
+}

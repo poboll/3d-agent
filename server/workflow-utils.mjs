@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { HUNYUAN_3D_MODEL_COST_CNY, SUPPORTED_WORKFLOW_PROVIDERS } from './config.mjs'
+import { HUNYUAN_3D_MODEL_COST_CNY, SUPPORTED_IMAGE_PROVIDERS, SUPPORTED_WORKFLOW_PROVIDERS } from './config.mjs'
 
 export const WORKFLOW_STATUSES = ['queued', 'processing', 'completed', 'failed']
 
@@ -19,9 +19,15 @@ export function normalizePrompt(value) {
 }
 
 export function normalizeProvider(value) {
-  const provider = String(value || 'local-demo').trim()
+  const provider = String(value || 'selfhost-triposg').trim()
   if (SUPPORTED_WORKFLOW_PROVIDERS.includes(provider)) return provider
   throw Object.assign(new Error('不支持的生成 provider。'), { status: 400 })
+}
+
+export function normalizeImageProvider(value) {
+  const provider = String(value || 'openai').trim()
+  if (SUPPORTED_IMAGE_PROVIDERS.includes(provider)) return provider
+  throw Object.assign(new Error('不支持的图片生成 provider。'), { status: 400 })
 }
 
 export function estimateGenerationCost(provider) {
@@ -71,6 +77,9 @@ export function publicJob(job) {
     stage: job.stage,
     progress: job.progress,
     costEstimateCny: job.costEstimateCny,
+    imageProvider: job.imageProvider,
+    referenceId: job.referenceId,
+    referenceImageUrl: job.referenceImageUrl,
     createdAt: job.createdAt,
     updatedAt: job.updatedAt,
     error: job.error,

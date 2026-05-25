@@ -35,7 +35,7 @@ const GUIDE_STEPS = [
   },
   {
     title: '第三步：图生 3D 建模',
-    body: '确认图片后再调用本地样例链路或混元 3D 服务，生成结果会下载并缓存到模型索引。',
+    body: '确认图片后再调用本地 TripoSG 与 Hunyuan3D-Paint 工作流，生成结果会下载并缓存到模型索引。',
     targetId: 'workflow-actions',
     targetLabel: '图生建模按钮',
   },

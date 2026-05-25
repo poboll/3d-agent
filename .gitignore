@@ -9,6 +9,9 @@ artifacts/
 .upload-work/
 .upload-cache/
 .upload-trash/
+.reference-work/
+.reference-cache/
+.reference-trash/
 .workflow-store/
 .idea/
 .vscode/

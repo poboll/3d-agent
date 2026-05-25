@@ -1,0 +1,70 @@
+{
+  "version": "2026-05-17",
+  "base_prompt_en": "Create one 3D-ready educational biological model of {object}, centered on a clean white background. Use a three-quarter open cutaway view, not a flat diagram. The model must have a thick visible cut rim, one continuous outer silhouette, readable front-side depth, and clearly exposed internal structures arranged with generous spacing. Use semi-matte opaque teaching-model materials, low specular highlights, soft studio shadows, and natural color separation. Make the surface slightly textured but not glossy, glassy, transparent, jelly-like, translucent, wet, metallic, or toy-plastic. Keep only the major structures needed for recognition, with clear large forms and low-frequency geometry suitable for image-to-3D reconstruction.",
+  "negative_prompt_en": "Do not create transparent jelly, glass, wet plastic, glossy toy material, labels, arrows, text, UI marks, multiple views in one image, collage, four panels, infographic layout, flat front-only diagram, dense tiny particles, noisy micro-texture, floating parts, background scenery, decorative lighting, or crowded organelles touching each other.",
+  "object_presets": {
+    "细菌": {
+      "object_en": "rod-shaped bacterium",
+      "addon_en": "open side cutaway, thick layered cell envelope, one coherent blue nucleoid mass, sparse short pili, no dense hair, no wet jelly, no floating fragments",
+      "recommended": true
+    },
+    "杆状细菌": {
+      "alias_of": "细菌"
+    },
+    "线粒体": {
+      "object_en": "bean-shaped mitochondrion",
+      "addon_en": "one large cut window, thick matte orange outer membrane, broad raised cristae folds, high contrast inner folds, no tiny repeated wrinkles, no glossy shell",
+      "recommended": true
+    },
+    "叶绿体": {
+      "object_en": "oval chloroplast",
+      "addon_en": "open cutaway, separated stacks of thylakoid discs, matte green membrane, clear disc spacing, no transparent gel shell, no watery material",
+      "recommended": true
+    },
+    "植物细胞": {
+      "object_en": "simplified rectangular plant cell cutaway",
+      "addon_en": "thick cell wall, large vacuole, nucleus, three or four chloroplasts, one or two mitochondria, wide spacing, no dense vesicles, no crowded organelles",
+      "recommended": "overview_only"
+    },
+    "动物细胞": {
+      "object_en": "simplified rounded animal cell cutaway",
+      "addon_en": "nucleus, endoplasmic reticulum, Golgi apparatus, two mitochondria, clear membrane rim, wide spacing, no crowded organelle field",
+      "recommended": "overview_only"
+    },
+    "细胞膜": {
+      "object_en": "short thick modular fluid mosaic cell membrane segment",
+      "addon_en": "fewer phospholipid units, separated channel protein and glycoprotein modules, thick teaching model proportions, no endless bead array, no ultra-thin sheet",
+      "recommended": "module_only"
+    },
+    "细胞膜的流动镶嵌模型": {
+      "alias_of": "细胞膜"
+    },
+    "核糖体": {
+      "object_en": "large two-subunit ribosome teaching model",
+      "addon_en": "broad lumpy surfaces, one visible mRNA strand, reduced high-frequency bumps, no scientific atom-level detail, no dense holes",
+      "recommended": "use_structure_data_if_accuracy_required"
+    },
+    "气孔": {
+      "object_en": "plant stoma with two guard cells",
+      "addon_en": "open cutaway teaching model, two thick matte guard cells around a clear pore, simple surrounding epidermal surface, no labels, no transparent gel",
+      "recommended": true
+    },
+    "病毒": {
+      "object_en": "single virus particle educational cutaway",
+      "addon_en": "thick capsid shell, visible inner genome bundle, simplified spikes with generous spacing, matte opaque material, no dense spike forest, no transparent glass shell",
+      "recommended": true
+    }
+  },
+  "quality_checklist": [
+    "single centered subject",
+    "three-quarter open cutaway",
+    "thick visible cut rim",
+    "opaque semi-matte material",
+    "clear structure spacing",
+    "5-7 major structures maximum",
+    "plain background and soft shadow",
+    "no labels or arrows",
+    "no multiview collage",
+    "no transparent jelly or glossy plastic"
+  ]
+}

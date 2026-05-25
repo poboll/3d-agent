@@ -1,8 +1,6 @@
 # 细胞结构工坊 · Cell Architecture Studio
 
-一个面向中文课堂的交互式 3D 生物教学网页，支持对五个真实尺寸的细胞 / 分子模型进行旋转、缩放与观察。
-
-> 🌱 _在显微镜下探索生命之美_
+一个面向中文课堂的交互式 3D 生物教学网页，支持细胞模型观察、参考图生成、图片确认、本地图生 3D 建模与模型缓存展示。
 
 ## 模型清单
 
@@ -62,29 +60,80 @@ npm run test:api
 
 本项目当前采用 LearningCell 作为主展示壳，吸收 3DCellForge 的生成模型缓存思路，已经具备以下能力：
 
-- 加载 `../3DCellForge/public/generated-models/` 下的缓存 GLB 样例。
+- 加载 `../3DCellForge/public/generated-models/` 下的缓存 GLB。
 - 上传本地 `.glb/.gltf` 并加入左侧“生成模型”列表。
-- 输入文本创建生成任务，后端记录任务状态并写入本地任务库。
-- 本地演示 provider 会复用 3DCellForge 缓存 GLB，模拟“文本描述 -> 参考图阶段 -> 3D 生成 -> GLB 缓存 -> 前端查看”的完整闭环。
+- 输入文本后先生成单张 3D-ready 参考图，用户确认图片后再提交图生 3D 建模。
+- OpenAI GPT Image 负责文生图，本地 ComfyUI 工作流负责 TripoSG 几何重建与 Hunyuan3D-Paint 贴图。
+- 后端记录参考图、任务状态、埋点事件与生成模型缓存，方便恢复和排查。
+- 本地缓存链路可在没有 GPU 服务时快速验证“参考图 -> 任务记录 -> 模型缓存 -> 前端查看”的闭环。
 - 页面刷新后会从浏览器本地存储恢复最近加入的生成模型。
+
+默认生成路线与 `/Users/Apple/Downloads/苏增烨申请/deploy_3d` 中的交付文档保持一致：
+
+```text
+短词 / 术语
+  -> 3D-ready 单图参考图 prompt
+  -> OpenAI GPT Image 参考图
+  -> 用户确认图片
+  -> ComfyUI 单图 workflow
+  -> TripoSG raw GLB
+  -> Hunyuan3D-Paint textured GLB
+  -> 前端 3D 舞台加载 textured GLB
+```
 
 运行后可用接口：
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
 | `GET` | `/api/health` | 后端健康检查与 provider 配置状态 |
-| `GET` | `/api/3d/demo-models` | 读取 3DCellForge 缓存样例 |
+| `GET` | `/api/providers/status` | 查看 OpenAI、ComfyUI、本地缓存等 provider 状态 |
+| `GET` | `/api/3d/demo-models` | 读取 3DCellForge 缓存模型 |
 | `POST` | `/api/3d/local-model?fileName=xxx.glb` | 上传本地 GLB/GLTF |
-| `POST` | `/api/workflows/text-to-cell` | 创建文本生成生物模型任务 |
+| `POST` | `/api/references/text-to-image` | OpenAI GPT Image 生成参考图 |
+| `POST` | `/api/references/upload?fileName=xxx.png` | 上传参考图并进入缓存 |
+| `GET` | `/api/references/:referenceId/image` | 读取参考图缓存图片 |
+| `POST` | `/api/workflows/text-to-cell` | 使用确认后的 referenceId 创建图生 3D 任务 |
 | `GET` | `/api/jobs` | 查看最近生成任务 |
 | `GET` | `/api/jobs/:jobId` | 查看单个任务状态 |
 
-运行时会生成两个本地目录，均已加入 `.gitignore`：
+运行时会生成以下本地目录，均已加入 `.gitignore`：
 
 - `.generated-models/`：保存导入或生成后的 GLB/GLTF。
+- `.reference-work/`：参考图上传和生成过程的临时写入目录。
+- `.reference-cache/`：校验通过后的参考图缓存。
+- `.reference-trash/`：失败或待清理的参考图临时文件。
+- `.upload-work/` / `.upload-cache/` / `.upload-trash/`：本地 GLB/GLTF 上传流程目录。
 - `.workflow-store/`：保存任务 JSON 与事件日志。
 
-腾讯混元生 3D provider 已预留配置检测入口：
+### Provider 配置
+
+OpenAI GPT Image：
+
+```bash
+OPENAI_API_KEY=sk-...
+OPENAI_IMAGE_MODEL=gpt-image-1.5
+OPENAI_IMAGE_SIZE=1024x1024
+OPENAI_IMAGE_QUALITY=medium
+OPENAI_IMAGE_FORMAT=png
+```
+
+OpenAI 文生图实现使用 Image API 的 `/v1/images/generations`。按 OpenAI 官方文档，GPT Image 模型包括 `gpt-image-1.5`、`gpt-image-1` 和 `gpt-image-1-mini`，单 prompt 生成图片优先使用 Image API。
+
+本地 ComfyUI / TripoSG / Hunyuan3D-Paint：
+
+```bash
+COMFYUI_BASE_URL=http://47.242.195.8:8010
+COMFYUI_WORKFLOW_TEMPLATE=server/workflows/bio_single_image_triposg_hy3dpaint_api.json
+COMFYUI_STEPS=30
+COMFYUI_FACES=30000
+COMFYUI_GUIDANCE_SCALE=7
+COMFYUI_TIMEOUT_MS=7200000
+COMFYUI_POLL_INTERVAL_MS=15000
+```
+
+如果走 SSH 转发，可把 `COMFYUI_BASE_URL` 改为 `http://127.0.0.1:18188`。
+
+腾讯混元生 3D provider 保留配置检测入口：
 
 ```bash
 TENCENT_SECRET_ID=xxx
@@ -92,7 +141,7 @@ TENCENT_SECRET_KEY=xxx
 TENCENT_HUNYUAN_3D_ENDPOINT=xxx
 ```
 
-当前版本不会真实调用腾讯云，也不会产生云 API 费用；真实接入需要继续补签名、提交任务、轮询任务、下载模型四段逻辑。
+当前三维主路径为本地 ComfyUI 工作流。腾讯云 provider 的签名、提交任务、轮询任务、下载模型四段逻辑可在同一 provider 结构下继续扩展。
 
 ## 部署到 GitHub Pages
 
@@ -107,7 +156,7 @@ TENCENT_HUNYUAN_3D_ENDPOINT=xxx
 ## 加载策略
 
 - **优先加载**：用户进入页面后，会立即下载当前展示的模型（默认是体积最小、加载最快的 _植物细胞_，约 6 MB）。下载过程显示真实进度条与百分比。
-- **后台静默**：默认模型解析完成后（或者 5 秒超时兜底），其它 4 个模型会按顺序串行下载，避免与首个模型抢占带宽。
+- **后台静默**：默认模型解析完成后（或者 5 秒超时保护），其它 4 个模型会按顺序串行下载，避免与首个模型抢占带宽。
 - **缓存命中**：浏览器对 `.glb` 启用 `force-cache`，再次访问几乎无需等待。
 - **手动覆盖**：当用户点击侧边栏中尚未加载完成的模型时，该模型的下载会立刻提升到前台，并显示进度。
 
@@ -135,6 +184,4 @@ TENCENT_HUNYUAN_3D_ENDPOINT=xxx
 
 ## 许可与说明
 
-本仓库的模型与图片源文件来自仓库作者本人提供的教学素材，仅用于课堂教学与科普展示。
-
-Made with 🌱 for biology classrooms.
+本仓库的模型与图片源文件来自项目教学素材，生成链路用于课堂教学、科普展示与三维资产工作流验证。

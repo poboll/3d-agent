@@ -11,7 +11,7 @@ export function MaAboutPanel() {
         <h2>面向教学与内容生产的细胞植物生成工作台</h2>
         <p>
           间 MA 将细胞结构讲解、参考图生成、图生 3D 建模和标本观察组织在同一张工作台里。
-          它把输入、图片确认、云端建模、结果缓存和课堂观察拆成清晰步骤，帮助教师与内容团队稳定完成从概念到 3D 标本的制作流程。
+          它把输入、图片确认、本地建模、结果缓存和课堂观察拆成清晰步骤，帮助教师与内容团队稳定完成从概念到 3D 标本的制作流程。
         </p>
       </div>
       <div className="about-product-strip" aria-label="工作台定位">
@@ -29,7 +29,7 @@ export function MaAboutPanel() {
         <div>
           <span>02</span>
           <strong>参考图确认</strong>
-          <p>文生图阶段可接入 GPT Image、Gemini 或 NanoBanana2；本地样例模式会使用缓存图完成链路验证。</p>
+          <p>文生图阶段接入 OpenAI GPT Image，生成适合图转 3D 的单主体参考图。</p>
         </div>
         <div>
           <span>03</span>
@@ -39,7 +39,7 @@ export function MaAboutPanel() {
         <div>
           <span>04</span>
           <strong>图生 3D</strong>
-          <p>建模层预留腾讯混元 3D 接口，同时保留本地样例任务，便于在部署前完成稳定性验证。</p>
+          <p>建模层接入本地 ComfyUI、TripoSG 与 Hunyuan3D-Paint，输出 textured GLB 交给舞台展示。</p>
         </div>
         <div>
           <span>05</span>

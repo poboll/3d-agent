@@ -5,21 +5,32 @@ import {
   buildJobId,
   chooseTemplateForPrompt,
   estimateGenerationCost,
+  normalizeImageProvider,
   normalizePrompt,
   normalizeProvider,
   publicJob,
 } from './workflow-utils.mjs'
+import { getReferenceImageStatus } from './reference-store.mjs'
 
 export async function createWorkflowJob(input = {}) {
   const prompt = normalizePrompt(input.prompt)
   const provider = normalizeProvider(input.provider)
+  const imageProvider = normalizeImageProvider(input.imageProvider || 'openai')
   const template = chooseTemplateForPrompt(prompt, input.template)
+  const referenceId = String(input.referenceId || '').trim()
+  const reference = referenceId ? await getReferenceImageStatus(referenceId) : null
+  if ((provider === 'selfhost-triposg' || provider === 'tencent-hunyuan') && !reference) {
+    throw Object.assign(new Error('请先生成或上传参考图，再提交图生 3D 建模。'), { status: 400 })
+  }
   const now = new Date().toISOString()
   const job = {
     id: buildJobId(),
     prompt,
     provider,
+    imageProvider,
     template,
+    referenceId: reference?.id,
+    referenceImageUrl: reference?.imageUrl,
     status: 'queued',
     stage: '任务已创建，等待工作流处理。',
     progress: 5,
@@ -31,7 +42,9 @@ export async function createWorkflowJob(input = {}) {
   await upsertJob(job)
   await appendJobEvent(job.id, 'created', {
     provider: job.provider,
+    imageProvider: job.imageProvider,
     template: job.template,
+    referenceId: job.referenceId,
     costEstimateCny: job.costEstimateCny,
   })
   return publicJob(job)

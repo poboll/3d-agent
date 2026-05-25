@@ -3,7 +3,14 @@ import {
   API_HOST,
   API_PORT,
   CELLFORGE_MODEL_DIR,
+  COMFYUI_BASE_URL,
+  COMFYUI_WORKFLOW_TEMPLATE,
   LOCAL_MODEL_DIR,
+  OPENAI_IMAGE_CONFIGURED,
+  OPENAI_IMAGE_MODEL,
+  REFERENCE_CACHE_DIR,
+  REFERENCE_TRASH_DIR,
+  REFERENCE_WORK_DIR,
   TENCENT_HUNYUAN_CONFIGURED,
   UPLOAD_CACHE_DIR,
   UPLOAD_TRASH_DIR,
@@ -15,6 +22,12 @@ import { createWorkflowJob, getWorkflowJob, listWorkflowJobs } from './server/jo
 import { getDemoModels, importLocalModel, serveDemoModel, serveLocalModel } from './server/model-store.mjs'
 import { startWorkflowJob } from './server/workflow-runner.mjs'
 import { appendAnalyticsEvents } from './server/analytics-store.mjs'
+import {
+  createReferenceImage,
+  getReferenceImageStatus,
+  importReferenceImage,
+  serveReferenceImage,
+} from './server/reference-store.mjs'
 
 const server = http.createServer(async (request, response) => {
   try {
@@ -36,11 +49,19 @@ const server = http.createServer(async (request, response) => {
         uploadWorkDir: UPLOAD_WORK_DIR,
         uploadCacheDir: UPLOAD_CACHE_DIR,
         uploadTrashDir: UPLOAD_TRASH_DIR,
+        referenceWorkDir: REFERENCE_WORK_DIR,
+        referenceCacheDir: REFERENCE_CACHE_DIR,
+        referenceTrashDir: REFERENCE_TRASH_DIR,
         cellforgeModelDir: CELLFORGE_MODEL_DIR,
         workflowStoreDir: WORKFLOW_STORE_DIR,
+        comfyuiBaseUrl: COMFYUI_BASE_URL,
+        comfyuiWorkflowTemplate: COMFYUI_WORKFLOW_TEMPLATE,
         providers: {
-          demo: true,
+          localCache: true,
           localGlb: true,
+          openaiImage: OPENAI_IMAGE_CONFIGURED,
+          openaiImageModel: OPENAI_IMAGE_MODEL,
+          selfhostTriposg: true,
           tencentHunyuan: TENCENT_HUNYUAN_CONFIGURED,
         },
       })
@@ -64,6 +85,48 @@ const server = http.createServer(async (request, response) => {
 
     if (request.method === 'GET' && url.pathname.startsWith('/api/3d/local-model/')) {
       await serveLocalModel(url, response)
+      return
+    }
+
+    if (request.method === 'GET' && url.pathname === '/api/providers/status') {
+      sendJson(response, 200, {
+        image: {
+          openai: {
+            configured: OPENAI_IMAGE_CONFIGURED,
+            model: OPENAI_IMAGE_MODEL,
+          },
+        },
+        model3d: {
+          selfhostTriposg: {
+            configured: true,
+            baseUrl: COMFYUI_BASE_URL,
+            workflowTemplate: COMFYUI_WORKFLOW_TEMPLATE,
+          },
+          localCache: { configured: true },
+          tencentHunyuan: { configured: TENCENT_HUNYUAN_CONFIGURED },
+        },
+      })
+      return
+    }
+
+    if (request.method === 'POST' && url.pathname === '/api/references/text-to-image') {
+      sendJson(response, 201, { reference: await createReferenceImage(await readJsonBody(request)) })
+      return
+    }
+
+    if (request.method === 'POST' && url.pathname === '/api/references/upload') {
+      sendJson(response, 201, { reference: await importReferenceImage(request, url) })
+      return
+    }
+
+    if (request.method === 'GET' && /^\/api\/references\/[^/]+$/.test(url.pathname)) {
+      const referenceId = decodeURIComponent(url.pathname.replace('/api/references/', ''))
+      sendJson(response, 200, { reference: await getReferenceImageStatus(referenceId) })
+      return
+    }
+
+    if (request.method === 'GET' && /^\/api\/references\/[^/]+\/image$/.test(url.pathname)) {
+      await serveReferenceImage(url, response)
       return
     }
 

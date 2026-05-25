@@ -10,14 +10,26 @@ const endpoints = [
   {
     method: 'GET',
     path: '/api/3d/demo-models',
-    title: '读取样例模型',
+    title: '读取缓存模型',
     note: '返回已经缓存好的 GLB/GLTF 模型列表，前端会合并进底部标本索引。',
   },
   {
     method: 'POST',
+    path: '/api/references/text-to-image',
+    title: '生成参考图',
+    note: '提交生物结构描述，后端扩写为 3D-ready prompt，并通过 OpenAI GPT Image 生成单张参考图。',
+  },
+  {
+    method: 'POST',
+    path: '/api/references/upload',
+    title: '上传参考图',
+    note: '上传 PNG、JPEG 或 WebP 初版图片，进入工作目录、缓存目录和可清理目录的规范流程。',
+  },
+  {
+    method: 'POST',
     path: '/api/workflows/text-to-cell',
-    title: '创建生成任务',
-    note: '提交描述、模板和服务商，后端进入「文生图 -> 图片确认 -> 图生 3D」任务链路。',
+    title: '确认图生建模',
+    note: '提交已确认的 referenceId、模板和三维服务，后端调用本地 TripoSG + Hunyuan3D-Paint 工作流。',
   },
   {
     method: 'GET',
@@ -47,7 +59,7 @@ export function LocalApiPanel() {
         <span className="card-eyebrow">§ LOCAL INTERFACE — WORKBENCH ADAPTER</span>
         <h2>本地接口与生成链路</h2>
         <p>
-          当前工作台保留本地样例链路，接口形态按后续接入图片生成服务和腾讯混元 3D 服务预留。
+          当前工作台已接入参考图缓存、OpenAI 文生图接口和本地 ComfyUI 三维生成适配器。
           前端通过 <strong>VITE_API_BASE</strong> 指向本地后端，默认地址为 <strong>{API_BASE}</strong>。
         </p>
       </div>
@@ -55,9 +67,9 @@ export function LocalApiPanel() {
       <div className="api-flow" aria-label="生成流程">
         <span>用户输入文本 / 上传图片</span>
         <i />
-        <span>参考图生成与确认</span>
+        <span>GPT 参考图生成与确认</span>
         <i />
-        <span>混元 3D 图生建模</span>
+        <span>TripoSG + 混元贴图</span>
         <i />
         <span>下载缓存并展示</span>
       </div>
@@ -78,11 +90,11 @@ export function LocalApiPanel() {
       </div>
 
       <div className="api-storage-flow" aria-label="上传缓存流程">
-        <span>Upload Work</span>
+        <span>Reference Work</span>
         <i />
-        <span>Validated Cache</span>
+        <span>Reference Cache</span>
         <i />
-        <span>Model Library</span>
+        <span>Model Cache</span>
         <i />
         <span>Cleanup Queue</span>
       </div>
@@ -101,10 +113,10 @@ export function LocalApiPanel() {
       </div>
 
       <div className="api-note">
-        <span>联调建议</span>
+        <span>环境变量</span>
         <p>
-          建议先完成本地样例任务，把工作台、标本索引、3D 舞台和任务历史打通；
-          生产服务接入时替换后端 provider，即可实现图片生成、确认回调和建模结果缓存。
+          后端读取 <strong>OPENAI_API_KEY</strong>、<strong>OPENAI_IMAGE_MODEL</strong>、<strong>COMFYUI_BASE_URL</strong>、
+          <strong>COMFYUI_WORKFLOW_TEMPLATE</strong> 等配置。生成结果统一写入本地缓存，再交给 3D 舞台加载。
         </p>
       </div>
 

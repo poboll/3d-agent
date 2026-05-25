@@ -1,12 +1,14 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import { getModelExtension, sanitizeModelId, validateModelBuffer } from '../server/model-store.mjs'
+import { buildBioReadyPrompt, validateImageBuffer } from '../server/reference-store.mjs'
 import { sanitizeFileName } from '../server/http-utils.mjs'
 import {
   chooseTemplateForPrompt,
   createPromptTitle,
   estimateGenerationCost,
   getTemplateDisplayName,
+  normalizeImageProvider,
   normalizePrompt,
   normalizeProvider,
 } from '../server/workflow-utils.mjs'
@@ -29,12 +31,27 @@ describe('LearningCell fusion API utilities', () => {
     assert.doesNotThrow(() => validateModelBuffer(Buffer.from(JSON.stringify({ asset: { version: '2.0' } }).padEnd(40)), 'gltf'))
   })
 
+  it('validates supported reference image signatures', () => {
+    const png = Buffer.concat([
+      Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+      Buffer.alloc(40),
+    ])
+    const jpeg = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff]), Buffer.alloc(40)])
+    assert.doesNotThrow(() => validateImageBuffer(png, 'png'))
+    assert.doesNotThrow(() => validateImageBuffer(jpeg, 'jpg'))
+    assert.throws(() => validateImageBuffer(Buffer.concat([Buffer.from('not-image'), Buffer.alloc(40)]), 'png'), /PNG/)
+  })
+
   it('normalizes workflow input and provider names', () => {
     assert.equal(normalizePrompt('  叶绿体   植物细胞 结构  '), '叶绿体 植物细胞 结构')
     assert.throws(() => normalizePrompt('细胞'), /更具体/)
+    assert.equal(normalizeProvider('selfhost-triposg'), 'selfhost-triposg')
     assert.equal(normalizeProvider('local-demo'), 'local-demo')
-    assert.equal(normalizeProvider(''), 'local-demo')
+    assert.equal(normalizeProvider(''), 'selfhost-triposg')
+    assert.equal(normalizeImageProvider('openai'), 'openai')
+    assert.equal(normalizeImageProvider(''), 'openai')
     assert.throws(() => normalizeProvider('unknown'), /provider/)
+    assert.throws(() => normalizeImageProvider('unknown'), /图片生成/)
   })
 
   it('chooses sensible model templates from prompts', () => {
@@ -44,6 +61,14 @@ describe('LearningCell fusion API utilities', () => {
     assert.equal(chooseTemplateForPrompt('白细胞吞噬病原体'), 'white-blood-cell')
     assert.equal(chooseTemplateForPrompt('上皮动物细胞结构'), 'animal-cell')
     assert.equal(chooseTemplateForPrompt('whatever', 'dna'), 'dna')
+  })
+
+  it('builds 3D-ready image prompts from biology terms', async () => {
+    const result = await buildBioReadyPrompt('线粒体开放剖面教学模型', 'auto')
+    assert.equal(result.term, '线粒体')
+    assert.match(result.imagePrompt, /bean-shaped mitochondrion/)
+    assert.match(result.imagePrompt, /three-quarter open cutaway/)
+    assert.match(result.negativePrompt, /transparent jelly/)
   })
 
   it('builds customer-facing titles and cost estimates', () => {

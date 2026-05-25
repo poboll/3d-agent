@@ -10,6 +10,7 @@ import {
 import { sanitizeModelId } from './model-store.mjs'
 import { getTemplateDisplayName } from './workflow-utils.mjs'
 import { updateWorkflowJob } from './job-store.mjs'
+import { generateComfyUiModel } from './comfyui-provider.mjs'
 
 export function startWorkflowJob(job) {
   if (job.provider === 'tencent-hunyuan' && !TENCENT_HUNYUAN_CONFIGURED) {
@@ -18,7 +19,7 @@ export function startWorkflowJob(job) {
       {
         status: 'failed',
         progress: 100,
-        stage: '腾讯混元生 3D provider 尚未配置，当前仅开放本地样例工作流。',
+        stage: '腾讯混元生 3D provider 尚未配置，请切换到本地三维生成或本地缓存链路。',
         error: '缺少 TENCENT_SECRET_ID、TENCENT_SECRET_KEY 或 TENCENT_HUNYUAN_3D_ENDPOINT。',
       },
       'provider-not-configured'
@@ -26,7 +27,9 @@ export function startWorkflowJob(job) {
     return
   }
 
-  void runLocalDemoWorkflow(job).catch((error) => {
+  const runner = job.provider === 'selfhost-triposg' ? runSelfHostedWorkflow : runLocalDemoWorkflow
+
+  void runner(job).catch((error) => {
     void updateWorkflowJob(
       job.id,
       {
@@ -38,6 +41,42 @@ export function startWorkflowJob(job) {
       'failed'
     )
   })
+}
+
+async function runSelfHostedWorkflow(job) {
+  await updateWorkflowJob(
+    job.id,
+    {
+      status: 'processing',
+      progress: 8,
+      stage: '参考图已确认，正在准备本地 TripoSG + Hunyuan3D-Paint 工作流。',
+    },
+    'selfhost-3d-started'
+  )
+
+  const result = await generateComfyUiModel(job, async ({ progress, stage, eventName, patch = {} }) => {
+    await updateWorkflowJob(
+      job.id,
+      {
+        status: 'processing',
+        progress,
+        stage,
+        ...patch,
+      },
+      eventName
+    )
+  })
+
+  await updateWorkflowJob(
+    job.id,
+    {
+      status: 'completed',
+      progress: 100,
+      stage: '本地图生 3D 已完成，模型已写入缓存并加入标本索引。',
+      result,
+    },
+    'completed'
+  )
 }
 
 async function runLocalDemoWorkflow(job) {
@@ -58,7 +97,7 @@ async function runLocalDemoWorkflow(job) {
     {
       status: 'processing',
       progress: 48,
-      stage: '参考图预处理已完成，正在提交图生 3D 建模任务。',
+      stage: '参考图预处理已完成，正在提交本地缓存建模链路。',
     },
     'reference-image-ready'
   )
@@ -90,19 +129,20 @@ async function runLocalDemoWorkflow(job) {
     {
       status: 'completed',
       progress: 100,
-      stage: '生成模型已完成，可在左侧生成模型列表中打开。',
+      stage: '生成模型已完成，可在标本索引中打开。',
       result: {
         id: `generated-${job.id}`,
         name: `AI 生成：${getTemplateDisplayName(job.template)}`,
         subtitle: '图生 3D 建模结果',
         category: 'AI 生成示意模型',
         accent: demoModel.accent,
-        description: `根据「${job.prompt}」确认参考图后创建的本地样例模型。当前版本复用 3DCellForge 缓存 GLB 验证端到端链路，生产 provider 接入后将替换为云端图生 3D 结果。`,
+        description: `根据「${job.prompt}」确认参考图后进入本地缓存链路，可用于课堂中快速验证参考图、任务记录、模型缓存与 3D 舞台展示。`,
         fileName: targetName,
         fileSize: info.size,
         imageHint: job.template,
         template: job.template,
-        provider: '本地样例工作流',
+        provider: '本地缓存链路',
+        referenceImageUrl: job.referenceImageUrl,
         modelUrl: `/api/3d/local-model/${encodeURIComponent(targetName)}`,
       },
     },
