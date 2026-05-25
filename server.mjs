@@ -8,6 +8,8 @@ import {
   LOCAL_MODEL_DIR,
   OPENAI_IMAGE_CONFIGURED,
   OPENAI_IMAGE_MODEL,
+  OPENAI_IMAGE_TOOL_MODEL,
+  OPENAI_PROMPT_MODEL,
   REFERENCE_CACHE_DIR,
   REFERENCE_TRASH_DIR,
   REFERENCE_WORK_DIR,
@@ -61,6 +63,8 @@ const server = http.createServer(async (request, response) => {
           localGlb: true,
           openaiImage: OPENAI_IMAGE_CONFIGURED,
           openaiImageModel: OPENAI_IMAGE_MODEL,
+          openaiImageToolModel: OPENAI_IMAGE_TOOL_MODEL,
+          openaiPromptModel: OPENAI_PROMPT_MODEL,
           selfhostTriposg: true,
           tencentHunyuan: TENCENT_HUNYUAN_CONFIGURED,
         },
@@ -94,6 +98,8 @@ const server = http.createServer(async (request, response) => {
           openai: {
             configured: OPENAI_IMAGE_CONFIGURED,
             model: OPENAI_IMAGE_MODEL,
+            imageToolModel: OPENAI_IMAGE_TOOL_MODEL,
+            promptModel: OPENAI_PROMPT_MODEL,
           },
         },
         model3d: {
@@ -134,6 +140,25 @@ const server = http.createServer(async (request, response) => {
       const job = await createWorkflowJob(await readJsonBody(request))
       startWorkflowJob(job)
       sendJson(response, 202, { job })
+      return
+    }
+
+    if (request.method === 'POST' && url.pathname === '/api/workflows/full-text-to-3d') {
+      const input = await readJsonBody(request)
+      const reference = await createReferenceImage({
+        prompt: input.prompt,
+        template: input.template,
+        provider: input.imageProvider || 'openai',
+      })
+      const job = await createWorkflowJob({
+        prompt: input.prompt.length >= 6 ? input.prompt : `${input.prompt} 3D-ready 生物教学模型`,
+        provider: input.provider || 'selfhost-triposg',
+        imageProvider: input.imageProvider || 'openai',
+        template: input.template,
+        referenceId: reference.id,
+      })
+      startWorkflowJob(job)
+      sendJson(response, 202, { reference, job })
       return
     }
 

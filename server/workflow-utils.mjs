@@ -43,6 +43,10 @@ export function chooseTemplateForPrompt(prompt, requestedTemplate = 'auto') {
   if (/dna|基因|染色体|双螺旋|核酸/.test(text)) return 'dna'
   if (/神经|neuron|突触|轴突|树突/.test(text)) return 'neuron'
   if (/白细胞|免疫|吞噬|淋巴|血液/.test(text)) return 'white-blood-cell'
+  if (/线粒体|mitochondrion|mitochondria|嵴|双层膜/.test(text)) return 'mitochondrion'
+  if (/植物细胞|细胞壁|液泡|plant cell/.test(text)) return 'plant-cell'
+  if (/叶绿体|chloroplast|类囊体/.test(text)) return 'chloroplast'
+  if (/细菌|bacterium|bacteria|杆状/.test(text)) return 'bacterium'
   if (/植物|叶绿体|细胞壁|液泡|plant|chloroplast/.test(text)) return 'plant-cell'
   if (/上皮|动物|细胞膜|线粒体|animal|epithelial/.test(text)) return 'animal-cell'
   return 'plant-cell'
@@ -63,6 +67,9 @@ export function getTemplateDisplayName(template) {
     'white-blood-cell': '白细胞',
     neuron: '神经元',
     dna: 'DNA 双螺旋',
+    mitochondrion: '线粒体',
+    chloroplast: '叶绿体',
+    bacterium: '细菌',
   }
   return names[template] || '生物结构'
 }

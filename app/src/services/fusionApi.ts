@@ -38,6 +38,8 @@ export interface ReferenceImagePayload {
   fileName: string;
   fileSize: number;
   model: string;
+  promptModel?: string;
+  generationMode?: string;
   imagePrompt?: string;
   negativePrompt?: string;
   imageUrl: string;
@@ -157,6 +159,29 @@ export async function createTextToCellJob(input: {
   });
   const payload = await readApiResponse<{ job: WorkflowJob }>(response);
   return payload.job;
+}
+
+export async function createFullTextTo3dJob(input: {
+  prompt: string;
+  provider?: string;
+  template?: string;
+  imageProvider?: string;
+}): Promise<{ reference: ReferenceImagePayload; job: WorkflowJob }> {
+  const response = await fetch(apiUrl('/api/workflows/full-text-to-3d'), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(input),
+  });
+  const payload = await readApiResponse<{ reference: ReferenceImagePayload; job: WorkflowJob }>(response);
+  return {
+    ...payload,
+    reference: {
+      ...payload.reference,
+      imageUrl: apiUrl(payload.reference.imageUrl),
+    },
+  };
 }
 
 export async function fetchWorkflowJob(jobId: string): Promise<WorkflowJob> {

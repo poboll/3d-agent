@@ -13,7 +13,7 @@
 
 当前实现按 `deploy_3d/BIO_3D_FINAL_HANDOFF.md` 收敛后的路线接入：
 
-- OpenAI GPT Image 生成单张 3D-ready 参考图。
+- gpt-5.5 使用 Responses API 打磨 3D-ready prompt，并通过 Responses 图像工具生成单张参考图。
 - ComfyUI 使用单图 workflow：`LoadImage -> TripoSGImageTo3D -> Hunyuan3DPaintExistingMesh -> Preview3D`。
 - 前端默认展示 `textured.glb`，必要时可保留 `raw.glb` 做几何诊断。
 
@@ -23,7 +23,14 @@
 
 ```bash
 OPENAI_API_KEY=sk-...
-OPENAI_IMAGE_MODEL=gpt-image-1.5
+OPENAI_BASE_URL=https://api.anhesea.top:9443/v1
+OPENAI_PROMPT_MODEL=gpt-5.5
+OPENAI_REVIEW_MODEL=gpt-5.5
+OPENAI_REASONING_EFFORT=xhigh
+OPENAI_DISABLE_RESPONSE_STORAGE=true
+OPENAI_IMAGE_MODE=responses-tool
+OPENAI_IMAGE_MODEL=gpt-5.5
+OPENAI_IMAGE_TOOL_MODEL=gpt-image-2
 COMFYUI_BASE_URL=http://47.242.195.8:8010
 COMFYUI_WORKFLOW_TEMPLATE=server/workflows/bio_single_image_triposg_hy3dpaint_api.json
 ```
@@ -59,6 +66,19 @@ curl http://127.0.0.1:8791/api/providers/status
 ```
 
 OpenAI 未配置时，`/api/references/text-to-image` 会返回缺少 `OPENAI_API_KEY` 的明确提示，并附带后端扩写后的 3D-ready prompt，方便先检查 prompt 质量。
+
+完整默认链路可直接调用：
+
+```bash
+curl -X POST http://127.0.0.1:8791/api/workflows/full-text-to-3d \
+  -H 'Content-Type: application/json' \
+  --data '{
+    "prompt": "线粒体",
+    "template": "auto",
+    "imageProvider": "openai",
+    "provider": "selfhost-triposg"
+  }'
+```
 
 上传参考图：
 

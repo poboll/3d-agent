@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import { getModelExtension, sanitizeModelId, validateModelBuffer } from '../server/model-store.mjs'
-import { buildBioReadyPrompt, validateImageBuffer } from '../server/reference-store.mjs'
+import { buildBioReadyPrompt, normalizeReferencePrompt, validateImageBuffer } from '../server/reference-store.mjs'
 import { sanitizeFileName } from '../server/http-utils.mjs'
 import {
   chooseTemplateForPrompt,
@@ -45,6 +45,8 @@ describe('LearningCell fusion API utilities', () => {
   it('normalizes workflow input and provider names', () => {
     assert.equal(normalizePrompt('  叶绿体   植物细胞 结构  '), '叶绿体 植物细胞 结构')
     assert.throws(() => normalizePrompt('细胞'), /更具体/)
+    assert.equal(normalizeReferencePrompt('线粒体'), '线粒体')
+    assert.throws(() => normalizeReferencePrompt('x'), /生物结构术语/)
     assert.equal(normalizeProvider('selfhost-triposg'), 'selfhost-triposg')
     assert.equal(normalizeProvider('local-demo'), 'local-demo')
     assert.equal(normalizeProvider(''), 'selfhost-triposg')
@@ -56,6 +58,8 @@ describe('LearningCell fusion API utilities', () => {
 
   it('chooses sensible model templates from prompts', () => {
     assert.equal(chooseTemplateForPrompt('展示植物细胞、叶绿体和细胞壁'), 'plant-cell')
+    assert.equal(chooseTemplateForPrompt('线粒体开放剖面'), 'mitochondrion')
+    assert.equal(chooseTemplateForPrompt('杆状细菌教学模型'), 'bacterium')
     assert.equal(chooseTemplateForPrompt('DNA 双螺旋和碱基对'), 'dna')
     assert.equal(chooseTemplateForPrompt('神经元轴突树突结构'), 'neuron')
     assert.equal(chooseTemplateForPrompt('白细胞吞噬病原体'), 'white-blood-cell')
@@ -74,6 +78,7 @@ describe('LearningCell fusion API utilities', () => {
   it('builds customer-facing titles and cost estimates', () => {
     assert.equal(createPromptTitle('  复杂植物细胞三维模型，包含叶绿体和液泡  '), '复杂植物细胞三维模型包含叶绿体和...')
     assert.equal(getTemplateDisplayName('plant-cell'), '植物细胞')
+    assert.equal(getTemplateDisplayName('mitochondrion'), '线粒体')
     assert.equal(getTemplateDisplayName('unknown'), '生物结构')
     assert.equal(estimateGenerationCost('local-demo'), 0)
     assert.equal(estimateGenerationCost('tencent-hunyuan') > 0, true)

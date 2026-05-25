@@ -17,7 +17,13 @@ const endpoints = [
     method: 'POST',
     path: '/api/references/text-to-image',
     title: '生成参考图',
-    note: '提交生物结构描述，后端扩写为 3D-ready prompt，并通过 OpenAI GPT Image 生成单张参考图。',
+    note: '提交生物结构描述，后端先用 gpt-5.5 打磨 3D-ready prompt，再通过 Responses 图像工具生成单张参考图。',
+  },
+  {
+    method: 'POST',
+    path: '/api/workflows/full-text-to-3d',
+    title: '完整默认链路',
+    note: '按「术语 -> prompt -> 单图 -> TripoSG raw.glb -> Hunyuan3D-Paint textured.glb」创建完整任务。',
   },
   {
     method: 'POST',

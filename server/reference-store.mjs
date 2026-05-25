@@ -4,14 +4,21 @@ import path from 'node:path'
 import { randomUUID } from 'node:crypto'
 import {
   OPENAI_API_KEY,
+  OPENAI_BASE_URL,
+  OPENAI_DISABLE_RESPONSE_STORAGE,
   OPENAI_IMAGE_CONFIGURED,
   OPENAI_IMAGE_ENDPOINT,
   OPENAI_IMAGE_FORMAT,
+  OPENAI_IMAGE_MODE,
   OPENAI_IMAGE_MODEL,
   OPENAI_IMAGE_QUALITY,
   OPENAI_IMAGE_SIZE,
+  OPENAI_IMAGE_TOOL_MODEL,
   OPENAI_ORGANIZATION,
+  OPENAI_PROMPT_MODEL,
   OPENAI_PROJECT,
+  OPENAI_REASONING_EFFORT,
+  OPENAI_RESPONSES_ENDPOINT,
   REFERENCE_CACHE_DIR,
   REFERENCE_IMAGE_LIMIT,
   REFERENCE_STORE_FILE,
@@ -26,7 +33,7 @@ const PROMPT_TEMPLATE_PATH = path.resolve('server/workflows/bio_3d_ready_prompt_
 const OPENAI_IMAGE_TIMEOUT_MS = 180000
 
 export async function createReferenceImage(input = {}) {
-  const prompt = normalizePrompt(input.prompt)
+  const prompt = normalizeReferencePrompt(input.prompt)
   const template = chooseTemplateForPrompt(prompt, input.template)
   const provider = normalizeImageProvider(input.provider)
 
@@ -35,6 +42,7 @@ export async function createReferenceImage(input = {}) {
   }
 
   const promptPackage = await buildBioReadyPrompt(prompt, template)
+  const polishedPromptPackage = await polishBioReadyPrompt(promptPackage, prompt)
 
   if (!OPENAI_IMAGE_CONFIGURED) {
     throw Object.assign(new Error('OpenAI 图片生成尚未配置，请在后端环境变量中设置 OPENAI_API_KEY。'), {
@@ -42,23 +50,25 @@ export async function createReferenceImage(input = {}) {
       detail: {
         requiredEnv: ['OPENAI_API_KEY'],
         optionalEnv: ['OPENAI_IMAGE_MODEL', 'OPENAI_IMAGE_SIZE', 'OPENAI_IMAGE_QUALITY', 'OPENAI_IMAGE_FORMAT'],
-        imagePrompt: promptPackage.imagePrompt,
+        imagePrompt: polishedPromptPackage.imagePrompt,
       },
     })
   }
 
-  const imageBuffer = await requestOpenAiImage(promptPackage.imagePrompt)
+  const imageResult = await requestOpenAiImage(polishedPromptPackage.imagePrompt)
   const saved = await saveReferenceBuffer({
-    buffer: imageBuffer,
+    buffer: imageResult.buffer,
     prompt,
     template,
     provider,
     source: 'OpenAI GPT Image',
     title: `${getTemplateDisplayName(template)} · GPT 参考图`,
     note: '已生成适合图生 3D 的单图参考图，请确认主体、剖面和结构间距后再建模。',
-    imagePrompt: promptPackage.imagePrompt,
-    negativePrompt: promptPackage.negativePrompt,
-    model: OPENAI_IMAGE_MODEL,
+    imagePrompt: polishedPromptPackage.imagePrompt,
+    negativePrompt: polishedPromptPackage.negativePrompt,
+    promptModel: polishedPromptPackage.promptModel,
+    model: imageResult.model,
+    generationMode: imageResult.mode,
     ext: normalizeImageExtension(OPENAI_IMAGE_FORMAT),
   })
 
@@ -88,6 +98,17 @@ export async function importReferenceImage(request, url) {
   })
 
   return publicReference(saved)
+}
+
+export function normalizeReferencePrompt(value) {
+  const prompt = String(value || '').replace(/\s+/g, ' ').trim()
+  if (prompt.length < 2) {
+    throw Object.assign(new Error('请输入生物结构术语或更具体的课堂描述。'), { status: 400 })
+  }
+  if (prompt.length > 600) {
+    throw Object.assign(new Error('描述过长，请控制在 600 字以内。'), { status: 400 })
+  }
+  return prompt
 }
 
 export async function serveReferenceImage(url, response) {
@@ -148,20 +169,100 @@ export async function buildBioReadyPrompt(prompt, template = 'auto') {
   }
 }
 
+async function polishBioReadyPrompt(promptPackage, userPrompt) {
+  if (!OPENAI_IMAGE_CONFIGURED || !OPENAI_PROMPT_MODEL) {
+    return promptPackage
+  }
+
+  const instruction = [
+    'You are preparing a prompt for a single-image image-to-3D biology workflow.',
+    'Rewrite the prompt in English only.',
+    'Keep exactly one centered subject, three-quarter open cutaway, thick visible cut rim, matte opaque material, plain white or very light gray background, soft shadow.',
+    'Keep 5-7 major readable structures maximum. Increase spacing between structures. Avoid labels, arrows, text, multi-view grids, transparent jelly, glass, wet plastic, glossy toy material, crowded tiny details, floating parts.',
+    'Return only the final image prompt, no markdown, no explanation.',
+  ].join(' ')
+
+  try {
+    const payload = await requestOpenAiResponse({
+      model: OPENAI_PROMPT_MODEL,
+      input: `${instruction}\n\nUser term/request: ${userPrompt}\n\nBase prompt:\n${promptPackage.imagePrompt}\n\nNegative constraints:\n${promptPackage.negativePrompt}`,
+    })
+    const text = extractResponseText(payload).replace(/\s+/g, ' ').trim()
+    if (text.length < 80) return promptPackage
+    return {
+      ...promptPackage,
+      imagePrompt: text,
+      promptModel: OPENAI_PROMPT_MODEL,
+    }
+  } catch {
+    return {
+      ...promptPackage,
+      promptModel: 'local-template',
+    }
+  }
+}
+
 async function requestOpenAiImage(prompt) {
+  if (OPENAI_IMAGE_MODE !== 'images-api') {
+    try {
+      return await requestOpenAiImageViaResponses(prompt)
+    } catch (error) {
+      if (OPENAI_IMAGE_MODE === 'responses-tool') throw error
+    }
+  }
+
+  return requestOpenAiImageViaImagesApi(prompt)
+}
+
+async function requestOpenAiImageViaResponses(prompt) {
+  const payload = await requestOpenAiResponse({
+    model: OPENAI_IMAGE_MODEL,
+    input: [
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'input_text',
+            text: [
+              'Generate one 3D-ready educational biology reference image.',
+              'Use the following prompt exactly as visual direction.',
+              prompt,
+            ].join('\n\n'),
+          },
+        ],
+      },
+    ],
+    tools: [
+      {
+        type: 'image_generation',
+        model: OPENAI_IMAGE_TOOL_MODEL,
+        size: OPENAI_IMAGE_SIZE,
+        quality: OPENAI_IMAGE_QUALITY,
+        output_format: OPENAI_IMAGE_FORMAT,
+      },
+    ],
+  })
+
+  const image = extractResponseImage(payload)
+  if (!image) {
+    throw new Error('Responses 图像工具未返回可用图片。')
+  }
+
+  return {
+    buffer: Buffer.from(image, 'base64'),
+    model: `${OPENAI_IMAGE_MODEL} / ${OPENAI_IMAGE_TOOL_MODEL}`,
+    mode: 'responses-image-generation',
+  }
+}
+
+async function requestOpenAiImageViaImagesApi(prompt) {
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), OPENAI_IMAGE_TIMEOUT_MS)
-  const headers = {
-    Authorization: `Bearer ${OPENAI_API_KEY}`,
-    'Content-Type': 'application/json',
-  }
-  if (OPENAI_ORGANIZATION) headers['OpenAI-Organization'] = OPENAI_ORGANIZATION
-  if (OPENAI_PROJECT) headers['OpenAI-Project'] = OPENAI_PROJECT
 
   try {
     const response = await fetch(OPENAI_IMAGE_ENDPOINT, {
       method: 'POST',
-      headers,
+      headers: buildOpenAiHeaders(),
       body: JSON.stringify({
         model: OPENAI_IMAGE_MODEL,
         prompt,
@@ -180,11 +281,21 @@ async function requestOpenAiImage(prompt) {
     }
 
     const item = payload?.data?.[0]
-    if (item?.b64_json) return Buffer.from(item.b64_json, 'base64')
+    if (item?.b64_json) {
+      return {
+        buffer: Buffer.from(item.b64_json, 'base64'),
+        model: OPENAI_IMAGE_MODEL,
+        mode: 'images-api',
+      }
+    }
     if (item?.url) {
       const imageResponse = await fetch(item.url, { signal: controller.signal })
       if (!imageResponse.ok) throw new Error(`参考图下载失败：${imageResponse.status}`)
-      return Buffer.from(await imageResponse.arrayBuffer())
+      return {
+        buffer: Buffer.from(await imageResponse.arrayBuffer()),
+        model: OPENAI_IMAGE_MODEL,
+        mode: 'images-api',
+      }
     }
 
     throw new Error('OpenAI 图片接口未返回可用图片。')
@@ -198,6 +309,70 @@ async function requestOpenAiImage(prompt) {
   }
 }
 
+async function requestOpenAiResponse(body) {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), OPENAI_IMAGE_TIMEOUT_MS)
+  try {
+    const response = await fetch(OPENAI_RESPONSES_ENDPOINT, {
+      method: 'POST',
+      headers: buildOpenAiHeaders(),
+      body: JSON.stringify({
+        store: !OPENAI_DISABLE_RESPONSE_STORAGE,
+        reasoning: { effort: OPENAI_REASONING_EFFORT },
+        ...body,
+      }),
+      signal: controller.signal,
+    })
+    const payload = await response.json().catch(async () => ({ error: { message: await response.text() } }))
+    if (!response.ok) {
+      const message = payload?.error?.message || `OpenAI Responses 接口返回 ${response.status}`
+      throw Object.assign(new Error(message), { status: response.status, detail: payload })
+    }
+    return payload
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      throw Object.assign(new Error('OpenAI Responses 请求超时，请稍后重试。'), { status: 504 })
+    }
+    throw error
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
+function buildOpenAiHeaders() {
+  const headers = {
+    Authorization: `Bearer ${OPENAI_API_KEY}`,
+    'Content-Type': 'application/json',
+  }
+  if (OPENAI_ORGANIZATION) headers['OpenAI-Organization'] = OPENAI_ORGANIZATION
+  if (OPENAI_PROJECT) headers['OpenAI-Project'] = OPENAI_PROJECT
+  return headers
+}
+
+function extractResponseText(payload) {
+  const parts = []
+  for (const output of payload?.output || []) {
+    for (const content of output?.content || []) {
+      if (content?.type === 'output_text' && content.text) parts.push(content.text)
+      if (typeof content?.text === 'string') parts.push(content.text)
+    }
+  }
+  if (payload?.output_text) parts.push(payload.output_text)
+  return parts.join('\n').trim()
+}
+
+function extractResponseImage(payload) {
+  for (const output of payload?.output || []) {
+    if (output?.type === 'image_generation_call' && output.result) return output.result
+    for (const content of output?.content || []) {
+      if (content?.type === 'image_generation_call' && content.result) return content.result
+      if (content?.type === 'output_image' && content.image_base64) return content.image_base64
+      if (content?.type === 'input_image' && content.image_base64) return content.image_base64
+    }
+  }
+  return ''
+}
+
 async function saveReferenceBuffer({
   buffer,
   prompt,
@@ -208,7 +383,9 @@ async function saveReferenceBuffer({
   note,
   imagePrompt,
   negativePrompt,
+  promptModel,
   model,
+  generationMode,
   ext,
 }) {
   validateImageBuffer(buffer, ext)
@@ -247,6 +424,8 @@ async function saveReferenceBuffer({
     mimeType: contentTypeForExt(safeExt),
     fileSize: buffer.length,
     model,
+    promptModel,
+    generationMode,
     imagePrompt,
     negativePrompt,
     createdAt: new Date().toISOString(),
@@ -268,6 +447,9 @@ function inferBiologyTerm(prompt, template, templateData) {
     'white-blood-cell': '动物细胞',
     neuron: '动物细胞',
     dna: '细胞核',
+    mitochondrion: '线粒体',
+    chloroplast: '叶绿体',
+    bacterium: '细菌',
   }
   const text = String(prompt || '')
   const keys = Object.keys(templateData.object_presets).sort((a, b) => b.length - a.length)
@@ -384,6 +566,8 @@ function publicReference(record) {
     fileName: record.fileName,
     fileSize: record.fileSize,
     model: record.model,
+    promptModel: record.promptModel,
+    generationMode: record.generationMode,
     imagePrompt: record.imagePrompt,
     negativePrompt: record.negativePrompt,
     imageUrl: `/api/references/${encodeURIComponent(record.id)}/image`,

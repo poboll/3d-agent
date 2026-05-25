@@ -63,7 +63,7 @@ npm run test:api
 - 加载 `../3DCellForge/public/generated-models/` 下的缓存 GLB。
 - 上传本地 `.glb/.gltf` 并加入左侧“生成模型”列表。
 - 输入文本后先生成单张 3D-ready 参考图，用户确认图片后再提交图生 3D 建模。
-- OpenAI GPT Image 负责文生图，本地 ComfyUI 工作流负责 TripoSG 几何重建与 Hunyuan3D-Paint 贴图。
+- gpt-5.5 负责打磨 3D-ready prompt，Responses 图像工具负责生成单张参考图，本地 ComfyUI 工作流负责 TripoSG 几何重建与 Hunyuan3D-Paint 贴图。
 - 后端记录参考图、任务状态、埋点事件与生成模型缓存，方便恢复和排查。
 - 本地缓存链路可在没有 GPU 服务时快速验证“参考图 -> 任务记录 -> 模型缓存 -> 前端查看”的闭环。
 - 页面刷新后会从浏览器本地存储恢复最近加入的生成模型。
@@ -73,7 +73,7 @@ npm run test:api
 ```text
 短词 / 术语
   -> 3D-ready 单图参考图 prompt
-  -> OpenAI GPT Image 参考图
+  -> gpt-5.5 打磨后的 OpenAI Responses 图像参考图
   -> 用户确认图片
   -> ComfyUI 单图 workflow
   -> TripoSG raw GLB
@@ -89,7 +89,8 @@ npm run test:api
 | `GET` | `/api/providers/status` | 查看 OpenAI、ComfyUI、本地缓存等 provider 状态 |
 | `GET` | `/api/3d/demo-models` | 读取 3DCellForge 缓存模型 |
 | `POST` | `/api/3d/local-model?fileName=xxx.glb` | 上传本地 GLB/GLTF |
-| `POST` | `/api/references/text-to-image` | OpenAI GPT Image 生成参考图 |
+| `POST` | `/api/references/text-to-image` | gpt-5.5 打磨 prompt 并生成参考图 |
+| `POST` | `/api/workflows/full-text-to-3d` | 从术语开始执行默认完整生成链路 |
 | `POST` | `/api/references/upload?fileName=xxx.png` | 上传参考图并进入缓存 |
 | `GET` | `/api/references/:referenceId/image` | 读取参考图缓存图片 |
 | `POST` | `/api/workflows/text-to-cell` | 使用确认后的 referenceId 创建图生 3D 任务 |
@@ -111,13 +112,20 @@ OpenAI GPT Image：
 
 ```bash
 OPENAI_API_KEY=sk-...
-OPENAI_IMAGE_MODEL=gpt-image-1.5
+OPENAI_BASE_URL=https://api.anhesea.top:9443/v1
+OPENAI_PROMPT_MODEL=gpt-5.5
+OPENAI_REVIEW_MODEL=gpt-5.5
+OPENAI_REASONING_EFFORT=xhigh
+OPENAI_DISABLE_RESPONSE_STORAGE=true
+OPENAI_IMAGE_MODE=responses-tool
+OPENAI_IMAGE_MODEL=gpt-5.5
+OPENAI_IMAGE_TOOL_MODEL=gpt-image-2
 OPENAI_IMAGE_SIZE=1024x1024
 OPENAI_IMAGE_QUALITY=medium
 OPENAI_IMAGE_FORMAT=png
 ```
 
-OpenAI 文生图实现使用 Image API 的 `/v1/images/generations`。按 OpenAI 官方文档，GPT Image 模型包括 `gpt-image-1.5`、`gpt-image-1` 和 `gpt-image-1-mini`，单 prompt 生成图片优先使用 Image API。
+默认实现使用 Responses API：先由 `gpt-5.5` 把术语打磨为 3D-ready 单图 prompt，再通过 Responses 的 `image_generation` 工具生成参考图。`OPENAI_IMAGE_MODE=images-api` 时可切换到 `/v1/images/generations` 备用路径。
 
 本地 ComfyUI / TripoSG / Hunyuan3D-Paint：
 

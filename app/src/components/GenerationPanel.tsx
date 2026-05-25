@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CellModel } from '../data/models';
 import {
+  createFullTextTo3dJob,
   createReferenceImage,
   createTextToCellJob,
   fetchDemoGeneratedModels,
@@ -226,6 +227,52 @@ export function GenerationPanel({
     }
   };
 
+  const handleRunFullWorkflow = async () => {
+    if (!prompt.trim()) {
+      setStatus('请先输入生物结构术语或课堂描述。');
+      return;
+    }
+
+    setBusy(true);
+    setReferenceImage(null);
+    setActiveJob(null);
+    setStatus('正在按默认链路执行：术语 → GPT prompt → 单图 → TripoSG → textured GLB。');
+    trackEvent('workflow_full_run_start', {
+      template,
+      imageProvider,
+      provider: modelProvider,
+      promptLength: prompt.trim().length,
+    });
+
+    try {
+      const { reference, job } = await createFullTextTo3dJob({
+        prompt: prompt.trim(),
+        provider: modelProvider,
+        imageProvider,
+        template,
+      });
+      setReferenceImage(toReferenceImage(reference, false));
+      setActiveJob(job);
+      setJobHistory((current) => mergeJobs(job, current));
+      setStatus(job.stage);
+      trackEvent('workflow_job_created', {
+        jobId: job.id,
+        template: job.template,
+        provider: job.provider,
+        costEstimateCny: job.costEstimateCny,
+        referenceId: reference.id,
+      });
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : '完整生成链路启动失败。');
+      setBusy(false);
+      trackEvent('workflow_job_failed', {
+        template,
+        provider: modelProvider,
+        message: error instanceof Error ? error.message : 'unknown',
+      });
+    }
+  };
+
   const handleAcceptReference = () => {
     if (!referenceImage) {
       setStatus('还没有可接收的参考图，请先生成或上传一张图片。');
@@ -336,6 +383,36 @@ export function GenerationPanel({
         />
       </label>
 
+      <div className="generation-actions" id="workflow-actions">
+        <button type="button" className="generation-primary" onClick={handleCreateReference} disabled={!canCreateReference}>
+          生成参考图
+        </button>
+        <button type="button" className="generation-primary full-action" onClick={handleRunFullWorkflow} disabled={!canCreateReference || busy}>
+          完整生成
+        </button>
+        <button type="button" className="generation-primary confirm-action" onClick={handleConfirmModeling} disabled={!canConfirmModeling}>
+          确认建模
+        </button>
+        <button type="button" className="generation-secondary" onClick={() => imageInputRef.current?.click()} disabled={busy}>
+          上传图片
+        </button>
+        <button type="button" className="generation-secondary" onClick={handleCreateReference} disabled={!canCreateReference}>
+          重试图片
+        </button>
+        <button type="button" className="generation-secondary" onClick={handleAcceptReference} disabled={!referenceImage || busy}>
+          接收图片
+        </button>
+        <button type="button" className="generation-secondary" onClick={handleRejectReference} disabled={!referenceImage || busy}>
+          退回图片
+        </button>
+        <button type="button" className="generation-secondary" onClick={handleLoadDemo} disabled={busy}>
+          加载缓存
+        </button>
+        <button type="button" className="generation-secondary" onClick={() => modelInputRef.current?.click()} disabled={busy}>
+          导入 GLB
+        </button>
+      </div>
+
       <div className="generation-controls">
         <label className="generation-field compact">
           <span>TEMPLATE</span>
@@ -343,6 +420,9 @@ export function GenerationPanel({
             <option value="auto">自动判断</option>
             <option value="plant-cell">植物细胞</option>
             <option value="animal-cell">动物细胞</option>
+            <option value="mitochondrion">线粒体</option>
+            <option value="chloroplast">叶绿体</option>
+            <option value="bacterium">细菌</option>
             <option value="white-blood-cell">白细胞</option>
             <option value="neuron">神经元</option>
             <option value="dna">DNA</option>
@@ -378,36 +458,12 @@ export function GenerationPanel({
         <div className="reference-meta">
           <span>02 REFERENCE IMAGE</span>
           <strong>{referenceImage?.title ?? '先生成或上传初版图片'}</strong>
-          {referenceImage && <em>{referenceImage.source}</em>}
+          {referenceImage && <em>{[referenceImage.source, referenceImage.promptModel, referenceImage.model].filter(Boolean).join(' · ')}</em>}
           <p>{referenceImage?.note ?? '图片确认通过后，才会进入本地图生 3D 建模与结果缓存。'}</p>
         </div>
       </div>
 
-      <div className="generation-actions" id="workflow-actions">
-        <button type="button" className="generation-primary" onClick={handleCreateReference} disabled={!canCreateReference}>
-          生成参考图
-        </button>
-        <button type="button" className="generation-secondary" onClick={() => imageInputRef.current?.click()} disabled={busy}>
-          上传图片
-        </button>
-        <button type="button" className="generation-secondary" onClick={handleCreateReference} disabled={!canCreateReference}>
-          重试图片
-        </button>
-        <button type="button" className="generation-secondary" onClick={handleAcceptReference} disabled={!referenceImage || busy}>
-          接收图片
-        </button>
-        <button type="button" className="generation-secondary" onClick={handleRejectReference} disabled={!referenceImage || busy}>
-          退回图片
-        </button>
-        <button type="button" className="generation-primary confirm-action" onClick={handleConfirmModeling} disabled={!canConfirmModeling}>
-          确认图生建模
-        </button>
-        <button type="button" className="generation-secondary" onClick={handleLoadDemo} disabled={busy}>
-          加载缓存
-        </button>
-        <button type="button" className="generation-secondary" onClick={() => modelInputRef.current?.click()} disabled={busy}>
-          导入本地 GLB
-        </button>
+      <div className="generation-file-inputs">
         <input
           ref={imageInputRef}
           type="file"
@@ -471,7 +527,7 @@ function mergeJobs(job: WorkflowJob, jobs: WorkflowJob[]) {
   return [job, ...jobs.filter((item) => item.id !== job.id)].slice(0, 12);
 }
 
-type WorkflowPhase = 'input' | 'image' | 'modeling' | 'done' | 'failed';
+type WorkflowPhase = 'input' | 'prompt' | 'image' | 'modeling' | 'done' | 'failed';
 
 interface ReferenceImage {
   id: string;
@@ -483,6 +539,8 @@ interface ReferenceImage {
   prompt?: string;
   imagePrompt?: string;
   model?: string;
+  promptModel?: string;
+  generationMode?: string;
 }
 
 function toReferenceImage(reference: ReferenceImagePayload, uploaded: boolean): ReferenceImage {
@@ -496,6 +554,8 @@ function toReferenceImage(reference: ReferenceImagePayload, uploaded: boolean): 
     prompt: reference.prompt,
     imagePrompt: reference.imagePrompt,
     model: reference.model,
+    promptModel: reference.promptModel,
+    generationMode: reference.generationMode,
   };
 }
 
@@ -505,10 +565,11 @@ const WORKFLOW_STEPS: Array<{
   title: string;
   caption: string;
 }> = [
-  { id: 'input', no: '01', title: '文本 / 图片输入', caption: '写描述或上传初图' },
-  { id: 'image', no: '02', title: '文生图与确认', caption: '重试或接收参考图' },
-  { id: 'modeling', no: '03', title: '图生 3D 建模', caption: '本地服务 / 缓存链路' },
-  { id: 'done', no: '04', title: '下载缓存展示', caption: '进入 3D 舞台' },
+  { id: 'input', no: '01', title: '术语 / 图片输入', caption: '写描述或上传初图' },
+  { id: 'prompt', no: '02', title: 'GPT prompt 打磨', caption: 'gpt-5.5 生成 3D-ready' },
+  { id: 'image', no: '03', title: '单图生成与确认', caption: 'image tool 输出参考图' },
+  { id: 'modeling', no: '04', title: '图生 3D 建模', caption: 'TripoSG / 混元贴图' },
+  { id: 'done', no: '05', title: '下载缓存展示', caption: '加载 textured GLB' },
 ];
 
 function getWorkflowPhase({
@@ -528,7 +589,7 @@ function getWorkflowPhase({
 }
 
 function getStepClass(step: Exclude<WorkflowPhase, 'failed'>, phase: WorkflowPhase) {
-  const order: WorkflowPhase[] = ['input', 'image', 'modeling', 'done'];
+  const order: WorkflowPhase[] = ['input', 'prompt', 'image', 'modeling', 'done'];
   const stepIndex = order.indexOf(step);
   const phaseIndex = phase === 'failed' ? order.indexOf('modeling') : order.indexOf(phase);
   if (stepIndex < phaseIndex) return 'done';

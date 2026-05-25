@@ -427,10 +427,10 @@ body {
 .generation-panel {
   height: 100%;
   min-height: 0;
-  padding: 15px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
-  gap: 11px;
+  gap: 8px;
   overflow-y: auto;
   border: 1px solid var(--hairline);
   border-radius: 4px;
@@ -443,7 +443,7 @@ body {
 .generation-eyebrow,
 .card-eyebrow {
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   color: var(--ink-whisper);
   font-size: 10px;
   letter-spacing: 0.18em;
@@ -453,7 +453,7 @@ body {
 .hero-card h2,
 .about-panel h2 {
   color: var(--sumi);
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 500;
   letter-spacing: 0.04em;
 }
@@ -463,49 +463,52 @@ body {
 .occur-card p,
 .about-panel p {
   color: var(--ink-mute);
-  font-size: 12.5px;
-  line-height: 1.62;
+  font-size: 12px;
+  line-height: 1.55;
 }
 
 .generation-panel > div:first-child p {
-  margin-top: 8px;
+  margin-top: 4px;
+  font-size: 11.2px;
+  line-height: 1.42;
 }
 
 .workflow-ladder {
   list-style: none;
   margin: 0;
-  padding: 8px 0;
+  padding: 5px 0;
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0 12px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0;
   border-top: 1px solid var(--hairline-2);
   border-bottom: 1px solid var(--hairline-2);
 }
 
 .workflow-ladder li {
   position: relative;
-  display: grid;
-  grid-template-columns: 22px 1fr;
-  gap: 6px;
-  padding: 6px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 5px 5px 0;
   color: var(--ink-whisper);
 }
 
-.workflow-ladder li:nth-child(n + 3) {
-  border-top: 1px solid var(--hairline-2);
+.workflow-ladder li + li {
+  border-left: 1px solid var(--hairline-2);
+  padding-left: 6px;
 }
 
 .workflow-ladder li > span {
   color: inherit;
-  font-size: 10px;
-  padding-top: 2px;
+  font-size: 9px;
+  padding-top: 0;
 }
 
 .workflow-ladder strong {
   display: block;
   color: var(--sumi-soft);
   font-family: var(--font-sans);
-  font-size: 11.2px;
+  font-size: 9.5px;
   font-weight: 600;
   letter-spacing: 0;
   text-transform: none;
@@ -516,7 +519,7 @@ body {
   margin-top: 2px;
   color: var(--ink-whisper);
   font-family: var(--font-sans);
-  font-size: 9.4px;
+  font-size: 7.8px;
   letter-spacing: 0;
   text-transform: none;
 }
@@ -569,17 +572,17 @@ body {
 }
 
 .generation-field textarea {
-  min-height: 68px;
+  min-height: 50px;
   resize: vertical;
-  padding: 11px 12px;
-  line-height: 1.55;
-  font-size: 13px;
+  padding: 9px 10px;
+  line-height: 1.48;
+  font-size: 12.5px;
 }
 
 .generation-field select {
-  min-height: 36px;
-  padding: 0 10px;
-  font-size: 12px;
+  min-height: 32px;
+  padding: 0 9px;
+  font-size: 11.5px;
 }
 
 .generation-field textarea:focus,
@@ -591,7 +594,7 @@ body {
 .generation-controls {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: 7px;
 }
 
 .generation-controls .generation-field:last-child {
@@ -600,9 +603,9 @@ body {
 
 .reference-card {
   display: grid;
-  grid-template-columns: 92px minmax(0, 1fr);
-  gap: 11px;
-  padding: 9px;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 9px;
+  padding: 7px;
   border: 1px solid var(--hairline);
   border-radius: 4px;
   background:
@@ -611,7 +614,7 @@ body {
 }
 
 .reference-preview {
-  min-height: 74px;
+  min-height: 62px;
   border: 1px solid var(--hairline-2);
   background: rgba(252, 250, 244, 0.72);
   overflow: hidden;
@@ -621,12 +624,12 @@ body {
   display: block;
   width: 100%;
   height: 100%;
-  min-height: 74px;
+  min-height: 62px;
   object-fit: cover;
 }
 
 .reference-empty {
-  min-height: 74px;
+  min-height: 62px;
   display: grid;
   place-content: center;
   gap: 6px;
@@ -647,7 +650,7 @@ body {
   display: block;
   color: var(--sumi);
   font-family: var(--font-serif);
-  font-size: 15px;
+  font-size: 13.5px;
   font-weight: 500;
 }
 
@@ -656,10 +659,14 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 5px;
+  gap: 4px;
 }
 
 .reference-meta em {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   width: fit-content;
   color: var(--vermilion);
   font-family: var(--font-mono);
@@ -673,27 +680,31 @@ body {
   overflow: hidden;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
-  font-size: 12px;
+  font-size: 11.2px;
 }
 
 .generation-actions {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
+  gap: 4px;
 }
 
 .generation-primary,
 .generation-secondary {
-  min-height: 30px;
+  min-height: 26px;
   border: 1px solid var(--hairline);
   border-radius: 4px;
   font-family: var(--font-mono);
-  font-size: 9.2px;
+  font-size: 8.4px;
   font-weight: 700;
   letter-spacing: 0.08em;
   line-height: 1.25;
   white-space: normal;
   transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+
+.generation-file-inputs {
+  display: none;
 }
 
 .generation-primary {
@@ -725,8 +736,13 @@ body {
   transform: none;
 }
 
+.full-action {
+  background: linear-gradient(135deg, var(--sumi), #6f4f35);
+  border-color: rgba(28, 28, 26, 0.8);
+}
+
 .generation-status {
-  padding: 9px 11px;
+  padding: 8px 10px;
   border: 1px solid var(--hairline-2);
   border-radius: 4px;
   background: rgba(237, 231, 217, 0.46);
@@ -740,9 +756,9 @@ body {
 }
 
 .generation-status p {
-  margin-top: 5px;
+  margin-top: 4px;
   color: var(--sumi-soft);
-  font-size: 12.5px;
+  font-size: 11.8px;
 }
 
 .job-progress {

@@ -326,6 +326,9 @@ function accentForTemplate(template) {
     'white-blood-cell': '#c8a2d8',
     neuron: '#f0a868',
     dna: '#9cc4e4',
+    mitochondrion: '#d8844c',
+    chloroplast: '#6fa55d',
+    bacterium: '#5b9aa8',
   }
   return accents[template] || '#7fb069'
 }
