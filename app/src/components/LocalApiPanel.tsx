@@ -77,6 +77,16 @@ export function LocalApiPanel() {
         </div>
       </div>
 
+      <div className="api-storage-flow" aria-label="上传缓存流程">
+        <span>Upload Work</span>
+        <i />
+        <span>Validated Cache</span>
+        <i />
+        <span>Model Library</span>
+        <i />
+        <span>Cleanup Queue</span>
+      </div>
+
       <div className="api-grid">
         {endpoints.map((endpoint) => (
           <article className="api-endpoint" key={`${endpoint.method}-${endpoint.path}`}>

@@ -6,6 +6,9 @@ dist/
 *.log
 artifacts/
 .generated-models/
+.upload-work/
+.upload-cache/
+.upload-trash/
 .workflow-store/
 .idea/
 .vscode/

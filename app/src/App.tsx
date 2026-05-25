@@ -6,6 +6,7 @@ import { GenerationPanel } from './components/GenerationPanel';
 import { MaAboutPanel } from './components/MaAboutPanel';
 import { LocalApiPanel } from './components/LocalApiPanel';
 import type { CellModel } from './data/models';
+import { trackEvent } from './lib/analytics';
 import './app.css';
 
 const GENERATED_MODELS_STORAGE_KEY = 'learning-cell-generated-models';
@@ -92,8 +93,8 @@ function buildGuideFrame(target: HTMLElement, targetId: string): GuideFrame {
   const focusTop = clamp(rect.top - focusPadding, safe, window.innerHeight - safe);
   const focusRight = clamp(rect.right + focusPadding, safe, window.innerWidth - safe);
   const focusBottom = clamp(rect.bottom + focusPadding, safe, window.innerHeight - safe);
-  const panelWidth = Math.min(360, window.innerWidth - safe * 2);
-  const estimatedPanelHeight = targetId === 'model-stage' ? 276 : 258;
+  const panelWidth = Math.min(300, window.innerWidth - safe * 2);
+  const estimatedPanelHeight = targetId === 'model-stage' ? 230 : 210;
 
   let left = focusRight + gap;
   let top = focusTop + (focusBottom - focusTop) / 2 - estimatedPanelHeight / 2;
@@ -242,6 +243,17 @@ function App() {
     window.location.hash = '#workbench';
     setGuideStep(0);
     setGuideOpen(true);
+    trackEvent('guide_open');
+  };
+
+  const selectModel = (id: string) => {
+    setActiveId(id);
+    const model = allModels.find((item) => item.id === id);
+    trackEvent('specimen_select', {
+      modelId: id,
+      modelName: model?.name,
+      custom: Boolean(model?.custom),
+    });
   };
 
   const focusSpecimenIndex = () => {
@@ -300,7 +312,7 @@ function App() {
               generatedModels={generatedModels}
               onModelsLoaded={handleModelsLoaded}
               onModelCreated={handleModelCreated}
-              onSelect={setActiveId}
+              onSelect={selectModel}
             />
           </aside>
 
@@ -315,7 +327,7 @@ function App() {
           <Sidebar
             models={allModels}
             activeId={activeId}
-            onSelect={setActiveId}
+            onSelect={selectModel}
             onOpenIndex={focusSpecimenIndex}
             guideOpen={guideOpen}
             focusSignal={indexFocusSignal}
@@ -338,9 +350,18 @@ function App() {
               setGuideOpen(false);
               return;
             }
-            setGuideStep((step) => step + 1);
+            const nextStep = guideStep + 1;
+            setGuideStep(nextStep);
+            trackEvent('guide_step', {
+              step: nextStep + 1,
+              targetId: GUIDE_STEPS[nextStep]?.targetId,
+            });
           }}
           onStepChange={setGuideStep}
+          onStepTrack={(nextStep) => trackEvent('guide_step', {
+            step: nextStep + 1,
+            targetId: GUIDE_STEPS[nextStep]?.targetId,
+          })}
           onClose={() => setGuideOpen(false)}
           frame={guideFrame}
         />
@@ -355,6 +376,7 @@ function GuideOverlay({
   onBack,
   onNext,
   onStepChange,
+  onStepTrack,
   onClose,
   frame,
 }: {
@@ -362,6 +384,7 @@ function GuideOverlay({
   onBack: () => void;
   onNext: () => void;
   onStepChange: (step: number) => void;
+  onStepTrack: (step: number) => void;
   onClose: () => void;
   frame: GuideFrame | null;
 }) {
@@ -388,7 +411,10 @@ function GuideOverlay({
               type="button"
               className={index === step ? 'active' : ''}
               key={item.title}
-              onClick={() => onStepChange(index)}
+              onClick={() => {
+                onStepChange(index);
+                onStepTrack(index);
+              }}
               aria-label={`查看${item.title}`}
             />
           ))}

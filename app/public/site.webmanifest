@@ -1,0 +1,17 @@
+{
+  "name": "间 MA 生物工作台",
+  "short_name": "间 MA",
+  "description": "细胞结构 3D 展示、图生 3D 工作流与初高中生物概念图解。",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#fbfaf4",
+  "theme_color": "#f2f0e8",
+  "lang": "zh-CN",
+  "icons": [
+    {
+      "src": "./favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

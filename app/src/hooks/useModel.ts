@@ -2,6 +2,7 @@ import { useEffect, useReducer } from 'react';
 import {
   getLoadEntry,
   loadModel,
+  retryModel,
   subscribeCache,
   type LoadEntry,
   type LoadStatus,
@@ -69,4 +70,8 @@ export function useModel(url: string, opts: Options): UseModelState {
     return { status: 'idle', progress: 0 };
   }
   return { status: entry.status, progress: entry.progress, entry };
+}
+
+export function reloadModel(url: string, opts: Options) {
+  return retryModel(url, { fileSize: opts.fileSize });
 }

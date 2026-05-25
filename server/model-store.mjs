@@ -1,7 +1,15 @@
 import { createReadStream } from 'node:fs'
-import { access, mkdir, readFile, stat, writeFile } from 'node:fs/promises'
+import { access, copyFile, mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import { CELLFORGE_MODEL_DIR, DEMO_MODELS, LOCAL_MODEL_DIR, MODEL_UPLOAD_LIMIT } from './config.mjs'
+import {
+  CELLFORGE_MODEL_DIR,
+  DEMO_MODELS,
+  LOCAL_MODEL_DIR,
+  MODEL_UPLOAD_LIMIT,
+  UPLOAD_CACHE_DIR,
+  UPLOAD_TRASH_DIR,
+  UPLOAD_WORK_DIR,
+} from './config.mjs'
 import { readRawBody, sanitizeFileName } from './http-utils.mjs'
 
 export async function getDemoModels() {
@@ -47,13 +55,28 @@ export async function importLocalModel(request, url) {
   const buffer = await readRawBody(request, MODEL_UPLOAD_LIMIT)
   validateModelBuffer(buffer, ext)
 
-  await mkdir(LOCAL_MODEL_DIR, { recursive: true })
+  await Promise.all([
+    mkdir(LOCAL_MODEL_DIR, { recursive: true }),
+    mkdir(UPLOAD_WORK_DIR, { recursive: true }),
+    mkdir(UPLOAD_CACHE_DIR, { recursive: true }),
+    mkdir(UPLOAD_TRASH_DIR, { recursive: true }),
+  ])
   const baseName = fileName.replace(/\.(?:glb|gltf)$/i, '') || 'local-model'
   const modelId = sanitizeModelId(`local-${Date.now()}-${baseName}`)
   const targetName = `${modelId}.${ext}`
+  const workPath = path.join(UPLOAD_WORK_DIR, `${targetName}.uploading`)
+  const cachePath = path.join(UPLOAD_CACHE_DIR, targetName)
   const targetPath = path.join(LOCAL_MODEL_DIR, targetName)
 
-  await writeFile(targetPath, buffer)
+  try {
+    await writeFile(workPath, buffer)
+    validateModelBuffer(await readFile(workPath), ext)
+    await rename(workPath, cachePath)
+    await copyFile(cachePath, targetPath)
+  } catch (error) {
+    await moveFailedUpload(workPath, targetName)
+    throw error
+  }
 
   return {
     id: modelId,
@@ -62,6 +85,12 @@ export async function importLocalModel(request, url) {
     fileSize: buffer.length,
     provider: 'Local GLB',
     status: 'success',
+    cacheState: {
+      workDir: UPLOAD_WORK_DIR,
+      cacheDir: UPLOAD_CACHE_DIR,
+      modelDir: LOCAL_MODEL_DIR,
+      trashDir: UPLOAD_TRASH_DIR,
+    },
     modelUrl: `/api/3d/local-model/${encodeURIComponent(targetName)}`,
   }
 }
@@ -120,6 +149,15 @@ async function streamModelFile(filePath, response) {
   })
 
   createReadStream(filePath).pipe(response)
+}
+
+async function moveFailedUpload(workPath, targetName) {
+  try {
+    await access(workPath)
+    await rename(workPath, path.join(UPLOAD_TRASH_DIR, `${targetName}.failed-${Date.now()}`))
+  } catch {
+    // Ignore cleanup failures; upload validation error is more useful to callers.
+  }
 }
 
 export async function inspectLocalModel(fileName) {

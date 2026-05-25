@@ -16,6 +16,7 @@ gltfLoader.setDRACOLoader(dracoLoader);
 export type LoadStatus = 'idle' | 'downloading' | 'parsing' | 'done' | 'error';
 
 export interface LoadEntry {
+  url: string;
   status: LoadStatus;
   /** 0 ~ 1 */
   progress: number;
@@ -24,10 +25,12 @@ export interface LoadEntry {
   error?: unknown;
   promise: Promise<GLTF>;
   listeners: Set<() => void>;
+  lastUsedAt: number;
 }
 
 const cache = new Map<string, LoadEntry>();
 const cacheListeners = new Set<() => void>();
+const MAX_PARSED_MODELS = 3;
 
 function notifyEntry(entry: LoadEntry) {
   entry.listeners.forEach((fn) => fn());
@@ -101,48 +104,39 @@ export interface LoadOptions {
  */
 export function loadModel(url: string, options: LoadOptions): LoadEntry {
   const existing = cache.get(url);
-  if (existing) return existing;
+  if (existing) {
+    existing.lastUsedAt = Date.now();
+    return existing;
+  }
 
   const entry: LoadEntry = {
+    url,
     status: 'downloading',
     progress: 0,
     listeners: new Set(),
+    lastUsedAt: Date.now(),
     promise: Promise.resolve() as unknown as Promise<GLTF>,
   };
   cache.set(url, entry);
   notifyCache();
 
-  entry.promise = (async () => {
-    try {
-      const buffer = await fetchWithProgress(url, options.fileSize ?? 0, (loaded, total) => {
-        entry.status = 'downloading';
-        entry.progress = Math.min(0.95, (loaded / Math.max(1, total)) * 0.95);
-        notifyEntry(entry);
-      });
-      entry.buffer = buffer;
-      entry.status = 'parsing';
-      entry.progress = 0.97;
-      notifyEntry(entry);
-
-      const gltf = await parseGLTF(buffer, '');
-      entry.gltf = gltf;
-      entry.status = 'done';
-      entry.progress = 1;
-      notifyEntry(entry);
-      return gltf;
-    } catch (error) {
-      entry.status = 'error';
-      entry.error = error;
-      notifyEntry(entry);
-      throw error;
-    }
-  })();
-
+  startEntryLoad(entry, options);
   return entry;
 }
 
 export function getLoadEntry(url: string): LoadEntry | undefined {
-  return cache.get(url);
+  const entry = cache.get(url);
+  if (entry) entry.lastUsedAt = Date.now();
+  return entry;
+}
+
+export function retryModel(url: string, options: LoadOptions): LoadEntry {
+  const existing = cache.get(url);
+  if (existing?.status === 'error') {
+    startEntryLoad(existing, options);
+    return existing;
+  }
+  return loadModel(url, options);
 }
 
 /** 后台静默预加载（不会抛错） */
@@ -165,4 +159,81 @@ export function cloneScene(gltf: GLTF): THREE.Group {
     }
   });
   return cloned;
+}
+
+function trimParsedCache(activeUrl: string) {
+  const parsedEntries = [...cache.values()]
+    .filter((entry) => entry.status === 'done' && entry.gltf && entry.url !== activeUrl)
+    .sort((a, b) => a.lastUsedAt - b.lastUsedAt);
+
+  while (parsedEntries.length >= MAX_PARSED_MODELS) {
+    const entry = parsedEntries.shift();
+    if (!entry) break;
+    disposeGLTF(entry.gltf);
+    cache.delete(entry.url);
+    notifyEntry(entry);
+  }
+}
+
+function startEntryLoad(entry: LoadEntry, options: LoadOptions) {
+  entry.status = 'downloading';
+  entry.progress = 0;
+  entry.buffer = undefined;
+  entry.gltf = undefined;
+  entry.error = undefined;
+  entry.lastUsedAt = Date.now();
+  notifyEntry(entry);
+
+  entry.promise = (async () => {
+    try {
+      const buffer = await fetchWithProgress(entry.url, options.fileSize ?? 0, (loaded, total) => {
+        entry.status = 'downloading';
+        entry.progress = Math.min(0.95, (loaded / Math.max(1, total)) * 0.95);
+        notifyEntry(entry);
+      });
+      entry.buffer = buffer;
+      entry.status = 'parsing';
+      entry.progress = 0.97;
+      notifyEntry(entry);
+
+      const gltf = await parseGLTF(buffer, '');
+      entry.buffer = undefined;
+      entry.gltf = gltf;
+      entry.status = 'done';
+      entry.progress = 1;
+      trimParsedCache(entry.url);
+      notifyEntry(entry);
+      return gltf;
+    } catch (error) {
+      entry.status = 'error';
+      entry.error = error;
+      notifyEntry(entry);
+      throw error;
+    }
+  })();
+}
+
+function disposeGLTF(gltf?: GLTF) {
+  if (!gltf?.scene) return;
+  const geometries = new Set<THREE.BufferGeometry>();
+  const materials = new Set<THREE.Material>();
+  const textures = new Set<THREE.Texture>();
+
+  gltf.scene.traverse((obj) => {
+    if (!(obj as THREE.Mesh).isMesh) return;
+    const mesh = obj as THREE.Mesh;
+    if (mesh.geometry) geometries.add(mesh.geometry);
+    const materialList = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    for (const material of materialList) {
+      if (!material) continue;
+      materials.add(material);
+      for (const value of Object.values(material)) {
+        if (value instanceof THREE.Texture) textures.add(value);
+      }
+    }
+  });
+
+  geometries.forEach((geometry) => geometry.dispose());
+  textures.forEach((texture) => texture.dispose());
+  materials.forEach((material) => material.dispose());
 }

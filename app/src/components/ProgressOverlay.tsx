@@ -5,6 +5,7 @@ interface Props {
   status: LoadStatus;
   modelName: string;
   error?: unknown;
+  onRetry?: () => void;
 }
 
 const STATUS_TEXT: Record<LoadStatus, string> = {
@@ -15,7 +16,7 @@ const STATUS_TEXT: Record<LoadStatus, string> = {
   error: '加载失败',
 };
 
-export function ProgressOverlay({ progress, status, modelName, error }: Props) {
+export function ProgressOverlay({ progress, status, modelName, error, onRetry }: Props) {
   const percent = Math.round(progress * 100);
   return (
     <div className="progress-overlay" role="status" aria-live="polite">
@@ -39,6 +40,11 @@ export function ProgressOverlay({ progress, status, modelName, error }: Props) {
         {status === 'error' && (
           <div className="progress-error">
             {(error as Error | undefined)?.message ?? '请刷新页面再试一次。'}
+            {onRetry && (
+              <button type="button" onClick={onRetry}>
+                重新加载
+              </button>
+            )}
           </div>
         )}
       </div>

@@ -14,6 +14,12 @@ export interface CellModel {
     text: string;
     habitat: string;
   };
+  concepts?: {
+    term: string;
+    level: '初中' | '高中';
+    explanation: string;
+    visualHint: string;
+  }[];
   modelUrl: string;
   imageUrl: string;
   /** 经过 Draco 压缩后的真实文件大小（字节），用于估算下载进度 */
@@ -59,6 +65,20 @@ export const MODELS: CellModel[] = [
       text: '从苔藓到参天大树，植物细胞无处不在地构筑着大地的绿色。',
       habitat: '陆生植物 · 水生藻类 · 蕨类',
     },
+    concepts: [
+      {
+        term: 'ATP',
+        level: '高中',
+        explanation: '细胞临时储存和转移能量的小分子，像一枚可以反复充放电的能量硬币。',
+        visualHint: '光能 -> 葡萄糖 -> ATP -> 生命活动',
+      },
+      {
+        term: '光合作用',
+        level: '初中',
+        explanation: '叶绿体利用光能，把二氧化碳和水合成有机物，同时释放氧气。',
+        visualHint: '光 + CO2 + H2O -> 糖 + O2',
+      },
+    ],
     modelUrl: asset('models/plant-cell.glb'),
     imageUrl: asset('images/plant-cell.jpg'),
     fileSize: 6030628,
@@ -90,6 +110,20 @@ export const MODELS: CellModel[] = [
       text: '从单细胞原生动物到鲸鱼，所有动物的身体都是由动物细胞组成。',
       habitat: '哺乳动物 · 鱼类 · 昆虫 · 鸟类',
     },
+    concepts: [
+      {
+        term: 'ATP',
+        level: '高中',
+        explanation: '线粒体把营养物质中的能量转移到 ATP 中，供肌肉收缩、物质运输等活动使用。',
+        visualHint: '葡萄糖 + O2 -> ATP + CO2 + H2O',
+      },
+      {
+        term: '细胞膜',
+        level: '初中',
+        explanation: '细胞膜像边界和门卫，既保护细胞，也选择性地控制物质进出。',
+        visualHint: '外界物质 <-> 细胞膜 <-> 细胞内部',
+      },
+    ],
     modelUrl: asset('models/animal-cell.glb'),
     imageUrl: asset('images/animal-cell.jpg'),
     fileSize: 10673912,
@@ -120,6 +154,20 @@ export const MODELS: CellModel[] = [
       text: '每一滴血液里，都游弋着千万个白细胞，全天候巡逻你的身体。',
       habitat: '血液 · 骨髓 · 脾脏 · 淋巴结',
     },
+    concepts: [
+      {
+        term: '吞噬作用',
+        level: '初中',
+        explanation: '部分白细胞会包围并吞入病原体，再用细胞内的酶将其分解。',
+        visualHint: '识别 -> 包围 -> 吞入 -> 分解',
+      },
+      {
+        term: '免疫应答',
+        level: '高中',
+        explanation: '免疫细胞通过识别抗原、传递信号和清除目标，帮助身体维持稳态。',
+        visualHint: '抗原 -> 白细胞 -> 免疫信号 -> 清除',
+      },
+    ],
     modelUrl: asset('models/white-blood-cell.glb'),
     imageUrl: asset('images/white-blood-cell.jpg'),
     fileSize: 10812336,
@@ -150,6 +198,20 @@ export const MODELS: CellModel[] = [
       text: '从蝴蝶的复眼到人类的大脑皮层，神经元让动物拥有了感觉与思考的能力。',
       habitat: '中枢神经系统 · 周围神经 · 感觉器官',
     },
+    concepts: [
+      {
+        term: '神经冲动',
+        level: '高中',
+        explanation: '神经元膜两侧电位变化形成电信号，沿轴突快速传递到远端。',
+        visualHint: '刺激 -> 电位变化 -> 轴突传导 -> 突触',
+      },
+      {
+        term: '突触',
+        level: '高中',
+        explanation: '一个神经元通过突触释放神经递质，把信息传给下一个细胞。',
+        visualHint: '电信号 -> 递质 -> 受体 -> 新信号',
+      },
+    ],
     modelUrl: asset('models/neuron.glb'),
     imageUrl: asset('images/neuron.jpg'),
     fileSize: 7359744,
@@ -179,6 +241,20 @@ export const MODELS: CellModel[] = [
       text: '从最古老的细菌到你身上的每一个细胞，DNA 都在静静守护着生命的密码。',
       habitat: '细菌 · 古菌 · 真核生物 · 病毒（部分）',
     },
+    concepts: [
+      {
+        term: '碱基互补配对',
+        level: '高中',
+        explanation: 'DNA 中 A 总与 T 配对，G 总与 C 配对，这是复制和转录准确进行的基础。',
+        visualHint: 'A-T / G-C',
+      },
+      {
+        term: '遗传信息',
+        level: '初中',
+        explanation: 'DNA 上的碱基排列顺序记录遗传信息，指导生物体形成和维持生命活动。',
+        visualHint: '碱基顺序 -> 蛋白质 -> 性状',
+      },
+    ],
     modelUrl: asset('models/dna.glb'),
     imageUrl: asset('images/dna.jpg'),
     fileSize: 9977020,

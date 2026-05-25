@@ -10,6 +10,7 @@ import {
   workflowJobToCellModel,
 } from '../services/fusionApi';
 import type { WorkflowJob } from '../services/fusionApi';
+import { trackEvent } from '../lib/analytics';
 
 interface Props {
   id?: string;
@@ -80,11 +81,23 @@ export function GenerationPanel({
             onSelect(model.id);
             setBusy(false);
             setStatus('建模完成：结果已缓存并加入模型索引。');
+            trackEvent('workflow_job_completed', {
+              jobId: job.id,
+              template: job.template,
+              provider: job.provider,
+              modelId: model.id,
+            });
           }
 
           if (job.status === 'failed') {
             setBusy(false);
             setStatus(job.error || job.stage || '生成任务失败。');
+            trackEvent('workflow_job_failed', {
+              jobId: job.id,
+              template: job.template,
+              provider: job.provider,
+              message: job.error || job.stage,
+            });
           }
         })
         .catch((error) => {
@@ -118,13 +131,27 @@ export function GenerationPanel({
   const handleUpload = async (file: File) => {
     setBusy(true);
     setStatus(`正在导入 ${file.name}...`);
+    trackEvent('local_model_upload_start', {
+      fileName: file.name,
+      fileSize: file.size,
+      fileType: file.type || 'model/gltf-binary',
+    });
     try {
       const model = await uploadLocalModel(file);
       onModelCreated(model);
       onSelect(model.id);
       setStatus(`${model.name} 已导入并加入模型列表。`);
+      trackEvent('local_model_upload_completed', {
+        modelId: model.id,
+        fileName: file.name,
+        fileSize: file.size,
+      });
     } catch (error) {
       setStatus(error instanceof Error ? error.message : '本地模型导入失败。');
+      trackEvent('local_model_upload_failed', {
+        fileName: file.name,
+        message: error instanceof Error ? error.message : 'unknown',
+      });
     } finally {
       setBusy(false);
       if (modelInputRef.current) modelInputRef.current.value = '';
@@ -144,6 +171,11 @@ export function GenerationPanel({
     });
     setStatus('已接收上传图片，请确认结构方向后进入图生 3D。');
     setActiveJob(null);
+    trackEvent('workflow_reference_upload', {
+      fileName: file.name,
+      fileSize: file.size,
+      template,
+    });
     if (imageInputRef.current) imageInputRef.current.value = '';
   };
 
@@ -170,6 +202,12 @@ export function GenerationPanel({
     });
     setActiveJob(null);
     setStatus(`${getImageProviderName(imageProvider)} 已产出参考图 v${nextVersion}，请检查后选择重试或确认建模。`);
+    trackEvent('workflow_reference_generate', {
+      template,
+      imageProvider,
+      promptLength: prompt.trim().length,
+      version: nextVersion,
+    });
   };
 
   const handleAcceptReference = () => {
@@ -178,12 +216,18 @@ export function GenerationPanel({
       return;
     }
     setStatus('参考图已接收，可点击“确认图生建模”提交 3D 任务。');
+    trackEvent('workflow_reference_accept', {
+      template,
+      source: referenceImage.source,
+      uploaded: referenceImage.uploaded,
+    });
   };
 
   const handleRejectReference = () => {
     setReferenceImage(null);
     setActiveJob(null);
     setStatus('已退回参考图，请修改描述后重新生成，或上传一张图片。');
+    trackEvent('workflow_reference_reject', { template });
   };
 
   const handleConfirmModeling = async () => {
@@ -194,6 +238,11 @@ export function GenerationPanel({
 
     setBusy(true);
     setStatus('已确认参考图，正在创建图生 3D 建模任务...');
+    trackEvent('workflow_model_confirm', {
+      template,
+      provider: modelProvider,
+      uploaded: referenceImage.uploaded,
+    });
     try {
       const fallbackPrompt = referenceImage.uploaded
         ? `${referenceImage.title} 生物 3D 教学模型`
@@ -206,8 +255,19 @@ export function GenerationPanel({
       setActiveJob(job);
       setJobHistory((current) => mergeJobs(job, current));
       setStatus(job.stage);
+      trackEvent('workflow_job_created', {
+        jobId: job.id,
+        template: job.template,
+        provider: job.provider,
+        costEstimateCny: job.costEstimateCny,
+      });
     } catch (error) {
       setStatus(error instanceof Error ? error.message : '文本生成任务创建失败。');
+      trackEvent('workflow_job_failed', {
+        template,
+        provider: modelProvider,
+        message: error instanceof Error ? error.message : 'unknown',
+      });
       setBusy(false);
     }
   };
@@ -252,6 +312,7 @@ export function GenerationPanel({
         <textarea
           value={prompt}
           maxLength={600}
+          onFocus={() => trackEvent('workflow_prompt_focus', { template })}
           onChange={(event) => setPrompt(event.target.value)}
           placeholder="例如：动物细胞 3D 教学模型，突出线粒体、细胞核和细胞膜"
         />

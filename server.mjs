@@ -5,12 +5,16 @@ import {
   CELLFORGE_MODEL_DIR,
   LOCAL_MODEL_DIR,
   TENCENT_HUNYUAN_CONFIGURED,
+  UPLOAD_CACHE_DIR,
+  UPLOAD_TRASH_DIR,
+  UPLOAD_WORK_DIR,
   WORKFLOW_STORE_DIR,
 } from './server/config.mjs'
 import { readJsonBody, sendJson, setCorsHeaders } from './server/http-utils.mjs'
 import { createWorkflowJob, getWorkflowJob, listWorkflowJobs } from './server/job-store.mjs'
 import { getDemoModels, importLocalModel, serveDemoModel, serveLocalModel } from './server/model-store.mjs'
 import { startWorkflowJob } from './server/workflow-runner.mjs'
+import { appendAnalyticsEvents } from './server/analytics-store.mjs'
 
 const server = http.createServer(async (request, response) => {
   try {
@@ -29,6 +33,9 @@ const server = http.createServer(async (request, response) => {
         ok: true,
         service: 'LearningCell fusion API',
         localModelDir: LOCAL_MODEL_DIR,
+        uploadWorkDir: UPLOAD_WORK_DIR,
+        uploadCacheDir: UPLOAD_CACHE_DIR,
+        uploadTrashDir: UPLOAD_TRASH_DIR,
         cellforgeModelDir: CELLFORGE_MODEL_DIR,
         workflowStoreDir: WORKFLOW_STORE_DIR,
         providers: {
@@ -64,6 +71,11 @@ const server = http.createServer(async (request, response) => {
       const job = await createWorkflowJob(await readJsonBody(request))
       startWorkflowJob(job)
       sendJson(response, 202, { job })
+      return
+    }
+
+    if (request.method === 'POST' && url.pathname === '/api/analytics/events') {
+      sendJson(response, 202, await appendAnalyticsEvents(await readJsonBody(request)))
       return
     }
 

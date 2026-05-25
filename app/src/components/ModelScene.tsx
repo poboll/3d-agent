@@ -61,7 +61,7 @@ export function ModelScene({
 
   return (
     <group ref={groupRef} scale={scale} rotation={[0, initialRotationY, 0]}>
-      <primitive object={centeredScene} />
+      <primitive object={centeredScene} dispose={null} />
     </group>
   );
 }

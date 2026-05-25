@@ -4,7 +4,7 @@ import { Canvas } from '@react-three/fiber';
 import { ContactShadows, Environment, Lightformer, OrbitControls } from '@react-three/drei';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import type { CellModel } from '../data/models';
-import { useModel } from '../hooks/useModel';
+import { reloadModel, useModel } from '../hooks/useModel';
 import { ModelScene } from './ModelScene';
 import { ProgressOverlay } from './ProgressOverlay';
 
@@ -151,6 +151,27 @@ export function ModelViewer({ model }: Props) {
         <em>{model.whereItOccurs.habitat}</em>
       </article>
 
+      {model.concepts?.length ? (
+        <aside className="stage-annotation stage-concept-card" aria-label="概念图解">
+          <header>
+            <span>概念图解</span>
+            <small>初高中</small>
+          </header>
+          <div className="concept-list">
+            {model.concepts.slice(0, 2).map((concept) => (
+              <article key={concept.term}>
+                <div>
+                  <strong>{concept.term}</strong>
+                  <i>{concept.level}</i>
+                </div>
+                <p>{concept.explanation}</p>
+                <em>{concept.visualHint}</em>
+              </article>
+            ))}
+          </div>
+        </aside>
+      ) : null}
+
       <aside className="stage-order-card" aria-label="观察顺序">
         <header>
           <span>观察顺序</span>
@@ -224,6 +245,7 @@ export function ModelViewer({ model }: Props) {
           status={status}
           modelName={model.name}
           error={entry?.error}
+          onRetry={() => reloadModel(model.modelUrl, { fileSize: model.fileSize })}
         />
       )}
     </div>
