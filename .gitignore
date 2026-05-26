@@ -13,6 +13,7 @@ artifacts/
 .reference-cache/
 .reference-trash/
 .workflow-store/
+.qa-screenshots/
 .idea/
 .vscode/
 

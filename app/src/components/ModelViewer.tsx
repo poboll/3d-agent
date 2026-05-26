@@ -195,7 +195,9 @@ export function ModelViewer({ model }: Props) {
           setModelFocus(false);
           setClueOpen(true);
         }}
-        onPointerLeave={() => setClueOpen(false)}
+        onPointerLeave={() => {
+          if (!cluePinned) setClueOpen(false);
+        }}
       >
         <button type="button" aria-expanded={clueOpen || cluePinned} onClick={() => setCluePinned((value) => !value)}>
           <span>提问线索</span>

@@ -397,7 +397,7 @@ body {
 .layout {
   display: grid;
   grid-template-columns: minmax(292px, 330px) minmax(0, 1fr);
-  grid-template-rows: minmax(0, 1fr) clamp(224px, 24vh, 272px);
+  grid-template-rows: minmax(0, 1fr) clamp(216px, 23vh, 258px);
   grid-template-areas:
     "controls stage"
     "specimens specimens";
@@ -880,7 +880,7 @@ body {
   grid-area: stage;
   position: relative;
   min-height: 0;
-  overflow: hidden;
+  overflow: visible;
   border: 1px solid rgba(28, 28, 26, 0.19);
   border-radius: 4px;
   background:
@@ -899,11 +899,11 @@ body {
 .stage::before {
   content: '';
   position: absolute;
-  width: min(52vw, 700px);
-  aspect-ratio: 1.38;
+  width: min(55vw, 760px);
+  aspect-ratio: 1.43;
   left: 50%;
   top: 50.5%;
-  background-image: url("data:image/svg+xml,%3Csvg width='700' height='506' viewBox='0 0 700 506' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M356 60C537 60 630 158 630 258C630 384 490 455 350 455C193 455 82 376 82 267C82 158 210 70 362 65' fill='none' stroke='%231c1c1a' stroke-opacity='.15' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg width='760' height='532' viewBox='0 0 760 532' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M386 69C556 62 680 156 687 267C695 392 532 470 361 462C199 454 74 364 82 254C90 146 221 78 399 70' fill='none' stroke='%231c1c1a' stroke-opacity='.14' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-position: center;
   background-repeat: no-repeat;
   background-size: contain;
@@ -930,6 +930,7 @@ body {
   z-index: 1;
   width: 100%;
   height: 100%;
+  overflow: hidden;
 }
 
 .viewer.is-stage-expanded {
@@ -956,6 +957,7 @@ body {
   position: absolute;
   inset: 0;
   z-index: 3;
+  pointer-events: none;
 }
 
 .viewer-canvas-zone {
@@ -963,6 +965,7 @@ body {
   inset: 0;
   z-index: 3;
   overflow: visible;
+  pointer-events: auto;
 }
 
 .viewer canvas {
@@ -995,7 +998,7 @@ body {
 }
 
 .viewer.is-model-focus .viewer-canvas-zone {
-  z-index: 30;
+  z-index: 50;
   filter: drop-shadow(0 22px 38px rgba(28, 28, 26, 0.16));
 }
 
@@ -1003,15 +1006,20 @@ body {
 .viewer.is-model-focus .stage-learning-panel,
 .viewer.is-model-focus .stage-note-panel,
 .viewer.is-model-focus .stage-concept-card {
-  z-index: 2;
+  z-index: 1;
 }
 
 .viewer.is-model-focus .viewer-interaction-frame {
-  z-index: 32;
+  z-index: 50;
 }
 
 .viewer.is-model-focus .stage-order-card {
-  z-index: 6;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.viewer.is-model-focus .stage-question-drawer {
+  z-index: 1;
   pointer-events: none;
 }
 
@@ -1040,7 +1048,7 @@ body {
 .stage-info-main {
   top: 18px;
   left: 22px;
-  width: min(190px, 21%);
+  width: min(186px, 20%);
   padding: 8px 10px;
 }
 
@@ -1096,7 +1104,7 @@ body {
   left: 22px;
   right: 22px;
   bottom: 14px;
-  z-index: 34;
+  z-index: 58;
   min-height: 32px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -1144,8 +1152,8 @@ body {
   right: 22px;
   top: 18px;
   z-index: 9;
-  width: min(238px, 25%);
-  padding: 10px 11px 11px;
+  width: min(198px, 22%);
+  padding: 9px 10px 10px;
   border: 1px solid rgba(28, 31, 27, 0.12);
   border-radius: 4px;
   background:
@@ -1186,7 +1194,7 @@ body {
   margin: 8px 0 0;
   padding: 0;
   display: grid;
-  gap: 6px;
+  gap: 5px;
   list-style: none;
 }
 
@@ -1210,7 +1218,7 @@ body {
 .stage-order-card strong {
   color: var(--sumi);
   font-family: var(--font-serif);
-  font-size: 10.4px;
+  font-size: 10px;
   font-weight: 600;
   line-height: 1.15;
 }
@@ -1221,7 +1229,7 @@ body {
   overflow: hidden;
   color: var(--ink-mute);
   font-family: var(--font-sans);
-  font-size: 8.7px;
+  font-size: 8.4px;
   line-height: 1.32;
   letter-spacing: 0;
   -webkit-line-clamp: 1;
@@ -1330,24 +1338,26 @@ body {
 }
 
 .stage-question-drawer {
-  width: min(214px, 23%);
-  bottom: 54px;
+  width: min(184px, 21%);
+  right: 12px;
+  bottom: 58px;
   z-index: 36;
   max-height: none;
   overflow: visible;
   display: grid;
-  grid-template-columns: 46px minmax(0, 1fr);
-  transform: translateX(calc(100% - 46px));
+  grid-template-columns: minmax(0, 1fr) 40px;
+  transform: translateX(calc(100% - 40px));
   transition: transform 0.24s ease, filter 0.2s ease;
 }
 
 .stage-question-drawer::before {
   content: '';
   position: absolute;
-  left: -14px;
+  left: auto;
+  right: -8px;
   top: -14px;
   bottom: -14px;
-  width: 68px;
+  width: 62px;
 }
 
 .stage-question-drawer:hover,
@@ -1359,15 +1369,17 @@ body {
 .stage-question-drawer button {
   position: relative;
   z-index: 1;
-  width: 46px;
-  min-height: 108px;
+  width: 40px;
+  min-height: 112px;
   align-self: stretch;
   justify-content: center;
   flex-direction: column;
   gap: 7px;
-  padding: 9px 3px;
-  border-radius: 4px 0 0 4px;
+  padding: 8px 3px;
+  border-radius: 0 4px 4px 0;
   box-shadow: 0 10px 30px -28px rgba(28, 31, 27, 0.46);
+  grid-column: 2;
+  grid-row: 1;
 }
 
 .stage-question-drawer:hover {
@@ -1397,11 +1409,11 @@ body {
   position: relative;
   z-index: 1;
   margin: 0;
-  min-height: 108px;
+  min-height: 112px;
   padding: 11px 10px 10px;
   border: 1px solid rgba(28, 31, 27, 0.12);
-  border-left: 0;
-  border-radius: 0 4px 4px 0;
+  border-right: 0;
+  border-radius: 4px 0 0 4px;
   background:
     radial-gradient(140px 90px at 92% 20%, rgba(139, 58, 46, 0.045), transparent 72%),
     repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.018) 0 1px, transparent 1px 16px),
@@ -1409,6 +1421,8 @@ body {
   opacity: 0;
   box-shadow: 0 18px 46px -38px rgba(28, 31, 27, 0.46);
   transition: opacity 0.2s ease;
+  grid-column: 1;
+  grid-row: 1;
 }
 
 .stage-question-drawer:hover .question-clue,
@@ -1428,8 +1442,8 @@ body {
   margin-top: 7px;
   color: rgba(43, 42, 38, 0.82);
   font-family: "Klee One", "LXGW WenKai", "STKaiti", "KaiTi", var(--font-serif);
-  font-size: 9.2px;
-  line-height: 1.5;
+  font-size: 9px;
+  line-height: 1.54;
   letter-spacing: 0.025em;
 }
 
@@ -1511,7 +1525,7 @@ body {
   left: 22px;
   bottom: 62px;
   z-index: 4;
-  width: min(168px, 16%);
+  width: min(148px, 15%);
   max-height: 124px;
   padding: 4px 0 4px 12px;
   overflow-y: auto;
@@ -1557,8 +1571,8 @@ body {
   right: 22px;
   bottom: 96px;
   z-index: 5;
-  width: min(224px, 24%);
-  padding: 10px 11px 11px;
+  width: min(194px, 21%);
+  padding: 9px 10px 10px;
   border: 1px solid rgba(28, 31, 27, 0.1);
   border-radius: 4px;
   background:
@@ -1626,7 +1640,7 @@ body {
   margin-top: 3px;
   overflow: hidden;
   color: var(--ink-mute);
-  font-size: 9.2px;
+  font-size: 8.9px;
   line-height: 1.45;
   letter-spacing: 0;
   -webkit-line-clamp: 2;
@@ -1825,11 +1839,11 @@ body {
   position: relative;
   min-height: 0;
   display: grid;
-  grid-template-columns: 60px minmax(0, 1fr);
+  grid-template-columns: 56px minmax(0, 1fr);
   gap: 8px;
   align-items: stretch;
   margin-bottom: 0;
-  padding: 3px 9px 6px 0;
+  padding: 2px 9px 4px 0;
   border-right: 1px solid var(--hairline-2);
   overflow: visible;
 }
@@ -1837,7 +1851,7 @@ body {
 .specimen-summary::after {
   content: 'EUKARYOTA / PLANTAE';
   position: absolute;
-  left: 68px;
+  left: 64px;
   right: 9px;
   bottom: 3px;
   overflow: hidden;
@@ -1860,8 +1874,8 @@ body {
 
 .specimen-summary-image {
   position: relative;
-  width: 56px;
-  height: 56px;
+  width: 52px;
+  height: 52px;
   min-height: 0;
   align-self: start;
   border: 1px solid rgba(28, 28, 26, 0.16);
@@ -1880,7 +1894,7 @@ body {
 .specimen-location-note {
   flex: 0 0 auto;
   min-height: 0;
-  padding: 2px 1px 0;
+  padding: 1px 1px 0;
   border-left: 0;
   text-align: center;
 }
@@ -1907,9 +1921,9 @@ body {
   margin-top: 4px;
   overflow: hidden;
   color: var(--sumi-soft);
-  font-size: 9px;
-  font-weight: 600;
-  line-height: 1.32;
+  font-size: 9.4px;
+  font-weight: 700;
+  line-height: 1.34;
   display: -webkit-box;
   -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
@@ -1956,8 +1970,8 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: stretch;
-  gap: 2px;
-  padding-bottom: 8px;
+  gap: 1px;
+  padding-bottom: 7px;
 }
 
 .specimen-summary-copy span {
@@ -1978,7 +1992,7 @@ body {
   margin-top: 2px;
   color: var(--sumi);
   font-family: var(--font-serif);
-  font-size: 14px;
+  font-size: 13.6px;
   font-weight: 600;
   letter-spacing: 0.04em;
 }
@@ -1990,10 +2004,10 @@ body {
   min-height: 0;
   max-height: none;
   overflow-y: auto;
-  color: var(--ink-mute);
-  font-size: 9.4px;
-  line-height: 15px;
-  padding: 0 5px 1px 0;
+  color: rgba(43, 42, 38, 0.76);
+  font-size: 9.25px;
+  line-height: 14px;
+  padding: 0 8px 1px 0;
   background-image: repeating-linear-gradient(
     to bottom,
     transparent 0,
@@ -2002,12 +2016,12 @@ body {
     rgba(28, 31, 27, 0.05) 15px
   );
   background-position: 0 14px;
-  scrollbar-color: rgba(28, 28, 26, 0.26) transparent;
+  scrollbar-color: rgba(139, 58, 46, 0.42) transparent;
   scrollbar-width: thin;
 }
 
 .specimen-summary-copy p::-webkit-scrollbar {
-  width: 5px;
+  width: 3px;
 }
 
 .specimen-summary-copy p::-webkit-scrollbar-track {
@@ -2015,17 +2029,16 @@ body {
 }
 
 .specimen-summary-copy p::-webkit-scrollbar-thumb {
-  border: 2px solid transparent;
+  border: 0;
   border-radius: 0;
-  background: rgba(28, 28, 26, 0.26);
-  background-clip: content-box;
+  background: linear-gradient(180deg, rgba(139, 58, 46, 0.52), rgba(89, 111, 85, 0.28));
 }
 
 .specimen-learning {
   min-height: 0;
   display: flex;
   align-items: stretch;
-  gap: 8px;
+  gap: 7px;
   overflow: hidden;
 }
 
@@ -2068,7 +2081,7 @@ body {
 .index-card {
   display: flex;
   flex-direction: column;
-  flex: 1 1 55%;
+  flex: 1 1 51%;
   min-height: 0;
   overflow: hidden;
 }
@@ -2099,7 +2112,7 @@ body {
   z-index: 1;
   color: var(--ink-whisper);
   font-family: var(--font-mono);
-  font-size: 7px;
+  font-size: 6.8px;
   letter-spacing: 0.08em;
   pointer-events: none;
 }
@@ -2129,14 +2142,14 @@ body {
 
 .specimen-search input {
   width: 100%;
-  min-height: 24px;
+  min-height: 23px;
   border: 1px solid rgba(28, 31, 27, 0.13);
   border-radius: 3px;
   background:
     linear-gradient(90deg, rgba(255, 250, 240, 0.72), rgba(251, 250, 244, 0.48)),
     repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.018) 0 1px, transparent 1px 12px);
   color: var(--sumi-soft);
-  font-size: 10.4px;
+  font-size: 10px;
   outline: none;
   padding: 0 8px 0 64px;
   box-shadow: inset 0 1px 0 rgba(255, 250, 240, 0.48);
@@ -2154,27 +2167,26 @@ body {
   width: 100%;
   min-height: 0;
   margin: 0;
-  padding: 0 4px 0 0;
+  padding: 0 5px 0 0;
   list-style: none;
   display: flex;
   flex-wrap: wrap;
   align-content: start;
-  gap: 5px;
+  gap: 4px;
   overflow-x: hidden;
   overflow-y: auto;
-  scrollbar-color: rgba(28, 28, 26, 0.26) transparent;
+  scrollbar-color: rgba(139, 58, 46, 0.42) transparent;
   scrollbar-width: thin;
 }
 
 .cell-list::-webkit-scrollbar {
-  width: 5px;
+  width: 3px;
 }
 
 .cell-list::-webkit-scrollbar-thumb {
-  border: 2px solid transparent;
+  border: 0;
   border-radius: 0;
-  background: rgba(28, 28, 26, 0.26);
-  background-clip: content-box;
+  background: linear-gradient(180deg, rgba(139, 58, 46, 0.52), rgba(89, 111, 85, 0.28));
 }
 
 .cell-list::-webkit-scrollbar-track {
@@ -2183,7 +2195,7 @@ body {
 
 .cell-list li {
   min-width: 0;
-  min-height: 35px;
+  min-height: 34px;
   flex: 1 1 calc(50% - 3px);
   max-width: calc(50% - 3px);
 }
@@ -2204,7 +2216,7 @@ body {
 .specimen-art-card {
   position: relative;
   display: flex;
-  flex: 0 1 24%;
+  flex: 0 1 27%;
   flex-direction: column;
   gap: 5px;
   overflow: hidden;
@@ -2233,8 +2245,8 @@ body {
   flex: 1 1 auto;
   min-height: 0;
   display: grid;
-  grid-template-columns: 70px minmax(0, 1fr);
-  gap: 8px;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 9px;
   align-items: stretch;
 }
 
@@ -2253,7 +2265,7 @@ body {
 .art-display {
   color: var(--sumi);
   font-family: "Klee One", "LXGW WenKai", "STKaiti", "KaiTi", var(--font-serif);
-  font-size: clamp(13px, 0.92vw, 16px);
+  font-size: clamp(13.5px, 1vw, 17px);
   font-weight: 500;
   line-height: 1.12;
   letter-spacing: 0.02em;
@@ -2265,7 +2277,7 @@ body {
   margin-top: 5px;
   color: var(--vermilion);
   font-family: "Klee One", "LXGW WenKai", "STKaiti", "KaiTi", var(--font-serif);
-  font-size: 8.8px;
+  font-size: 9.1px;
   font-style: italic;
   line-height: 1.35;
 }
@@ -2289,22 +2301,22 @@ body {
   overflow: hidden;
   color: rgba(43, 42, 38, 0.9);
   font-family: "Klee One", "LXGW WenKai", "STKaiti", "KaiTi", var(--font-serif);
-  font-size: clamp(10.2px, 0.72vw, 12px);
+  font-size: clamp(10.4px, 0.8vw, 12.4px);
   font-weight: 400;
-  line-height: 1.45;
+  line-height: 1.5;
   letter-spacing: 0.025em;
   text-wrap: pretty;
   padding-right: 4px;
   display: -webkit-box;
   align-self: center;
-  -webkit-line-clamp: 5;
+  -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
 }
 
 .specimen-habitat-card {
   position: relative;
-  flex: 0 1 21%;
-  min-width: 166px;
+  flex: 0 1 22%;
+  min-width: 176px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -2329,10 +2341,10 @@ body {
   display: flex;
   align-items: center;
   color: rgba(43, 42, 38, 0.9);
-  font-family: "LXGW WenKai", "Klee One", "Songti SC", var(--font-serif);
-  font-size: clamp(11.8px, 0.92vw, 14px);
+  font-family: "Klee One", "LXGW WenKai", "Songti SC", var(--font-serif);
+  font-size: clamp(12.8px, 1vw, 15.4px);
   font-weight: 500;
-  line-height: 1.64;
+  line-height: 1.56;
   letter-spacing: 0.018em;
   text-wrap: pretty;
 }
@@ -2355,11 +2367,11 @@ body {
   position: relative;
   width: 100%;
   min-height: 0;
-  height: 35px;
+  height: 34px;
   display: flex;
   gap: 5px;
   align-items: center;
-  padding: 3px 6px 3px 5px;
+  padding: 3px 5px 3px 5px;
   border: 1px solid rgba(28, 28, 26, 0.065);
   border-radius: 4px;
   background:
@@ -2391,8 +2403,8 @@ body {
 
 .cell-current-mark {
   position: absolute;
-  right: 5px;
-  bottom: 2px;
+  right: 4px;
+  bottom: 1px;
   z-index: 2;
   color: var(--vermilion);
   font-family: var(--font-mono);
@@ -2403,8 +2415,8 @@ body {
 
 .cell-thumb {
   position: relative;
-  width: 20px;
-  height: 20px;
+  width: 19px;
+  height: 19px;
   border: 1px solid rgba(28, 28, 26, 0.1);
   border-radius: 3px;
   background: var(--paper-2);
@@ -2507,7 +2519,7 @@ body {
 .cell-title-row {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   min-width: 0;
 }
 
@@ -2517,7 +2529,7 @@ body {
   overflow: hidden;
   color: var(--sumi);
   font-family: var(--font-serif);
-  font-size: 9.4px;
+  font-size: 9.2px;
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2527,7 +2539,7 @@ body {
   margin-top: 1px;
   overflow: hidden;
   color: var(--ink-mute);
-  font-size: 7.4px;
+  font-size: 7.2px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -2537,7 +2549,7 @@ body {
   align-items: center;
   gap: 3px;
   flex: 0 0 auto;
-  max-width: 52px;
+  max-width: 48px;
   padding: 1px 4px 2px;
   overflow: hidden;
   border-left: 1px solid rgba(139, 58, 46, 0.18);
