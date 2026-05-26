@@ -31,7 +31,7 @@ export interface LoadEntry {
 const cache = new Map<string, LoadEntry>();
 const cacheListeners = new Set<() => void>();
 const MAX_PARSED_MODELS = 3;
-let currentAbortController: AbortController | null = null;
+const loadControllers = new Map<string, AbortController>();
 
 function notifyEntry(entry: LoadEntry) {
   entry.listeners.forEach((fn) => fn());
@@ -181,8 +181,9 @@ function trimParsedCache(activeUrl: string) {
 }
 
 function startEntryLoad(entry: LoadEntry, options: LoadOptions) {
-  currentAbortController?.abort();
-  currentAbortController = new AbortController();
+  loadControllers.get(entry.url)?.abort();
+  const controller = new AbortController();
+  loadControllers.set(entry.url, controller);
   entry.status = 'downloading';
   entry.progress = 0;
   entry.buffer = undefined;
@@ -197,7 +198,7 @@ function startEntryLoad(entry: LoadEntry, options: LoadOptions) {
         entry.status = 'downloading';
         entry.progress = Math.min(0.95, (loaded / Math.max(1, total)) * 0.95);
         notifyEntry(entry);
-      }, currentAbortController?.signal);
+      }, controller.signal);
       entry.buffer = buffer;
       entry.status = 'parsing';
       entry.progress = 0.97;
@@ -209,17 +210,20 @@ function startEntryLoad(entry: LoadEntry, options: LoadOptions) {
       entry.status = 'done';
       entry.progress = 1;
       trimParsedCache(entry.url);
+      loadControllers.delete(entry.url);
       notifyEntry(entry);
       return gltf;
     } catch (error) {
       if ((error as Error).name === 'AbortError') {
         entry.status = 'idle';
         entry.progress = 0;
+        loadControllers.delete(entry.url);
         notifyEntry(entry);
         throw error;
       }
       entry.status = 'error';
       entry.error = error;
+      loadControllers.delete(entry.url);
       notifyEntry(entry);
       throw error;
     }

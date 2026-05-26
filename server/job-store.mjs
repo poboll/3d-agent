@@ -18,8 +18,10 @@ export async function createWorkflowJob(input = {}) {
   const imageProvider = normalizeImageProvider(input.imageProvider || 'openai')
   const template = chooseTemplateForPrompt(prompt, input.template)
   const referenceId = String(input.referenceId || '').trim()
+  const deferReference = Boolean(input.deferReference)
   const reference = referenceId ? await getReferenceImageStatus(referenceId) : null
-  if ((provider === 'selfhost-triposg' || provider === 'tencent-hunyuan') && !reference) {
+  const publicReferenceUrl = reference?.imageUrl
+  if ((provider === 'selfhost-triposg' || provider === 'tencent-hunyuan') && !reference && !deferReference) {
     throw Object.assign(new Error('请先生成或上传参考图，再提交图生 3D 建模。'), { status: 400 })
   }
   const now = new Date().toISOString()
@@ -30,10 +32,12 @@ export async function createWorkflowJob(input = {}) {
     imageProvider,
     template,
     referenceId: reference?.id,
-    referenceImageUrl: reference?.imageUrl,
+    referenceImageUrl: publicReferenceUrl,
+    reference,
     status: 'queued',
-    stage: '任务已创建，等待工作流处理。',
-    progress: 5,
+    stage: deferReference ? '完整生成任务已创建，正在等待参考图生成。' : '任务已创建，等待工作流处理。',
+    progress: deferReference ? 3 : 5,
+    workflowMode: input.workflowMode || (deferReference ? 'full-text-to-3d' : 'image-to-3d'),
     costEstimateCny: estimateGenerationCost(provider),
     createdAt: now,
     updatedAt: now,
@@ -45,6 +49,8 @@ export async function createWorkflowJob(input = {}) {
     imageProvider: job.imageProvider,
     template: job.template,
     referenceId: job.referenceId,
+    workflowMode: job.workflowMode,
+    deferReference,
     costEstimateCny: job.costEstimateCny,
   })
   return publicJob(job)

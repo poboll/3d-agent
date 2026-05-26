@@ -5,6 +5,7 @@ import '../server/env-loader.mjs'
 const API_BASE = process.env.SMOKE_API_BASE || `http://${process.env.API_HOST || '127.0.0.1'}:${process.env.API_PORT || 8791}`
 const LIVE_OPENAI = process.env.SMOKE_LIVE_OPENAI === '1'
 const LIVE_3D = process.env.SMOKE_LIVE_3D === '1'
+const FULL_WORKFLOW = process.env.SMOKE_FULL_WORKFLOW === '1'
 const REFERENCE_IMAGE = process.env.SMOKE_REFERENCE_IMAGE || 'app/public/images/plant-cell.jpg'
 
 const prompt = process.argv.slice(2).join(' ').trim() || '线粒体开放剖面 3D 教学模型，突出外膜、内膜和嵴'
@@ -37,7 +38,21 @@ async function main() {
   })
 
   let reference
-  if (LIVE_OPENAI) {
+  let job
+  if (FULL_WORKFLOW) {
+    job = await step('完整默认链路任务创建', async () => {
+      const payload = await api('/api/workflows/full-text-to-3d', {
+        method: 'POST',
+        body: {
+          prompt,
+          template: 'auto',
+          imageProvider: 'openai',
+          provider: LIVE_3D ? 'selfhost-triposg' : 'local-demo',
+        },
+      })
+      return payload.job
+    })
+  } else if (LIVE_OPENAI) {
     reference = await step('OpenAI 文生参考图', async () => {
       const payload = await api('/api/references/text-to-image', {
         method: 'POST',
@@ -62,22 +77,24 @@ async function main() {
     })
   }
 
-  const provider = LIVE_3D ? 'selfhost-triposg' : 'local-demo'
-  const job = await step(`${provider} 建模任务`, async () => {
-    const payload = await api('/api/workflows/text-to-cell', {
-      method: 'POST',
-      body: {
-        prompt,
-        template: reference.template,
-        imageProvider: LIVE_OPENAI ? 'openai' : 'openai',
-        provider,
-        referenceId: reference.id,
-      },
+  if (!job) {
+    const provider = LIVE_3D ? 'selfhost-triposg' : 'local-demo'
+    job = await step(`${provider} 建模任务`, async () => {
+      const payload = await api('/api/workflows/text-to-cell', {
+        method: 'POST',
+        body: {
+          prompt,
+          template: reference.template,
+          imageProvider: LIVE_OPENAI ? 'openai' : 'openai',
+          provider,
+          referenceId: reference.id,
+        },
+      })
+      return payload.job
     })
-    return payload.job
-  })
+  }
 
-  const completed = await step('任务轮询', async () => pollJob(job.id, LIVE_3D ? 7200 : 60))
+  const completed = await step('任务轮询', async () => pollJob(job.id, LIVE_3D || FULL_WORKFLOW ? 7200 : 60))
 
   await step('GLB 访问检查', async () => {
     const modelUrl = completed.result?.modelUrl
@@ -93,7 +110,7 @@ async function main() {
     }
   })
 
-  console.log(JSON.stringify({ ok: true, mode: { LIVE_OPENAI, LIVE_3D }, report }, null, 2))
+  console.log(JSON.stringify({ ok: true, mode: { LIVE_OPENAI, LIVE_3D, FULL_WORKFLOW }, report }, null, 2))
 }
 
 async function step(name, fn) {

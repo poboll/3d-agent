@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
-import { DEFAULT_MODEL_ID, MODELS } from './data/models';
+import { DEFAULT_MODEL_ID, MODELS, getModelTemplate } from './data/models';
 import { Sidebar } from './components/Sidebar';
 import { ModelViewer } from './components/ModelViewer';
 import { GenerationPanel } from './components/GenerationPanel';
@@ -58,11 +58,51 @@ function readStoredGeneratedModels() {
     const stored = localStorage.getItem(GENERATED_MODELS_STORAGE_KEY);
     if (!stored) return [];
     const parsed = JSON.parse(stored) as CellModel[];
-    return Array.isArray(parsed) ? parsed.filter((model) => model?.id && model?.modelUrl).slice(0, 12) : [];
+    return Array.isArray(parsed) ? parsed.filter((model) => model?.id && model?.modelUrl).map(hydrateGeneratedModel).slice(0, 12) : [];
   } catch {
     localStorage.removeItem(GENERATED_MODELS_STORAGE_KEY);
     return [];
   }
+}
+
+function hydrateGeneratedModel(model: CellModel): CellModel {
+  const inferredTemplateId =
+    model.templateId ||
+    inferTemplateFromModel(model) ||
+    model.id.replace(/^generated-[^-]+-[^-]+-/, '');
+  const template = getModelTemplate(inferredTemplateId);
+
+  return {
+    ...template,
+    ...model,
+    category: model.category || template.category,
+    accent: model.accent || template.accent,
+    description: model.description || template.description,
+    size: template.size,
+    location: template.location,
+    visibleInLM: template.visibleInLM,
+    features: template.features,
+    funFact: template.funFact,
+    whereItOccurs: template.whereItOccurs,
+    concepts: template.concepts,
+    defaultRotationY: template.defaultRotationY,
+    displayScale: template.displayScale,
+    imageUrl: model.imageUrl || template.imageUrl,
+    templateId: inferredTemplateId || template.id,
+  };
+}
+
+function inferTemplateFromModel(model: CellModel) {
+  const text = `${model.id} ${model.name} ${model.subtitle} ${model.description}`.toLowerCase();
+  if (/mitochondrion|线粒体/.test(text)) return 'mitochondrion';
+  if (/chloroplast|叶绿体/.test(text)) return 'chloroplast';
+  if (/bacterium|细菌/.test(text)) return 'bacterium';
+  if (/white-blood|白细胞/.test(text)) return 'white-blood-cell';
+  if (/neuron|神经元/.test(text)) return 'neuron';
+  if (/\bdna\b|双螺旋/.test(text)) return 'dna';
+  if (/animal-cell|动物细胞|上皮/.test(text)) return 'animal-cell';
+  if (/plant-cell|植物细胞/.test(text)) return 'plant-cell';
+  return '';
 }
 
 function shouldShowInitialGuide() {
@@ -228,14 +268,15 @@ function App() {
       const existingIds = new Set(current.map((model) => model.id));
       const merged = [...current];
       for (const model of models) {
-        if (!existingIds.has(model.id)) merged.push(model);
+        if (!existingIds.has(model.id)) merged.push(hydrateGeneratedModel(model));
       }
       return merged;
     });
   }, []);
 
   const handleModelCreated = useCallback((model: CellModel) => {
-    setGeneratedModels((current) => [model, ...current.filter((item) => item.id !== model.id)].slice(0, 12));
+    const hydrated = hydrateGeneratedModel(model);
+    setGeneratedModels((current) => [hydrated, ...current.filter((item) => item.id !== model.id)].slice(0, 12));
   }, []);
 
   const openGuide = () => {

@@ -56,7 +56,7 @@ export async function generateComfyUiModel(job, onProgress) {
 
   const { record: reference, localPath: referencePath } = await getReferenceImage(job.referenceId)
   await onProgress({
-    progress: 14,
+    progress: Math.max(job.progress || 0, 34),
     stage: '已读取确认参考图，正在连接本地三维生成服务。',
     eventName: 'selfhost-3d-reference-loaded',
   })
@@ -64,14 +64,14 @@ export async function generateComfyUiModel(job, onProgress) {
   await fetchJson(`${COMFYUI_BASE_URL}/system_stats`, { timeoutMs: 20000 })
   const remoteImage = await uploadComfyImage(referencePath, reference)
   await onProgress({
-    progress: 28,
+    progress: Math.max(job.progress || 0, 42),
     stage: '参考图已上传到 ComfyUI，正在提交 TripoSG + Hunyuan3D-Paint 工作流。',
     eventName: 'selfhost-3d-reference-uploaded',
   })
 
   const prompt = await submitWorkflow(job, remoteImage)
   await onProgress({
-    progress: 42,
+    progress: Math.max(job.progress || 0, 52),
     stage: '三维生成任务已进入本地队列，正在等待几何与贴图输出。',
     eventName: 'selfhost-3d-submitted',
     patch: { providerJobId: prompt.promptId },
@@ -206,7 +206,7 @@ async function pollHistory(promptId, onTick) {
   while (Date.now() < deadline) {
     await delay(COMFYUI_POLL_INTERVAL_MS)
     tick += 1
-    const progress = Math.min(80, 42 + tick * 3)
+    const progress = Math.min(82, 52 + tick * 3)
     await onTick(progress, '本地三维服务正在生成模型，请保持服务在线。')
     const history = await fetchJson(`${COMFYUI_BASE_URL}/history/${encodeURIComponent(promptId)}`, {
       timeoutMs: 60000,

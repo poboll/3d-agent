@@ -1,4 +1,4 @@
-import { copyFile, mkdir, stat } from 'node:fs/promises'
+import { copyFile, mkdir, readdir, stat } from 'node:fs/promises'
 import path from 'node:path'
 import {
   CELLFORGE_MODEL_DIR,
@@ -11,6 +11,7 @@ import { sanitizeModelId } from './model-store.mjs'
 import { getTemplateDisplayName } from './workflow-utils.mjs'
 import { updateWorkflowJob } from './job-store.mjs'
 import { generateComfyUiModel } from './comfyui-provider.mjs'
+import { createReferenceImage } from './reference-store.mjs'
 
 export function startWorkflowJob(job) {
   if (job.provider === 'tencent-hunyuan' && !TENCENT_HUNYUAN_CONFIGURED) {
@@ -43,12 +44,60 @@ export function startWorkflowJob(job) {
   })
 }
 
-async function runSelfHostedWorkflow(job) {
+export function startFullTextTo3dWorkflow(job) {
+  void runFullTextTo3dWorkflow(job).catch((error) => {
+    void updateWorkflowJob(
+      job.id,
+      {
+        status: 'failed',
+        progress: 100,
+        stage: '完整生成链路失败。',
+        error: error.message || '参考图生成或三维建模失败。',
+      },
+      'full-workflow-failed'
+    )
+  })
+}
+
+async function runFullTextTo3dWorkflow(job) {
   await updateWorkflowJob(
     job.id,
     {
       status: 'processing',
       progress: 8,
+      stage: '正在将生物结构描述打磨成 3D-ready 单图 prompt。',
+    },
+    'full-workflow-prompt-started'
+  )
+
+  const reference = await createReferenceImage({
+    prompt: job.prompt,
+    template: job.template,
+    provider: job.imageProvider || 'openai',
+  })
+
+  const nextJob = await updateWorkflowJob(
+    job.id,
+    {
+      status: 'processing',
+      progress: 24,
+      stage: '参考图已生成并自动接收，正在接续图生 3D 建模。',
+      reference,
+      referenceId: reference.id,
+      referenceImageUrl: reference.imageUrl,
+    },
+    'full-workflow-reference-ready'
+  )
+
+  startWorkflowJob(nextJob)
+}
+
+async function runSelfHostedWorkflow(job) {
+  await updateWorkflowJob(
+    job.id,
+    {
+      status: 'processing',
+      progress: Math.max(job.progress || 0, 28),
       stage: '参考图已确认，正在准备本地 TripoSG + Hunyuan3D-Paint 工作流。',
     },
     'selfhost-3d-started'
@@ -85,7 +134,7 @@ async function runLocalDemoWorkflow(job) {
     job.id,
     {
       status: 'processing',
-      progress: 22,
+      progress: Math.max(job.progress || 0, 32),
       stage: '已接收确认参考图，正在整理适合图生 3D 的结构描述。',
     },
     'prompt-refined'
@@ -103,7 +152,7 @@ async function runLocalDemoWorkflow(job) {
   )
 
   const demoModel = pickDemoModel(job.template)
-  const sourcePath = path.join(CELLFORGE_MODEL_DIR, demoModel.fileName)
+  const sourcePath = await resolveDemoSourcePath(job.template, demoModel)
   await stat(sourcePath)
 
   await delay(MOCK_WORKFLOW_STEP_DELAY)
@@ -167,6 +216,32 @@ function accentForTemplate(template) {
 function pickDemoModel(template) {
   if (template === 'plant-cell') return DEMO_MODELS[0]
   return DEMO_MODELS[1] || DEMO_MODELS[0]
+}
+
+async function resolveDemoSourcePath(template, demoModel) {
+  const cachedTemplateModel = await findLatestCachedTemplateModel(template)
+  if (cachedTemplateModel) return cachedTemplateModel
+  return path.join(CELLFORGE_MODEL_DIR, demoModel.fileName)
+}
+
+async function findLatestCachedTemplateModel(template) {
+  if (!template || template === 'plant-cell' || template === 'animal-cell') return ''
+
+  try {
+    const files = await readdir(LOCAL_MODEL_DIR, { withFileTypes: true })
+    const candidates = []
+    for (const file of files) {
+      if (!file.isFile()) continue
+      if (!file.name.endsWith(`-${template}.glb`)) continue
+      if (!file.name.startsWith('generated-job-')) continue
+      const localPath = path.join(LOCAL_MODEL_DIR, file.name)
+      const info = await stat(localPath)
+      candidates.push({ localPath, mtimeMs: info.mtimeMs })
+    }
+    return candidates.sort((a, b) => b.mtimeMs - a.mtimeMs)[0]?.localPath || ''
+  } catch {
+    return ''
+  }
 }
 
 function delay(ms) {

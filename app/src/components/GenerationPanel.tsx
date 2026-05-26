@@ -32,6 +32,7 @@ export function GenerationPanel({
 }: Props) {
   const modelInputRef = useRef<HTMLInputElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
+  const reportedFullReferenceIds = useRef<Set<string>>(new Set());
   const [status, setStatus] = useState('先得到一张可确认的参考图，再进入图生 3D 建模。');
   const [busy, setBusy] = useState(false);
   const [prompt, setPrompt] = useState('植物细胞 3D 教学模型，突出叶绿体、细胞壁和大型液泡');
@@ -39,11 +40,13 @@ export function GenerationPanel({
   const [modelProvider, setModelProvider] = useState('selfhost-triposg');
   const [template, setTemplate] = useState('plant-cell');
   const [referenceImage, setReferenceImage] = useState<ReferenceImage | null>(null);
+  const [referenceAccepted, setReferenceAccepted] = useState(false);
   const [promptPreview, setPromptPreview] = useState<PromptPreviewPayload | null>(null);
   const [activeJob, setActiveJob] = useState<WorkflowJob | null>(null);
   const [jobHistory, setJobHistory] = useState<WorkflowJob[]>([]);
 
   const phase = getWorkflowPhase({ referenceImage, activeJob, busy });
+  const failedPhase = getWorkflowFailedPhase(activeJob);
 
   useEffect(() => {
     let cancelled = false;
@@ -73,6 +76,30 @@ export function GenerationPanel({
         .then((job) => {
           if (cancelled) return;
           setActiveJob(job);
+          const jobReference = job.reference;
+          if (jobReference) {
+            setReferenceImage((current) => {
+              if (current?.id === jobReference.id) return current;
+              return toReferenceImage(jobReference, false);
+            });
+            setReferenceAccepted(true);
+            setPromptPreview((current) => current ?? {
+              template: jobReference.template,
+              sourcePrompt: jobReference.prompt,
+              model: jobReference.promptModel || 'local-template',
+              imagePrompt: jobReference.imagePrompt || '',
+              negativePrompt: jobReference.negativePrompt || '',
+              qualityChecklist: [],
+            });
+            if (!reportedFullReferenceIds.current.has(jobReference.id)) {
+              reportedFullReferenceIds.current.add(jobReference.id);
+              trackEvent('workflow_full_reference_ready', {
+                jobId: job.id,
+                template: job.template,
+                referenceId: jobReference.id,
+              });
+            }
+          }
           setStatus(job.stage);
           setJobHistory((current) => mergeJobs(job, current));
 
@@ -173,6 +200,7 @@ export function GenerationPanel({
         template,
       });
       setReferenceImage(toReferenceImage(reference, true));
+      setReferenceAccepted(false);
       setStatus('已接收上传图片，请确认结构方向后进入图生 3D。');
       setActiveJob(null);
       trackEvent('workflow_reference_upload', {
@@ -214,6 +242,7 @@ export function GenerationPanel({
         template,
       });
       setReferenceImage(toReferenceImage(reference, false));
+      setReferenceAccepted(false);
       setPromptPreview({
         template: reference.template,
         sourcePrompt: reference.prompt,
@@ -223,7 +252,7 @@ export function GenerationPanel({
         qualityChecklist: [],
       });
       setActiveJob(null);
-      setStatus(`${getImageProviderName(imageProvider)} 已产出参考图，请检查后选择重试或确认建模。`);
+      setStatus(`${getImageProviderName(imageProvider)} 已产出参考图，请检查后点击“接收图片”，再确认建模。`);
       trackEvent('workflow_reference_generate', {
         template,
         imageProvider,
@@ -273,6 +302,7 @@ export function GenerationPanel({
 
     setBusy(true);
     setReferenceImage(null);
+    setReferenceAccepted(false);
     setPromptPreview(null);
     setActiveJob(null);
     setStatus('正在按默认链路执行：术语 → GPT prompt → 单图 → TripoSG → textured GLB。');
@@ -290,15 +320,18 @@ export function GenerationPanel({
         imageProvider,
         template,
       });
-      setReferenceImage(toReferenceImage(reference, false));
-      setPromptPreview({
-        template: reference.template,
-        sourcePrompt: reference.prompt,
-        model: reference.promptModel || 'local-template',
-        imagePrompt: reference.imagePrompt || '',
-        negativePrompt: reference.negativePrompt || '',
-        qualityChecklist: [],
-      });
+      if (reference) {
+        setReferenceImage(toReferenceImage(reference, false));
+        setReferenceAccepted(true);
+        setPromptPreview({
+          template: reference.template,
+          sourcePrompt: reference.prompt,
+          model: reference.promptModel || 'local-template',
+          imagePrompt: reference.imagePrompt || '',
+          negativePrompt: reference.negativePrompt || '',
+          qualityChecklist: [],
+        });
+      }
       setActiveJob(job);
       setJobHistory((current) => mergeJobs(job, current));
       setStatus(job.stage);
@@ -307,7 +340,7 @@ export function GenerationPanel({
         template: job.template,
         provider: job.provider,
         costEstimateCny: job.costEstimateCny,
-        referenceId: reference.id,
+        referenceId: reference?.id ?? job.referenceId,
       });
     } catch (error) {
       setStatus(error instanceof Error ? error.message : '完整生成链路启动失败。');
@@ -325,6 +358,7 @@ export function GenerationPanel({
       setStatus('还没有可接收的参考图，请先生成或上传一张图片。');
       return;
     }
+    setReferenceAccepted(true);
     setStatus('参考图已接收，可点击“确认图生建模”提交 3D 任务。');
     trackEvent('workflow_reference_accept', {
       template,
@@ -335,6 +369,7 @@ export function GenerationPanel({
 
   const handleRejectReference = () => {
     setReferenceImage(null);
+    setReferenceAccepted(false);
     setActiveJob(null);
     setStatus('已退回参考图，请修改描述后重新生成，或上传一张图片。');
     trackEvent('workflow_reference_reject', { template });
@@ -343,6 +378,10 @@ export function GenerationPanel({
   const handleConfirmModeling = async () => {
     if (!referenceImage) {
       setStatus('需要先生成或上传参考图，再确认图生建模。');
+      return;
+    }
+    if (!referenceAccepted) {
+      setStatus('请先检查参考图并点击“接收图片”，再提交图生 3D 建模。');
       return;
     }
 
@@ -397,7 +436,7 @@ export function GenerationPanel({
 
   const progress = activeJob?.progress ?? 0;
   const canCreateReference = !busy && prompt.trim().length >= 6;
-  const canConfirmModeling = !busy && !!referenceImage;
+  const canConfirmModeling = !busy && !!referenceImage && referenceAccepted && activeJob?.status !== 'completed' && activeJob?.status !== 'processing' && activeJob?.status !== 'queued';
 
   return (
     <section className="generation-panel" id={id}>
@@ -409,7 +448,7 @@ export function GenerationPanel({
 
       <ol className="workflow-ladder" aria-label="生成流程">
         {WORKFLOW_STEPS.map((step) => (
-          <li className={getStepClass(step.id, phase)} key={step.id}>
+          <li className={getStepClass(step.id, phase, failedPhase)} key={step.id}>
             <span>{step.no}</span>
             <div>
               <strong>{step.title}</strong>
@@ -450,7 +489,7 @@ export function GenerationPanel({
           重试图片
         </button>
         <button type="button" className="generation-secondary" onClick={handleAcceptReference} disabled={!referenceImage || busy}>
-          接收图片
+          {referenceAccepted ? '已接收' : '接收图片'}
         </button>
         <button type="button" className="generation-secondary" onClick={handleRejectReference} disabled={!referenceImage || busy}>
           退回图片
@@ -518,7 +557,7 @@ export function GenerationPanel({
         <div className="reference-meta">
           <span>02 REFERENCE IMAGE</span>
           <strong>{referenceImage?.title ?? '先生成或上传初版图片'}</strong>
-          {referenceImage && <em>{[referenceImage.source, referenceImage.promptModel, referenceImage.model].filter(Boolean).join(' · ')}</em>}
+          {referenceImage && <em>{[referenceAccepted ? '已确认' : '待确认', referenceImage.source, referenceImage.promptModel, referenceImage.model].filter(Boolean).join(' · ')}</em>}
           <p>{referenceImage?.note ?? '图片确认通过后，才会进入本地图生 3D 建模与结果缓存。'}</p>
         </div>
       </div>
@@ -643,18 +682,31 @@ function getWorkflowPhase({
 }): WorkflowPhase {
   if (activeJob?.status === 'failed') return 'failed';
   if (activeJob?.status === 'completed') return 'done';
-  if (activeJob || busy) return 'modeling';
+  if (activeJob?.workflowMode === 'full-text-to-3d' && !activeJob.referenceId && !referenceImage) return 'prompt';
+  if (activeJob?.workflowMode === 'full-text-to-3d' && activeJob.referenceId && !activeJob.result) return 'modeling';
+  if (activeJob || busy) return referenceImage ? 'modeling' : 'prompt';
   if (referenceImage) return 'image';
   return 'input';
 }
 
-function getStepClass(step: Exclude<WorkflowPhase, 'failed'>, phase: WorkflowPhase) {
+function getStepClass(
+  step: Exclude<WorkflowPhase, 'failed'>,
+  phase: WorkflowPhase,
+  failedPhase: Exclude<WorkflowPhase, 'failed'> | null
+) {
   const order: WorkflowPhase[] = ['input', 'prompt', 'image', 'modeling', 'done'];
   const stepIndex = order.indexOf(step);
-  const phaseIndex = phase === 'failed' ? order.indexOf('modeling') : order.indexOf(phase);
+  const phaseIndex = phase === 'failed' ? order.indexOf(failedPhase || 'modeling') : order.indexOf(phase);
   if (stepIndex < phaseIndex) return 'done';
   if (stepIndex === phaseIndex) return phase === 'failed' ? 'failed' : 'active';
   return '';
+}
+
+function getWorkflowFailedPhase(activeJob: WorkflowJob | null): Exclude<WorkflowPhase, 'failed'> | null {
+  if (activeJob?.status !== 'failed') return null;
+  if (activeJob.workflowMode === 'full-text-to-3d' && !activeJob.referenceId) return 'image';
+  if (activeJob.referenceId) return 'modeling';
+  return 'modeling';
 }
 
 function getImageProviderName(provider: string) {

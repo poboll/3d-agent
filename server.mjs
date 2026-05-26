@@ -8,9 +8,6 @@ import {
   COMFYUI_WORKFLOW_TEMPLATE,
   LOCAL_MODEL_DIR,
   OPENAI_IMAGE_CONFIGURED,
-  OPENAI_IMAGE_MODEL,
-  OPENAI_IMAGE_TOOL_MODEL,
-  OPENAI_PROMPT_MODEL,
   REFERENCE_CACHE_DIR,
   REFERENCE_TRASH_DIR,
   REFERENCE_WORK_DIR,
@@ -23,12 +20,13 @@ import {
 import { readJsonBody, sendJson, setCorsHeaders } from './server/http-utils.mjs'
 import { createWorkflowJob, getWorkflowJob, listWorkflowJobs } from './server/job-store.mjs'
 import { getDemoModels, importLocalModel, serveDemoModel, serveLocalModel } from './server/model-store.mjs'
-import { startWorkflowJob } from './server/workflow-runner.mjs'
+import { startFullTextTo3dWorkflow, startWorkflowJob } from './server/workflow-runner.mjs'
 import { appendAnalyticsEvents } from './server/analytics-store.mjs'
 import { getComfyUiStatus } from './server/comfyui-provider.mjs'
 import {
   createReferenceImage,
   getReferenceImageStatus,
+  getOpenAiProviderStatus,
   importReferenceImage,
   previewReferencePrompt,
   serveReferenceImage,
@@ -64,10 +62,8 @@ const server = http.createServer(async (request, response) => {
         providers: {
           localCache: true,
           localGlb: true,
+          openai: await getOpenAiProviderStatus({ check: false }),
           openaiImage: OPENAI_IMAGE_CONFIGURED,
-          openaiImageModel: OPENAI_IMAGE_MODEL,
-          openaiImageToolModel: OPENAI_IMAGE_TOOL_MODEL,
-          openaiPromptModel: OPENAI_PROMPT_MODEL,
           selfhostTriposg: true,
           tencentHunyuan: TENCENT_HUNYUAN_CONFIGURED,
         },
@@ -99,12 +95,7 @@ const server = http.createServer(async (request, response) => {
       const check = url.searchParams.get('check') === '1'
       sendJson(response, 200, {
         image: {
-          openai: {
-            configured: OPENAI_IMAGE_CONFIGURED,
-            model: OPENAI_IMAGE_MODEL,
-            imageToolModel: OPENAI_IMAGE_TOOL_MODEL,
-            promptModel: OPENAI_PROMPT_MODEL,
-          },
+          openai: await getOpenAiProviderStatus({ check }),
         },
         model3d: {
           selfhostTriposg: {
@@ -155,20 +146,17 @@ const server = http.createServer(async (request, response) => {
 
     if (request.method === 'POST' && url.pathname === '/api/workflows/full-text-to-3d') {
       const input = await readJsonBody(request)
-      const reference = await createReferenceImage({
-        prompt: input.prompt,
-        template: input.template,
-        provider: input.imageProvider || 'openai',
-      })
+      const sourcePrompt = String(input.prompt || '')
       const job = await createWorkflowJob({
-        prompt: input.prompt.length >= 6 ? input.prompt : `${input.prompt} 3D-ready 生物教学模型`,
+        prompt: sourcePrompt.length >= 6 ? sourcePrompt : `${sourcePrompt} 3D-ready 生物教学模型`,
         provider: input.provider || 'selfhost-triposg',
         imageProvider: input.imageProvider || 'openai',
         template: input.template,
-        referenceId: reference.id,
+        workflowMode: 'full-text-to-3d',
+        deferReference: true,
       })
-      startWorkflowJob(job)
-      sendJson(response, 202, { reference, job })
+      startFullTextTo3dWorkflow(job)
+      sendJson(response, 202, { reference: null, job })
       return
     }
 

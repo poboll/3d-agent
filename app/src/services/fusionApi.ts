@@ -58,6 +58,9 @@ export interface WorkflowJob {
   imageProvider?: string;
   referenceId?: string;
   referenceImageUrl?: string;
+  reference?: ReferenceImagePayload | null;
+  workflowMode?: 'image-to-3d' | 'full-text-to-3d' | string;
+  providerJobId?: string;
   status: WorkflowStatus;
   stage: string;
   progress: number;
@@ -184,7 +187,7 @@ export async function createTextToCellJob(input: {
     body: JSON.stringify(input),
   });
   const payload = await readApiResponse<{ job: WorkflowJob }>(response);
-  return payload.job;
+  return normalizeWorkflowJob(payload.job);
 }
 
 export async function createFullTextTo3dJob(input: {
@@ -192,7 +195,7 @@ export async function createFullTextTo3dJob(input: {
   provider?: string;
   template?: string;
   imageProvider?: string;
-}): Promise<{ reference: ReferenceImagePayload; job: WorkflowJob }> {
+}): Promise<{ reference: ReferenceImagePayload | null; job: WorkflowJob }> {
   const response = await fetch(apiUrl('/api/workflows/full-text-to-3d'), {
     method: 'POST',
     headers: {
@@ -200,26 +203,27 @@ export async function createFullTextTo3dJob(input: {
     },
     body: JSON.stringify(input),
   });
-  const payload = await readApiResponse<{ reference: ReferenceImagePayload; job: WorkflowJob }>(response);
+  const payload = await readApiResponse<{ reference: ReferenceImagePayload | null; job: WorkflowJob }>(response);
   return {
     ...payload,
-    reference: {
+    reference: payload.reference ? {
       ...payload.reference,
       imageUrl: apiUrl(payload.reference.imageUrl),
-    },
+    } : null,
+    job: normalizeWorkflowJob(payload.job),
   };
 }
 
 export async function fetchWorkflowJob(jobId: string): Promise<WorkflowJob> {
   const response = await fetch(apiUrl(`/api/jobs/${encodeURIComponent(jobId)}`));
   const payload = await readApiResponse<{ job: WorkflowJob }>(response);
-  return payload.job;
+  return normalizeWorkflowJob(payload.job);
 }
 
 export async function fetchWorkflowJobs(limit = 12): Promise<WorkflowJob[]> {
   const response = await fetch(apiUrl(`/api/jobs?limit=${limit}`));
   const payload = await readApiResponse<{ jobs: WorkflowJob[] }>(response);
-  return payload.jobs;
+  return payload.jobs.map(normalizeWorkflowJob);
 }
 
 export function workflowJobToCellModel(job: WorkflowJob): CellModel | null {
@@ -253,13 +257,23 @@ function toCellModel(item: DemoModelPayload): CellModel {
     fileSize: item.fileSize || template.fileSize,
     defaultRotationY: template.defaultRotationY,
     displayScale: template.displayScale,
+    templateId: item.template || item.imageHint || template.id,
     custom: true,
     source,
     generationStatus: `${source} · 已缓存`,
-    funFact: '这是接入生成工作流后的缓存模型，适合用于讲解 AI 生成资产如何进入课堂 3D 展示。',
-    whereItOccurs: {
-      text: '该模型来自生成或导入流程，可在后续版本中绑定更详细的生物学说明。',
-      habitat: 'AI 生成资产 · 本地缓存',
-    },
+    funFact: template.funFact,
+    whereItOccurs: template.whereItOccurs,
+  };
+}
+
+function normalizeWorkflowJob(job: WorkflowJob): WorkflowJob {
+  return {
+    ...job,
+    reference: job.reference
+      ? {
+          ...job.reference,
+          imageUrl: apiUrl(job.reference.imageUrl),
+        }
+      : job.reference,
   };
 }

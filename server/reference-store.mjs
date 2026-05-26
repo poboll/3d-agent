@@ -76,6 +76,58 @@ export async function createReferenceImage(input = {}) {
   return publicReference(saved)
 }
 
+export async function getOpenAiProviderStatus({ check = false } = {}) {
+  const status = {
+    configured: OPENAI_IMAGE_CONFIGURED,
+    baseUrl: OPENAI_BASE_URL,
+    responsesEndpoint: OPENAI_RESPONSES_ENDPOINT,
+    imageEndpoint: OPENAI_IMAGE_ENDPOINT,
+    promptModel: OPENAI_PROMPT_MODEL,
+    imageModel: OPENAI_IMAGE_MODEL,
+    imageToolModel: OPENAI_IMAGE_TOOL_MODEL,
+    imageMode: OPENAI_IMAGE_MODE,
+    disableResponseStorage: OPENAI_DISABLE_RESPONSE_STORAGE,
+  }
+
+  if (!check || !OPENAI_IMAGE_CONFIGURED) return status
+
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 15000)
+  try {
+    const response = await fetch(OPENAI_RESPONSES_ENDPOINT, {
+      method: 'POST',
+      headers: buildOpenAiHeaders(),
+      body: JSON.stringify({
+        model: OPENAI_PROMPT_MODEL || OPENAI_IMAGE_MODEL,
+        input: 'Return the single word ok.',
+        store: !OPENAI_DISABLE_RESPONSE_STORAGE,
+        reasoning: { effort: OPENAI_REASONING_EFFORT },
+      }),
+      signal: controller.signal,
+    })
+    const payload = await readOpenAiPayload(response)
+    return {
+      ...status,
+      auth: {
+        ok: response.ok,
+        status: response.status,
+        message: response.ok ? 'ok' : extractOpenAiErrorMessage(payload, `OpenAI Responses 接口返回 ${response.status}`),
+      },
+    }
+  } catch (error) {
+    return {
+      ...status,
+      auth: {
+        ok: false,
+        status: error.name === 'AbortError' ? 504 : 0,
+        message: error.name === 'AbortError' ? 'OpenAI 授权检查超时。' : error.message || 'OpenAI 授权检查失败。',
+      },
+    }
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
 export async function previewReferencePrompt(input = {}) {
   const prompt = normalizeReferencePrompt(input.prompt)
   const template = chooseTemplateForPrompt(prompt, input.template)
@@ -324,7 +376,7 @@ async function requestOpenAiImageViaImagesApi(prompt) {
 
     const payload = await readOpenAiPayload(response)
     if (!response.ok) {
-      const message = payload?.error?.message || `OpenAI 图片接口返回 ${response.status}`
+      const message = extractOpenAiErrorMessage(payload, `OpenAI 图片接口返回 ${response.status}`)
       throw Object.assign(new Error(message), { status: response.status, detail: payload })
     }
 
@@ -375,7 +427,7 @@ async function requestOpenAiResponse(body) {
     })
     const payload = await readOpenAiPayload(response)
     if (!response.ok) {
-      const message = payload?.error?.message || `OpenAI Responses 接口返回 ${response.status}`
+      const message = extractOpenAiErrorMessage(payload, `OpenAI Responses 接口返回 ${response.status}`)
       throw Object.assign(new Error(message), { status: response.status, detail: payload })
     }
     return payload
@@ -407,6 +459,18 @@ function buildOpenAiHeaders() {
   if (OPENAI_ORGANIZATION) headers['OpenAI-Organization'] = OPENAI_ORGANIZATION
   if (OPENAI_PROJECT) headers['OpenAI-Project'] = OPENAI_PROJECT
   return headers
+}
+
+function extractOpenAiErrorMessage(payload, fallback) {
+  if (!payload) return fallback
+  if (typeof payload === 'string') return payload || fallback
+  return (
+    payload?.error?.message ||
+    payload?.message ||
+    payload?.error ||
+    payload?.detail?.message ||
+    fallback
+  )
 }
 
 function extractResponseText(payload) {

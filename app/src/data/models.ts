@@ -34,6 +34,8 @@ export interface CellModel {
   source?: string;
   /** 当前生成/导入状态说明 */
   generationStatus?: string;
+  /** 生成模型对应的教学模板，用于恢复观察顺序、概念图解和分布说明 */
+  templateId?: string;
 }
 
 const BASE = import.meta.env.BASE_URL;
