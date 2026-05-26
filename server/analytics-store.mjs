@@ -3,11 +3,16 @@ import { ANALYTICS_EVENTS_FILE, WORKFLOW_STORE_DIR } from './config.mjs'
 
 const ALLOWED_EVENTS = new Set([
   'workflow_prompt_focus',
+  'workflow_reference_generate_start',
   'workflow_reference_generate',
+  'workflow_reference_generate_failed',
+  'workflow_reference_upload_start',
   'workflow_reference_upload',
+  'workflow_reference_upload_failed',
   'workflow_reference_accept',
   'workflow_reference_reject',
   'workflow_model_confirm',
+  'workflow_full_run_start',
   'workflow_job_created',
   'workflow_job_completed',
   'workflow_job_failed',

@@ -135,7 +135,7 @@ async function runLocalDemoWorkflow(job) {
         name: `AI 生成：${getTemplateDisplayName(job.template)}`,
         subtitle: '图生 3D 建模结果',
         category: 'AI 生成示意模型',
-        accent: demoModel.accent,
+        accent: accentForTemplate(job.template),
         description: `根据「${job.prompt}」确认参考图后进入本地缓存链路，可用于课堂中快速验证参考图、任务记录、模型缓存与 3D 舞台展示。`,
         fileName: targetName,
         fileSize: info.size,
@@ -148,6 +148,20 @@ async function runLocalDemoWorkflow(job) {
     },
     'completed'
   )
+}
+
+function accentForTemplate(template) {
+  const accents = {
+    'plant-cell': '#7fb069',
+    'animal-cell': '#e8859a',
+    'white-blood-cell': '#c8a2d8',
+    neuron: '#f0a868',
+    dna: '#9cc4e4',
+    mitochondrion: '#d8844c',
+    chloroplast: '#6fa55d',
+    bacterium: '#5b9aa8',
+  }
+  return accents[template] || '#7fb069'
 }
 
 function pickDemoModel(template) {

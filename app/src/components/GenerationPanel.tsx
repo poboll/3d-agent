@@ -7,11 +7,12 @@ import {
   fetchDemoGeneratedModels,
   fetchWorkflowJob,
   fetchWorkflowJobs,
+  previewReferencePrompt,
   uploadLocalModel,
   uploadReferenceImage,
   workflowJobToCellModel,
 } from '../services/fusionApi';
-import type { ReferenceImagePayload, WorkflowJob } from '../services/fusionApi';
+import type { PromptPreviewPayload, ReferenceImagePayload, WorkflowJob } from '../services/fusionApi';
 import { trackEvent } from '../lib/analytics';
 
 interface Props {
@@ -38,6 +39,7 @@ export function GenerationPanel({
   const [modelProvider, setModelProvider] = useState('selfhost-triposg');
   const [template, setTemplate] = useState('plant-cell');
   const [referenceImage, setReferenceImage] = useState<ReferenceImage | null>(null);
+  const [promptPreview, setPromptPreview] = useState<PromptPreviewPayload | null>(null);
   const [activeJob, setActiveJob] = useState<WorkflowJob | null>(null);
   const [jobHistory, setJobHistory] = useState<WorkflowJob[]>([]);
 
@@ -47,7 +49,12 @@ export function GenerationPanel({
     let cancelled = false;
     fetchWorkflowJobs()
       .then((jobs) => {
-        if (!cancelled) setJobHistory(jobs);
+        if (cancelled) return;
+        setJobHistory(jobs);
+        const completedModels = jobs.map(workflowJobToCellModel).filter((model): model is CellModel => Boolean(model));
+        if (completedModels.length) {
+          onModelsLoaded(completedModels);
+        }
       })
       .catch(() => {
         if (!cancelled) setJobHistory([]);
@@ -55,7 +62,7 @@ export function GenerationPanel({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [onModelsLoaded]);
 
   useEffect(() => {
     if (!activeJob || activeJob.status === 'completed' || activeJob.status === 'failed') return;
@@ -194,6 +201,7 @@ export function GenerationPanel({
 
     setBusy(true);
     setStatus(`${getImageProviderName(imageProvider)} 正在生成 3D-ready 单图参考图...`);
+    setPromptPreview(null);
     trackEvent('workflow_reference_generate_start', {
       template,
       imageProvider,
@@ -206,6 +214,14 @@ export function GenerationPanel({
         template,
       });
       setReferenceImage(toReferenceImage(reference, false));
+      setPromptPreview({
+        template: reference.template,
+        sourcePrompt: reference.prompt,
+        model: reference.promptModel || 'local-template',
+        imagePrompt: reference.imagePrompt || '',
+        negativePrompt: reference.negativePrompt || '',
+        qualityChecklist: [],
+      });
       setActiveJob(null);
       setStatus(`${getImageProviderName(imageProvider)} 已产出参考图，请检查后选择重试或确认建模。`);
       trackEvent('workflow_reference_generate', {
@@ -227,6 +243,28 @@ export function GenerationPanel({
     }
   };
 
+  const handlePreviewPrompt = async () => {
+    if (!prompt.trim()) {
+      setStatus('请先输入生物结构术语或课堂描述。');
+      return;
+    }
+
+    setBusy(true);
+    setStatus('正在打磨 3D-ready 单图 prompt...');
+    try {
+      const nextPreview = await previewReferencePrompt({
+        prompt: prompt.trim(),
+        template,
+      });
+      setPromptPreview(nextPreview);
+      setStatus('Prompt 已生成，可检查后继续生成参考图。');
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : 'Prompt 预览失败。');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const handleRunFullWorkflow = async () => {
     if (!prompt.trim()) {
       setStatus('请先输入生物结构术语或课堂描述。');
@@ -235,6 +273,7 @@ export function GenerationPanel({
 
     setBusy(true);
     setReferenceImage(null);
+    setPromptPreview(null);
     setActiveJob(null);
     setStatus('正在按默认链路执行：术语 → GPT prompt → 单图 → TripoSG → textured GLB。');
     trackEvent('workflow_full_run_start', {
@@ -252,6 +291,14 @@ export function GenerationPanel({
         template,
       });
       setReferenceImage(toReferenceImage(reference, false));
+      setPromptPreview({
+        template: reference.template,
+        sourcePrompt: reference.prompt,
+        model: reference.promptModel || 'local-template',
+        imagePrompt: reference.imagePrompt || '',
+        negativePrompt: reference.negativePrompt || '',
+        qualityChecklist: [],
+      });
       setActiveJob(job);
       setJobHistory((current) => mergeJobs(job, current));
       setStatus(job.stage);
@@ -387,6 +434,9 @@ export function GenerationPanel({
         <button type="button" className="generation-primary" onClick={handleCreateReference} disabled={!canCreateReference}>
           生成参考图
         </button>
+        <button type="button" className="generation-secondary" onClick={handlePreviewPrompt} disabled={!canCreateReference}>
+          预览 Prompt
+        </button>
         <button type="button" className="generation-primary full-action" onClick={handleRunFullWorkflow} disabled={!canCreateReference || busy}>
           完整生成
         </button>
@@ -443,6 +493,16 @@ export function GenerationPanel({
           </select>
         </label>
       </div>
+
+      {promptPreview && (
+        <div className="prompt-preview-card" aria-label="3D-ready prompt 预览">
+          <div>
+            <span>3D-READY PROMPT</span>
+            <strong>{promptPreview.model}</strong>
+          </div>
+          <p>{promptPreview.imagePrompt}</p>
+        </div>
+      )}
 
       <div id="reference-step" className={`reference-card${referenceImage ? ' has-image' : ''}`}>
         <div className="reference-preview">

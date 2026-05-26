@@ -1,4 +1,5 @@
 import http from 'node:http'
+import './server/env-loader.mjs'
 import {
   API_HOST,
   API_PORT,
@@ -24,10 +25,12 @@ import { createWorkflowJob, getWorkflowJob, listWorkflowJobs } from './server/jo
 import { getDemoModels, importLocalModel, serveDemoModel, serveLocalModel } from './server/model-store.mjs'
 import { startWorkflowJob } from './server/workflow-runner.mjs'
 import { appendAnalyticsEvents } from './server/analytics-store.mjs'
+import { getComfyUiStatus } from './server/comfyui-provider.mjs'
 import {
   createReferenceImage,
   getReferenceImageStatus,
   importReferenceImage,
+  previewReferencePrompt,
   serveReferenceImage,
 } from './server/reference-store.mjs'
 
@@ -93,6 +96,7 @@ const server = http.createServer(async (request, response) => {
     }
 
     if (request.method === 'GET' && url.pathname === '/api/providers/status') {
+      const check = url.searchParams.get('check') === '1'
       sendJson(response, 200, {
         image: {
           openai: {
@@ -107,6 +111,7 @@ const server = http.createServer(async (request, response) => {
             configured: true,
             baseUrl: COMFYUI_BASE_URL,
             workflowTemplate: COMFYUI_WORKFLOW_TEMPLATE,
+            status: check ? await getComfyUiStatus() : undefined,
           },
           localCache: { configured: true },
           tencentHunyuan: { configured: TENCENT_HUNYUAN_CONFIGURED },
@@ -117,6 +122,11 @@ const server = http.createServer(async (request, response) => {
 
     if (request.method === 'POST' && url.pathname === '/api/references/text-to-image') {
       sendJson(response, 201, { reference: await createReferenceImage(await readJsonBody(request)) })
+      return
+    }
+
+    if (request.method === 'POST' && url.pathname === '/api/references/prompt-preview') {
+      sendJson(response, 200, { prompt: await previewReferencePrompt(await readJsonBody(request)) })
       return
     }
 

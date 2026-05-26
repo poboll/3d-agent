@@ -56,6 +56,7 @@ export async function createReferenceImage(input = {}) {
   }
 
   const imageResult = await requestOpenAiImage(polishedPromptPackage.imagePrompt)
+  const imageExt = imageResult.ext || detectImageExtension(imageResult.buffer) || normalizeImageExtension(OPENAI_IMAGE_FORMAT)
   const saved = await saveReferenceBuffer({
     buffer: imageResult.buffer,
     prompt,
@@ -69,10 +70,26 @@ export async function createReferenceImage(input = {}) {
     promptModel: polishedPromptPackage.promptModel,
     model: imageResult.model,
     generationMode: imageResult.mode,
-    ext: normalizeImageExtension(OPENAI_IMAGE_FORMAT),
+    ext: imageExt,
   })
 
   return publicReference(saved)
+}
+
+export async function previewReferencePrompt(input = {}) {
+  const prompt = normalizeReferencePrompt(input.prompt)
+  const template = chooseTemplateForPrompt(prompt, input.template)
+  const promptPackage = await buildBioReadyPrompt(prompt, template)
+  const polishedPromptPackage = await polishBioReadyPrompt(promptPackage, prompt)
+
+  return {
+    template,
+    sourcePrompt: prompt,
+    model: polishedPromptPackage.promptModel || 'local-template',
+    imagePrompt: polishedPromptPackage.imagePrompt,
+    negativePrompt: polishedPromptPackage.negativePrompt,
+    qualityChecklist: polishedPromptPackage.qualityChecklist,
+  }
 }
 
 export async function importReferenceImage(request, url) {
@@ -187,7 +204,7 @@ async function polishBioReadyPrompt(promptPackage, userPrompt) {
       model: OPENAI_PROMPT_MODEL,
       input: `${instruction}\n\nUser term/request: ${userPrompt}\n\nBase prompt:\n${promptPackage.imagePrompt}\n\nNegative constraints:\n${promptPackage.negativePrompt}`,
     })
-    const text = extractResponseText(payload).replace(/\s+/g, ' ').trim()
+    const text = normalizeGeneratedPrompt(extractResponseText(payload))
     if (text.length < 80) return promptPackage
     return {
       ...promptPackage,
@@ -200,6 +217,36 @@ async function polishBioReadyPrompt(promptPackage, userPrompt) {
       promptModel: 'local-template',
     }
   }
+}
+
+function normalizeGeneratedPrompt(text) {
+  const cleaned = String(text || '').replace(/\s+/g, ' ').trim()
+  if (!cleaned) return ''
+
+  const midpoint = Math.floor(cleaned.length / 2)
+  const left = cleaned.slice(0, midpoint).trim()
+  const right = cleaned.slice(midpoint).trim()
+  if (left.length > 100 && normalizedForCompare(left) === normalizedForCompare(right)) {
+    return left
+  }
+
+  const sentences = cleaned
+    .split(/(?<=[.!?])\s+/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+  const seen = new Set()
+  const deduped = []
+  for (const sentence of sentences) {
+    const key = normalizedForCompare(sentence)
+    if (seen.has(key)) continue
+    seen.add(key)
+    deduped.push(sentence)
+  }
+  return deduped.join(' ')
+}
+
+function normalizedForCompare(value) {
+  return String(value).toLowerCase().replace(/[^a-z0-9]+/g, '')
 }
 
 async function requestOpenAiImage(prompt) {
@@ -252,6 +299,7 @@ async function requestOpenAiImageViaResponses(prompt) {
     buffer: Buffer.from(image, 'base64'),
     model: `${OPENAI_IMAGE_MODEL} / ${OPENAI_IMAGE_TOOL_MODEL}`,
     mode: 'responses-image-generation',
+    ext: normalizeImageExtension(OPENAI_IMAGE_FORMAT),
   }
 }
 
@@ -274,7 +322,7 @@ async function requestOpenAiImageViaImagesApi(prompt) {
       signal: controller.signal,
     })
 
-    const payload = await response.json().catch(async () => ({ error: { message: await response.text() } }))
+    const payload = await readOpenAiPayload(response)
     if (!response.ok) {
       const message = payload?.error?.message || `OpenAI 图片接口返回 ${response.status}`
       throw Object.assign(new Error(message), { status: response.status, detail: payload })
@@ -286,6 +334,7 @@ async function requestOpenAiImageViaImagesApi(prompt) {
         buffer: Buffer.from(item.b64_json, 'base64'),
         model: OPENAI_IMAGE_MODEL,
         mode: 'images-api',
+        ext: normalizeImageExtension(OPENAI_IMAGE_FORMAT),
       }
     }
     if (item?.url) {
@@ -295,6 +344,7 @@ async function requestOpenAiImageViaImagesApi(prompt) {
         buffer: Buffer.from(await imageResponse.arrayBuffer()),
         model: OPENAI_IMAGE_MODEL,
         mode: 'images-api',
+        ext: extensionFromContentType(imageResponse.headers.get('content-type')) || normalizeImageExtension(OPENAI_IMAGE_FORMAT),
       }
     }
 
@@ -323,7 +373,7 @@ async function requestOpenAiResponse(body) {
       }),
       signal: controller.signal,
     })
-    const payload = await response.json().catch(async () => ({ error: { message: await response.text() } }))
+    const payload = await readOpenAiPayload(response)
     if (!response.ok) {
       const message = payload?.error?.message || `OpenAI Responses 接口返回 ${response.status}`
       throw Object.assign(new Error(message), { status: response.status, detail: payload })
@@ -336,6 +386,16 @@ async function requestOpenAiResponse(body) {
     throw error
   } finally {
     clearTimeout(timeout)
+  }
+}
+
+async function readOpenAiPayload(response) {
+  const text = await response.text()
+  if (!text) return {}
+  try {
+    return JSON.parse(text)
+  } catch {
+    return { error: { message: text.slice(0, 1000) } }
   }
 }
 
@@ -362,6 +422,9 @@ function extractResponseText(payload) {
 }
 
 function extractResponseImage(payload) {
+  const direct = findBase64Image(payload)
+  if (direct) return direct
+
   for (const output of payload?.output || []) {
     if (output?.type === 'image_generation_call' && output.result) return output.result
     for (const content of output?.content || []) {
@@ -371,6 +434,44 @@ function extractResponseImage(payload) {
     }
   }
   return ''
+}
+
+function findBase64Image(value) {
+  if (!value) return ''
+  if (typeof value === 'string') {
+    if (/^data:image\/[a-z0-9.+-]+;base64,/i.test(value)) {
+      return value.replace(/^data:image\/[a-z0-9.+-]+;base64,/i, '')
+    }
+    if (looksLikeImageBase64(value)) return value
+    return ''
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = findBase64Image(item)
+      if (found) return found
+    }
+    return ''
+  }
+  if (typeof value === 'object') {
+    for (const key of ['result', 'image_base64', 'b64_json', 'base64', 'data']) {
+      const found = findBase64Image(value[key])
+      if (found) return found
+    }
+    for (const child of Object.values(value)) {
+      const found = findBase64Image(child)
+      if (found) return found
+    }
+  }
+  return ''
+}
+
+function looksLikeImageBase64(value) {
+  if (value.length < 128 || !/^[A-Za-z0-9+/=]+$/.test(value)) return false
+  try {
+    return Boolean(detectImageExtension(Buffer.from(value.slice(0, 96), 'base64')))
+  } catch {
+    return false
+  }
 }
 
 async function saveReferenceBuffer({
@@ -525,6 +626,23 @@ export function hasJpegSignature(buffer) {
 
 function imageExtensionFromName(fileName) {
   return normalizeImageExtension(path.extname(String(fileName || '')).replace('.', '') || 'png')
+}
+
+function detectImageExtension(buffer) {
+  if (hasPngSignature(buffer)) return 'png'
+  if (hasJpegSignature(buffer)) return 'jpg'
+  const signature = Buffer.isBuffer(buffer) ? buffer.subarray(0, 12) : Buffer.from(buffer || [])
+  if (signature.subarray(0, 4).toString('ascii') === 'RIFF' && signature.subarray(8, 12).toString('ascii') === 'WEBP') {
+    return 'webp'
+  }
+  return ''
+}
+
+function extensionFromContentType(contentType = '') {
+  if (/image\/png/i.test(contentType)) return 'png'
+  if (/image\/jpe?g/i.test(contentType)) return 'jpg'
+  if (/image\/webp/i.test(contentType)) return 'webp'
+  return ''
 }
 
 function normalizeImageExtension(value) {

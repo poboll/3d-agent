@@ -265,6 +265,131 @@ export const MODELS: CellModel[] = [
 
 export const DEFAULT_MODEL_ID = MODELS[0].id;
 
+const GENERATION_TEMPLATES: Record<string, CellModel> = {
+  mitochondrion: {
+    ...MODELS[0],
+    id: 'mitochondrion',
+    name: '线粒体',
+    subtitle: '双层膜细胞器 · 能量转换',
+    category: '细胞器',
+    accent: '#d8844c',
+    description:
+      '线粒体通过有氧呼吸把有机物中的能量转移到 ATP 中。它有外膜、内膜和向内折叠的嵴，嵴能扩大反应面积，是理解细胞能量供应的核心结构。',
+    size: '约 0.5 – 10 微米',
+    location: '多数真核细胞的细胞质中',
+    visibleInLM: '一般不可清晰分辨',
+    features: [
+      { name: '外膜', detail: '包裹线粒体，维持整体边界' },
+      { name: '内膜', detail: '高度折叠形成嵴，是能量转换关键区域' },
+      { name: '嵴', detail: '增加膜面积，容纳呼吸链相关蛋白' },
+      { name: '基质', detail: '含酶、线粒体 DNA 和核糖体' },
+      { name: 'ATP 合成', detail: '将能量临时储存在 ATP 分子中' },
+    ],
+    funFact: '肌肉细胞和神经细胞耗能很高，常常含有更多线粒体来维持持续活动。',
+    whereItOccurs: {
+      text: '从叶肉细胞到心肌细胞，线粒体把营养中的能量整理成可被细胞直接调用的 ATP。',
+      habitat: '动物细胞 · 植物细胞 · 真菌细胞',
+    },
+    concepts: [
+      {
+        term: 'ATP',
+        level: '高中',
+        explanation: 'ATP 是细胞内直接供能物质，水解释放的能量可驱动主动运输、肌肉收缩和物质合成。',
+        visualHint: '有机物 -> 呼吸作用 -> ATP -> 生命活动',
+      },
+      {
+        term: '有氧呼吸',
+        level: '高中',
+        explanation: '细胞利用氧气分解有机物，释放能量并生成二氧化碳和水。',
+        visualHint: '葡萄糖 + O2 -> CO2 + H2O + ATP',
+      },
+    ],
+    defaultRotationY: -Math.PI / 5,
+    displayScale: 1.18,
+  },
+  chloroplast: {
+    ...MODELS[0],
+    id: 'chloroplast',
+    name: '叶绿体',
+    subtitle: '光合作用细胞器 · 绿色能量入口',
+    category: '细胞器',
+    accent: '#6fa55d',
+    description:
+      '叶绿体含有叶绿素，能够吸收光能并参与光合作用。内部的类囊体堆叠成基粒，为光反应提供更大的膜面积。',
+    size: '约 4 – 10 微米',
+    location: '植物叶肉细胞和部分藻类细胞中',
+    visibleInLM: '是',
+    features: [
+      { name: '双层膜', detail: '包裹叶绿体，隔开细胞质与内部反应空间' },
+      { name: '类囊体', detail: '扁平膜囊，含叶绿素和光反应蛋白' },
+      { name: '基粒', detail: '类囊体堆叠结构，增大光反应面积' },
+      { name: '基质', detail: '含多种酶，参与碳反应合成有机物' },
+    ],
+    funFact: '一片成熟的叶子里可能含有数百万个叶绿体，它们把阳光慢慢转化为糖。',
+    whereItOccurs: {
+      text: '从苔藓到参天大树，叶绿体让绿色植物把光变成可储存的化学能。',
+      habitat: '叶肉组织 · 藻类 · 幼嫩茎表皮',
+    },
+    concepts: [
+      {
+        term: '光合作用',
+        level: '初中',
+        explanation: '绿色植物利用光能，把二氧化碳和水合成有机物，同时释放氧气。',
+        visualHint: '光 + CO2 + H2O -> 糖 + O2',
+      },
+      {
+        term: '叶绿素',
+        level: '初中',
+        explanation: '叶绿素能吸收光能，是叶片呈绿色和进行光合作用的重要原因。',
+        visualHint: '光能 -> 叶绿素 -> 化学能',
+      },
+    ],
+    defaultRotationY: -Math.PI / 6,
+    displayScale: 1.16,
+  },
+  bacterium: {
+    ...MODELS[0],
+    id: 'bacterium',
+    name: '细菌',
+    subtitle: '原核生物 · 单细胞生命',
+    category: '原核细胞',
+    accent: '#5b9aa8',
+    description:
+      '细菌通常没有成形细胞核，遗传物质集中在拟核区域。它们结构相对简单，却能在土壤、水体和人体内形成多样生态功能。',
+    size: '约 0.5 – 5 微米',
+    location: '土壤、水体、空气、动植物体表和体内',
+    visibleInLM: '是（须染色）',
+    features: [
+      { name: '细胞壁', detail: '维持形态并提供保护' },
+      { name: '细胞膜', detail: '控制物质进出并参与部分代谢' },
+      { name: '拟核', detail: 'DNA 集中区域，没有核膜包裹' },
+      { name: '核糖体', detail: '进行蛋白质合成' },
+      { name: '鞭毛或菌毛', detail: '帮助运动或附着在表面' },
+    ],
+    funFact: '不是所有细菌都会致病，很多细菌参与分解有机物、固氮或维持肠道微生态。',
+    whereItOccurs: {
+      text: '细菌把不可见的微小活动铺满世界，从腐殖质分解到人体消化，它们一直在场。',
+      habitat: '土壤 · 水体 · 肠道 · 植物根际',
+    },
+    concepts: [
+      {
+        term: '原核细胞',
+        level: '初中',
+        explanation: '没有成形细胞核的细胞，DNA 不被核膜包裹。',
+        visualHint: '细胞壁 / 细胞膜 / 拟核 / 核糖体',
+      },
+      {
+        term: '分解者',
+        level: '初中',
+        explanation: '许多细菌能分解动植物遗体和排泄物，促进物质循环。',
+        visualHint: '有机残体 -> 细菌分解 -> 无机物',
+      },
+    ],
+    defaultRotationY: -Math.PI / 4,
+    displayScale: 1.12,
+  },
+};
+
 export function getModelTemplate(templateId?: string): CellModel {
-  return MODELS.find((model) => model.id === templateId) ?? MODELS[0];
+  return MODELS.find((model) => model.id === templateId) ?? GENERATION_TEMPLATES[String(templateId || '')] ?? MODELS[0];
 }

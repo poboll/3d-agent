@@ -7,6 +7,7 @@
     "dev:api": "node server.mjs",
     "dev:app": "npm --prefix app run dev -- --host 127.0.0.1",
     "build": "npm --prefix app run build",
-    "test:api": "node --test test/*.test.mjs"
+    "test:api": "node --test test/*.test.mjs",
+    "smoke:workflow": "node scripts/smoke-workflow.mjs"
   }
 }

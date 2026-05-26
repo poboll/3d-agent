@@ -16,6 +16,8 @@ interface DemoModelPayload {
   provider: string;
   missing?: boolean;
   template?: string;
+  referenceImageUrl?: string;
+  rawModelUrl?: string;
 }
 
 interface LocalModelPayload {
@@ -64,6 +66,15 @@ export interface WorkflowJob {
   updatedAt: string;
   error?: string;
   result?: DemoModelPayload;
+}
+
+export interface PromptPreviewPayload {
+  template: string;
+  sourcePrompt: string;
+  model: string;
+  imagePrompt: string;
+  negativePrompt: string;
+  qualityChecklist: string[];
 }
 
 export function apiUrl(path: string) {
@@ -118,6 +129,21 @@ export async function createReferenceImage(input: {
     ...payload.reference,
     imageUrl: apiUrl(payload.reference.imageUrl),
   };
+}
+
+export async function previewReferencePrompt(input: {
+  prompt: string;
+  template?: string;
+}): Promise<PromptPreviewPayload> {
+  const response = await fetch(apiUrl('/api/references/prompt-preview'), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(input),
+  });
+  const payload = await readApiResponse<{ prompt: PromptPreviewPayload }>(response);
+  return payload.prompt;
 }
 
 export async function uploadReferenceImage(file: File, input: {
@@ -212,6 +238,7 @@ async function readApiResponse<T>(response: Response): Promise<T> {
 function toCellModel(item: DemoModelPayload): CellModel {
   const template = getModelTemplate(item.template || item.imageHint);
   const source = item.provider || 'Generated';
+  const imageUrl = item.referenceImageUrl ? apiUrl(item.referenceImageUrl) : template.imageUrl;
 
   return {
     ...template,
@@ -222,7 +249,7 @@ function toCellModel(item: DemoModelPayload): CellModel {
     accent: item.accent || template.accent,
     description: item.description || template.description,
     modelUrl: apiUrl(item.modelUrl),
-    imageUrl: template.imageUrl,
+    imageUrl,
     fileSize: item.fileSize || template.fileSize,
     defaultRotationY: template.defaultRotationY,
     displayScale: template.displayScale,

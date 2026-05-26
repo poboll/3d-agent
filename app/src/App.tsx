@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { DEFAULT_MODEL_ID, MODELS } from './data/models';
 import { Sidebar } from './components/Sidebar';
 import { ModelViewer } from './components/ModelViewer';
@@ -223,7 +223,7 @@ function App() {
     };
   }, [guideOpen, guideStep]);
 
-  const handleModelsLoaded = (models: CellModel[]) => {
+  const handleModelsLoaded = useCallback((models: CellModel[]) => {
     setGeneratedModels((current) => {
       const existingIds = new Set(current.map((model) => model.id));
       const merged = [...current];
@@ -232,11 +232,11 @@ function App() {
       }
       return merged;
     });
-  };
+  }, []);
 
-  const handleModelCreated = (model: CellModel) => {
+  const handleModelCreated = useCallback((model: CellModel) => {
     setGeneratedModels((current) => [model, ...current.filter((item) => item.id !== model.id)].slice(0, 12));
-  };
+  }, []);
 
   const openGuide = () => {
     setRoute('workbench');
@@ -246,7 +246,7 @@ function App() {
     trackEvent('guide_open');
   };
 
-  const selectModel = (id: string) => {
+  const selectModel = useCallback((id: string) => {
     setActiveId(id);
     const model = allModels.find((item) => item.id === id);
     trackEvent('specimen_select', {
@@ -254,7 +254,7 @@ function App() {
       modelName: model?.name,
       custom: Boolean(model?.custom),
     });
-  };
+  }, [allModels]);
 
   const focusSpecimenIndex = () => {
     setRoute('workbench');

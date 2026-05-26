@@ -18,6 +18,37 @@ import { sanitizeFileName } from './http-utils.mjs'
 import { sanitizeModelId, validateModelBuffer } from './model-store.mjs'
 import { getTemplateDisplayName } from './workflow-utils.mjs'
 
+export async function getComfyUiStatus() {
+  try {
+    const stats = await fetchJson(`${COMFYUI_BASE_URL}/system_stats`, { timeoutMs: 12000 })
+    const queue = await fetchJson(`${COMFYUI_BASE_URL}/queue`, { timeoutMs: 12000 }).catch(() => null)
+    return {
+      ok: true,
+      baseUrl: COMFYUI_BASE_URL,
+      workflowTemplate: COMFYUI_WORKFLOW_TEMPLATE,
+      gpu: stats?.devices?.map((device) => ({
+        name: device.name,
+        type: device.type,
+        vramTotal: device.vram_total,
+        vramFree: device.vram_free,
+      })) || [],
+      queue: queue
+        ? {
+            running: Array.isArray(queue.queue_running) ? queue.queue_running.length : 0,
+            pending: Array.isArray(queue.queue_pending) ? queue.queue_pending.length : 0,
+          }
+        : null,
+    }
+  } catch (error) {
+    return {
+      ok: false,
+      baseUrl: COMFYUI_BASE_URL,
+      workflowTemplate: COMFYUI_WORKFLOW_TEMPLATE,
+      error: error.message || 'ComfyUI 健康检查失败。',
+    }
+  }
+}
+
 export async function generateComfyUiModel(job, onProgress) {
   if (!job.referenceId) {
     throw Object.assign(new Error('缺少参考图，请先确认图片。'), { status: 400 })
@@ -217,6 +248,14 @@ function findGlbOutputs(historyItem) {
           label: `${key || ''} ${match[0]}`,
         })
       }
+      if (/\.glb$/i.test(value) && !/[\\/"']/.test(value)) {
+        outputs.push({
+          fileName: value,
+          subfolder: '',
+          type: 'output',
+          label: `${key || ''} ${value}`,
+        })
+      }
     }
 
     if (value && typeof value === 'object' && typeof value.filename === 'string' && /\.glb$/i.test(value.filename)) {
@@ -226,6 +265,28 @@ function findGlbOutputs(historyItem) {
         type: value.type || 'output',
         label: `${key || ''} ${value.filename}`,
       })
+    }
+
+    if (value && typeof value === 'object') {
+      for (const field of ['model_file', 'model_3d', 'path']) {
+        if (typeof value[field] === 'string' && /\.glb$/i.test(value[field])) {
+          const candidate = value[field]
+          outputs.push(
+            candidate.startsWith('/')
+              ? {
+                  serverPath: candidate,
+                  fileName: path.basename(candidate),
+                  label: `${key || ''} ${field} ${candidate}`,
+                }
+              : {
+                  fileName: path.basename(candidate),
+                  subfolder: path.dirname(candidate) === '.' ? '' : path.dirname(candidate),
+                  type: value.type || 'output',
+                  label: `${key || ''} ${field} ${candidate}`,
+                }
+          )
+        }
+      }
     }
   })
 
@@ -271,10 +332,9 @@ async function downloadOutput(output, targetPath) {
 }
 
 function outputPathToViewUrl(serverPath) {
-  if (!serverPath.startsWith(COMFYUI_OUTPUT_PREFIX)) {
-    throw new Error(`ComfyUI 输出路径不在允许目录：${serverPath}`)
-  }
-  const relative = serverPath.slice(COMFYUI_OUTPUT_PREFIX.length)
+  const relative = serverPath.startsWith(COMFYUI_OUTPUT_PREFIX)
+    ? serverPath.slice(COMFYUI_OUTPUT_PREFIX.length)
+    : path.basename(serverPath)
   const subfolder = path.dirname(relative) === '.' ? '' : path.dirname(relative)
   const fileName = path.basename(relative)
   const query = new URLSearchParams({ filename: fileName, subfolder, type: 'output' })

@@ -15,6 +15,12 @@ const endpoints = [
   },
   {
     method: 'POST',
+    path: '/api/references/prompt-preview',
+    title: '预览 3D-ready Prompt',
+    note: '只调用 prompt 打磨流程，不生成图片，适合在正式生图前检查单主体、切面、材质和禁用项。',
+  },
+  {
+    method: 'POST',
     path: '/api/references/text-to-image',
     title: '生成参考图',
     note: '提交生物结构描述，后端先用 gpt-5.5 打磨 3D-ready prompt，再通过 Responses 图像工具生成单张参考图。',

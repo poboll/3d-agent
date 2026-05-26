@@ -31,6 +31,7 @@ export interface LoadEntry {
 const cache = new Map<string, LoadEntry>();
 const cacheListeners = new Set<() => void>();
 const MAX_PARSED_MODELS = 3;
+let currentAbortController: AbortController | null = null;
 
 function notifyEntry(entry: LoadEntry) {
   entry.listeners.forEach((fn) => fn());
@@ -50,9 +51,10 @@ export function subscribeCache(listener: () => void): () => void {
 async function fetchWithProgress(
   url: string,
   expectedSize: number,
-  onProgress: (loaded: number, total: number) => void
+  onProgress: (loaded: number, total: number) => void,
+  signal?: AbortSignal
 ): Promise<ArrayBuffer> {
-  const response = await fetch(url, { cache: 'force-cache' });
+  const response = await fetch(url, { cache: 'force-cache', signal });
   if (!response.ok) {
     throw new Error(`下载失败：${url} (${response.status})`);
   }
@@ -106,6 +108,9 @@ export function loadModel(url: string, options: LoadOptions): LoadEntry {
   const existing = cache.get(url);
   if (existing) {
     existing.lastUsedAt = Date.now();
+    if (existing.status === 'idle') {
+      startEntryLoad(existing, options);
+    }
     return existing;
   }
 
@@ -176,6 +181,8 @@ function trimParsedCache(activeUrl: string) {
 }
 
 function startEntryLoad(entry: LoadEntry, options: LoadOptions) {
+  currentAbortController?.abort();
+  currentAbortController = new AbortController();
   entry.status = 'downloading';
   entry.progress = 0;
   entry.buffer = undefined;
@@ -190,7 +197,7 @@ function startEntryLoad(entry: LoadEntry, options: LoadOptions) {
         entry.status = 'downloading';
         entry.progress = Math.min(0.95, (loaded / Math.max(1, total)) * 0.95);
         notifyEntry(entry);
-      });
+      }, currentAbortController?.signal);
       entry.buffer = buffer;
       entry.status = 'parsing';
       entry.progress = 0.97;
@@ -205,12 +212,21 @@ function startEntryLoad(entry: LoadEntry, options: LoadOptions) {
       notifyEntry(entry);
       return gltf;
     } catch (error) {
+      if ((error as Error).name === 'AbortError') {
+        entry.status = 'idle';
+        entry.progress = 0;
+        notifyEntry(entry);
+        throw error;
+      }
       entry.status = 'error';
       entry.error = error;
       notifyEntry(entry);
       throw error;
     }
   })();
+  entry.promise.catch(() => {
+    /* useModel exposes error state; avoid unhandled promise noise during rapid switches. */
+  });
 }
 
 function disposeGLTF(gltf?: GLTF) {
