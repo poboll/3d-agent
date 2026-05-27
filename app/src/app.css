@@ -427,10 +427,10 @@ body {
 .generation-panel {
   height: 100%;
   min-height: 0;
-  padding: 12px;
+  padding: 10px 11px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   overflow-y: auto;
   border: 1px solid var(--hairline);
   border-radius: 4px;
@@ -443,9 +443,9 @@ body {
 .generation-eyebrow,
 .card-eyebrow {
   display: block;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
   color: var(--ink-whisper);
-  font-size: 10px;
+  font-size: 9px;
   letter-spacing: 0.18em;
 }
 
@@ -453,7 +453,7 @@ body {
 .hero-card h2,
 .about-panel h2 {
   color: var(--sumi);
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 500;
   letter-spacing: 0.04em;
 }
@@ -468,15 +468,15 @@ body {
 }
 
 .generation-panel > div:first-child p {
-  margin-top: 4px;
-  font-size: 11.2px;
-  line-height: 1.42;
+  margin-top: 3px;
+  font-size: 10.8px;
+  line-height: 1.32;
 }
 
 .workflow-ladder {
   list-style: none;
   margin: 0;
-  padding: 5px 0;
+  padding: 4px 0;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 0;
@@ -488,19 +488,19 @@ body {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 4px 5px 5px 0;
+  gap: 1px;
+  padding: 3px 4px 4px 0;
   color: var(--ink-whisper);
 }
 
 .workflow-ladder li + li {
   border-left: 1px solid var(--hairline-2);
-  padding-left: 6px;
+  padding-left: 5px;
 }
 
 .workflow-ladder li > span {
   color: inherit;
-  font-size: 9px;
+  font-size: 8px;
   padding-top: 0;
 }
 
@@ -508,20 +508,25 @@ body {
   display: block;
   color: var(--sumi-soft);
   font-family: var(--font-sans);
-  font-size: 9.5px;
+  font-size: 8.2px;
   font-weight: 600;
+  line-height: 1.18;
   letter-spacing: 0;
   text-transform: none;
 }
 
 .workflow-ladder small {
-  display: block;
-  margin-top: 2px;
+  display: -webkit-box;
+  margin-top: 1px;
+  overflow: hidden;
   color: var(--ink-whisper);
   font-family: var(--font-sans);
-  font-size: 7.8px;
+  font-size: 6.8px;
+  line-height: 1.18;
   letter-spacing: 0;
   text-transform: none;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
 }
 
 .workflow-ladder li.done > span,
@@ -549,7 +554,7 @@ body {
 .generation-field {
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 5px;
 }
 
 .generation-field span,
@@ -572,11 +577,11 @@ body {
 }
 
 .generation-field textarea {
-  min-height: 50px;
+  min-height: 46px;
   resize: vertical;
-  padding: 9px 10px;
-  line-height: 1.48;
-  font-size: 12.5px;
+  padding: 8px 9px;
+  line-height: 1.38;
+  font-size: 12px;
 }
 
 .generation-field select {
@@ -822,17 +827,17 @@ body {
 
 .generation-actions {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 4px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 3px;
 }
 
 .generation-primary,
 .generation-secondary {
-  min-height: 26px;
+  min-height: 24px;
   border: 1px solid var(--hairline);
   border-radius: 4px;
   font-family: var(--font-mono);
-  font-size: 8.4px;
+  font-size: 7.8px;
   font-weight: 700;
   letter-spacing: 0.08em;
   line-height: 1.25;
@@ -912,19 +917,64 @@ body {
   transition: width 0.22s ease;
 }
 
-.generated-count {
-  display: flex;
+.latest-result-card {
+  width: 100%;
+  min-height: 38px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 3px 9px;
   align-items: baseline;
-  gap: 9px;
-  color: var(--ink-mute);
-  font-size: 12px;
+  padding: 6px 9px 7px;
+  border: 1px solid rgba(139, 58, 46, 0.18);
+  border-left: 2px solid var(--vermilion);
+  border-radius: 4px;
+  background:
+    linear-gradient(90deg, rgba(139, 58, 46, 0.055), rgba(251, 250, 244, 0.54)),
+    repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.018) 0 1px, transparent 1px 15px);
+  color: var(--sumi-soft);
+  text-align: left;
+  box-shadow: inset 0 1px 0 rgba(255, 250, 240, 0.42);
 }
 
-.generated-count strong {
+.latest-result-card span {
   color: var(--vermilion);
+  font-family: var(--font-mono);
+  font-size: 7.4px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+}
+
+.latest-result-card strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--sumi);
   font-family: var(--font-serif);
-  font-size: 25px;
-  font-weight: 500;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.latest-result-card em {
+  grid-column: 2;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink-whisper);
+  font-family: var(--font-mono);
+  font-size: 7px;
+  font-style: normal;
+  letter-spacing: 0.06em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.latest-result-card:hover,
+.latest-result-card:focus-visible {
+  border-color: rgba(139, 58, 46, 0.34);
+  background:
+    linear-gradient(90deg, rgba(139, 58, 46, 0.075), rgba(251, 250, 244, 0.68)),
+    repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.022) 0 1px, transparent 1px 15px);
 }
 
 .job-history {
@@ -2258,7 +2308,7 @@ body {
   width: 100%;
   min-height: 0;
   margin: 0;
-  padding: 0 5px 0 0;
+  padding: 0 6px 0 0;
   list-style: none;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2271,7 +2321,7 @@ body {
 }
 
 .cell-list::-webkit-scrollbar {
-  width: 4px;
+  width: 3px;
 }
 
 .cell-list::-webkit-scrollbar-thumb {
@@ -2491,6 +2541,43 @@ body {
     0 10px 24px -22px rgba(28, 28, 26, 0.48);
 }
 
+.cell-item.custom {
+  border-color: rgba(89, 111, 85, 0.15);
+  background:
+    linear-gradient(90deg, rgba(223, 233, 220, 0.2), transparent 45%),
+    linear-gradient(180deg, rgba(251, 250, 244, 0.58), rgba(232, 230, 221, 0.26));
+}
+
+.cell-item.custom::before {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 6px;
+  bottom: 6px;
+  width: 1px;
+  background: linear-gradient(180deg, rgba(89, 111, 85, 0.62), rgba(139, 58, 46, 0.36));
+}
+
+.cell-item.custom.active {
+  border-color: rgba(89, 111, 85, 0.42);
+  background:
+    repeating-linear-gradient(135deg, rgba(89, 111, 85, 0.032) 0 8px, transparent 8px 16px),
+    linear-gradient(90deg, rgba(223, 233, 220, 0.36), rgba(251, 250, 244, 0.84));
+  box-shadow:
+    inset 3px 0 0 rgba(89, 111, 85, 0.74),
+    0 10px 24px -22px rgba(28, 28, 26, 0.48);
+}
+
+.cell-item.custom .status-chip {
+  max-width: 46px;
+  border-left-color: rgba(89, 111, 85, 0.2);
+  color: rgba(89, 111, 85, 0.9);
+}
+
+.cell-item.custom.active .status-chip {
+  color: var(--vermilion);
+}
+
 .cell-current-mark {
   position: absolute;
   right: 4px;
@@ -2518,6 +2605,11 @@ body {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.cell-item.custom .cell-thumb img {
+  object-fit: contain;
+  background: rgba(255, 250, 240, 0.38);
 }
 
 .specimen-popover {

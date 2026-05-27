@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { DEFAULT_MODEL_ID, MODELS, getModelTemplate } from './data/models';
 import { Sidebar } from './components/Sidebar';
 import { ModelViewer } from './components/ModelViewer';
@@ -10,6 +10,7 @@ import { trackEvent } from './lib/analytics';
 import './app.css';
 
 const GENERATED_MODELS_STORAGE_KEY = 'learning-cell-generated-models';
+const ACTIVE_MODEL_STORAGE_KEY = 'learning-cell-active-model';
 const GUIDE_STORAGE_KEY = 'ma-cell-workflow-guide-seen';
 const GENERATED_MODEL_LIMIT = 16;
 
@@ -65,6 +66,14 @@ function readStoredGeneratedModels() {
   } catch {
     localStorage.removeItem(GENERATED_MODELS_STORAGE_KEY);
     return [];
+  }
+}
+
+function readStoredActiveId() {
+  try {
+    return localStorage.getItem(ACTIVE_MODEL_STORAGE_KEY) || '';
+  } catch {
+    return '';
   }
 }
 
@@ -198,8 +207,9 @@ function buildGuideFrame(target: HTMLElement, targetId: string): GuideFrame {
 }
 
 function App() {
-  const [activeId, setActiveId] = useState<string>(DEFAULT_MODEL_ID);
   const [generatedModels, setGeneratedModels] = useState<CellModel[]>(readStoredGeneratedModels);
+  const [activeId, setActiveId] = useState<string>(() => readStoredActiveId() || DEFAULT_MODEL_ID);
+  const shouldPreferLatestGeneratedRef = useRef(!readStoredActiveId());
   const [route, setRoute] = useState<Route>(() => (shouldShowInitialGuide() ? 'workbench' : getRouteFromHash()));
   const [guideOpen, setGuideOpen] = useState(shouldShowInitialGuide);
   const [guideStep, setGuideStep] = useState(0);
@@ -227,6 +237,30 @@ function App() {
   useEffect(() => {
     localStorage.setItem(GENERATED_MODELS_STORAGE_KEY, JSON.stringify(uniqueGeneratedModels(generatedModels)));
   }, [generatedModels]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(ACTIVE_MODEL_STORAGE_KEY, activeId);
+    } catch {
+      // Ignore storage failures; model selection still works for the current session.
+    }
+  }, [activeId]);
+
+  useEffect(() => {
+    if (!generatedModels.length || !shouldPreferLatestGeneratedRef.current) return;
+    const latestGenerated = generatedModels[0];
+    if (latestGenerated && activeId === DEFAULT_MODEL_ID) {
+      setActiveId(latestGenerated.id);
+    }
+    shouldPreferLatestGeneratedRef.current = false;
+  }, [activeId, generatedModels]);
+
+  useEffect(() => {
+    if (allModels.some((model) => model.id === activeId)) return;
+    const storedActiveId = readStoredActiveId();
+    const restored = allModels.find((model) => model.id === storedActiveId);
+    setActiveId(restored?.id || generatedModels[0]?.id || DEFAULT_MODEL_ID);
+  }, [activeId, allModels, generatedModels]);
 
   useEffect(() => {
     if (!guideOpen) return;
@@ -307,6 +341,7 @@ function App() {
   };
 
   const selectModel = useCallback((id: string) => {
+    shouldPreferLatestGeneratedRef.current = false;
     setActiveId(id);
     const model = allModels.find((item) => item.id === id);
     trackEvent('specimen_select', {

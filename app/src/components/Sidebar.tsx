@@ -19,9 +19,9 @@ export function Sidebar({ models, activeId, onSelect, onOpenIndex, guideOpen = f
 
   const normalizedQuery = query.trim().toLowerCase();
   const filteredModels = useMemo(() => {
-    if (!normalizedQuery) return models;
+    if (!normalizedQuery) return orderModelsForIndex(models, activeId);
 
-    return models
+    const matches = models
       .map((model, index) => {
         const fields = [
           model.name,
@@ -55,7 +55,9 @@ export function Sidebar({ models, activeId, onSelect, onOpenIndex, guideOpen = f
       .filter((item): item is { model: CellModel; rank: number; index: number } => Boolean(item))
       .sort((a, b) => a.rank - b.rank || a.index - b.index)
       .map((item) => item.model);
-  }, [models, normalizedQuery]);
+
+    return orderModelsForIndex(matches, activeId);
+  }, [activeId, models, normalizedQuery]);
 
   useEffect(() => {
     if (!focusSignal) return;
@@ -188,33 +190,51 @@ function CellItem({
   active: boolean;
   onSelect: () => void;
 }) {
-  const statusLabel = model.custom ? '生成模型' : model.category;
+  const displayName = model.custom ? formatGeneratedModelName(model.name) : model.name;
+  const statusLabel = model.custom ? 'AI 生成' : model.category;
+  const sourceLabel = model.custom
+    ? model.source || model.generationStatus || '本地生成结果'
+    : model.subtitle;
 
   return (
     <li>
       <button
         type="button"
-        className={`cell-item${active ? ' active' : ''}`}
+        className={`cell-item${active ? ' active' : ''}${model.custom ? ' custom' : ''}`}
         onClick={onSelect}
         style={{ '--accent': model.accent } as React.CSSProperties}
       >
         {active && <span className="cell-current-mark">当前</span>}
         <div className="cell-thumb">
-          <img src={model.imageUrl} alt={model.name} loading="lazy" />
+          <img src={model.imageUrl} alt={displayName} loading="lazy" />
         </div>
         <div className="cell-meta">
           <div className="cell-title-row">
-            <div className="cell-name">{model.name}</div>
+            <div className="cell-name">{displayName}</div>
             <span className={`status-chip ${active ? 'ok' : 'idle'}`}>
               {active && <Check />}
               {statusLabel}
             </span>
           </div>
-          <div className="cell-sub">{model.custom ? model.source ?? model.subtitle : model.subtitle}</div>
+          <div className="cell-sub">{sourceLabel}</div>
         </div>
       </button>
     </li>
   );
+}
+
+function orderModelsForIndex(models: CellModel[], activeId: string) {
+  return [...models].sort((a, b) => {
+    if (a.id === activeId) return -1;
+    if (b.id === activeId) return 1;
+    if (a.custom && !b.custom) return -1;
+    if (!a.custom && b.custom) return 1;
+    return 0;
+  });
+}
+
+function formatGeneratedModelName(name: string) {
+  return name.replace(/^(AI\s*)?生成[:：]\s*/i, '').trim();
 }
 
 function Check() {

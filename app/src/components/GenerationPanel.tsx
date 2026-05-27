@@ -457,6 +457,13 @@ export function GenerationPanel({
   const selectedProviderOnline = isImageProviderReady(providerStatus, imageProvider);
   const selectedProviderLabel = getImageProviderName(imageProvider);
   const model3dReady = isModel3dReady(providerStatus);
+  const latestGeneratedModel = generatedModels[0];
+  const latestGeneratedName = latestGeneratedModel ? formatGeneratedModelName(latestGeneratedModel.name) : '';
+  const latestResultLabel = latestGeneratedModel
+    ? [latestGeneratedModel.source || latestGeneratedModel.generationStatus, latestGeneratedModel.subtitle]
+        .filter(Boolean)
+        .join(' / ')
+    : '';
 
   return (
     <section className="generation-panel" id={id}>
@@ -465,6 +472,20 @@ export function GenerationPanel({
         <h2>生成工坊</h2>
         <p>文本或图片先形成参考图，确认后再交给图生 3D 服务，适合课堂里逐步讲解。</p>
       </div>
+
+      {generatedModels.length > 0 && (
+        <button
+          type="button"
+          className="latest-result-card"
+          onClick={() => {
+            if (latestGeneratedModel) onSelect(latestGeneratedModel.id);
+          }}
+        >
+          <span>最新生成</span>
+          <strong>{latestGeneratedName || `${generatedModels.length} 个模型`}</strong>
+          <em>{latestResultLabel || '已进入底部标本索引'}</em>
+        </button>
+      )}
 
       <ol className="workflow-ladder" aria-label="生成流程">
         {WORKFLOW_STEPS.map((step) => (
@@ -631,13 +652,6 @@ export function GenerationPanel({
         )}
       </div>
 
-      {generatedModels.length > 0 && (
-        <div className="generated-count">
-          <strong>{generatedModels.length}</strong>
-          <span>个生成/导入模型进入标本索引</span>
-        </div>
-      )}
-
       {jobHistory.length > 0 && (
         <div className="job-history">
           <div className="job-history-title">最近任务</div>
@@ -749,6 +763,10 @@ function getImageProviderName(provider: string) {
   if (provider === 'local-gateway') return '本地图片网关';
   if (provider === 'openai') return 'OpenAI GPT Image';
   return '图片生成服务';
+}
+
+function formatGeneratedModelName(name: string) {
+  return name.replace(/^(AI\s*)?生成[:：]\s*/i, '').trim();
 }
 
 function isImageProviderReady(status: ProviderStatusPayload | null, provider: string) {
