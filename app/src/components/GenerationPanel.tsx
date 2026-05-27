@@ -34,6 +34,7 @@ export function GenerationPanel({
   const modelInputRef = useRef<HTMLInputElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const reportedFullReferenceIds = useRef<Set<string>>(new Set());
+  const restoredLatestJobRef = useRef(false);
   const [status, setStatus] = useState('先得到一张可确认的参考图，再进入图生 3D 建模。');
   const [busy, setBusy] = useState(false);
   const [prompt, setPrompt] = useState('植物细胞 3D 教学模型，突出叶绿体、细胞壁和大型液泡');
@@ -73,6 +74,24 @@ export function GenerationPanel({
         const completedModels = jobs.map(workflowJobToCellModel).filter((model): model is CellModel => Boolean(model));
         if (completedModels.length) {
           onModelsLoaded(completedModels);
+        }
+        if (!restoredLatestJobRef.current) {
+          const latestInspectableJob = jobs.find((job) => job.status === 'completed' && job.reference);
+          if (latestInspectableJob?.reference) {
+            restoredLatestJobRef.current = true;
+            setActiveJob(latestInspectableJob);
+            setReferenceImage(toReferenceImage(latestInspectableJob.reference, false));
+            setReferenceAccepted(true);
+            setPromptPreview({
+              template: latestInspectableJob.reference.template,
+              sourcePrompt: latestInspectableJob.reference.prompt,
+              model: latestInspectableJob.reference.promptModel || 'local-template',
+              imagePrompt: latestInspectableJob.reference.imagePrompt || '',
+              negativePrompt: latestInspectableJob.reference.negativePrompt || '',
+              qualityChecklist: [],
+            });
+            setStatus('已恢复最近完成任务：参考图、建模结果与标本索引均可继续查看。');
+          }
         }
       })
       .catch(() => {
@@ -464,6 +483,23 @@ export function GenerationPanel({
         .filter(Boolean)
         .join(' / ')
     : '';
+  const quickStatusItems = [
+    {
+      label: '图片',
+      value: providerStatusLoading ? '检查中' : selectedProviderOnline ? '正常' : '需检查',
+      state: providerStatusLoading ? 'pending' : selectedProviderOnline ? 'ok' : 'warn',
+    },
+    {
+      label: '3D',
+      value: providerStatusLoading ? '同步中' : model3dReady ? '就绪' : '需检查',
+      state: providerStatusLoading ? 'pending' : model3dReady ? 'ok' : 'warn',
+    },
+    {
+      label: '阶段',
+      value: getPhaseLabel(phase),
+      state: phase === 'failed' ? 'warn' : phase === 'done' ? 'ok' : busy ? 'pending' : 'idle',
+    },
+  ];
 
   return (
     <section className="generation-panel" id={id}>
@@ -487,17 +523,37 @@ export function GenerationPanel({
         </button>
       )}
 
-      <ol className="workflow-ladder" aria-label="生成流程">
-        {WORKFLOW_STEPS.map((step) => (
-          <li className={getStepClass(step.id, phase, failedPhase)} key={step.id}>
-            <span>{step.no}</span>
-            <div>
-              <strong>{step.title}</strong>
-              <small>{step.caption}</small>
-            </div>
-          </li>
+      <div className="workflow-quick-status" aria-label="生成链路实时状态">
+        {quickStatusItems.map((item) => (
+          <span className={item.state} key={item.label}>
+            <small>{item.label}</small>
+            <strong>{item.value}</strong>
+          </span>
         ))}
-      </ol>
+      </div>
+
+      {referenceImage && (
+        <button
+          type="button"
+          className="reference-mini-card"
+          onClick={() => {
+            document.getElementById('reference-step')?.scrollIntoView({
+              behavior: 'smooth',
+              block: 'center',
+              inline: 'nearest',
+            });
+          }}
+        >
+          <span className="reference-mini-thumb">
+            <img src={referenceImage.url} alt={referenceImage.title} />
+          </span>
+          <span className="reference-mini-copy">
+            <small>{referenceAccepted ? '参考图已确认' : '参考图待确认'}</small>
+            <strong>{referenceImage.title}</strong>
+            <em>{[referenceImage.source, referenceImage.promptModel || referenceImage.model].filter(Boolean).join(' · ')}</em>
+          </span>
+        </button>
+      )}
 
       <label className="generation-field">
         <span>01 TEXT PROMPT / 生物结构描述</span>
@@ -542,6 +598,18 @@ export function GenerationPanel({
           导入 GLB
         </button>
       </div>
+
+      <ol className="workflow-ladder" aria-label="生成流程">
+        {WORKFLOW_STEPS.map((step) => (
+          <li className={getStepClass(step.id, phase, failedPhase)} key={step.id}>
+            <span>{step.no}</span>
+            <div>
+              <strong>{step.title}</strong>
+              <small>{step.caption}</small>
+            </div>
+          </li>
+        ))}
+      </ol>
 
       <div className="generation-controls">
         <label className="generation-field compact">
@@ -767,6 +835,15 @@ function getImageProviderName(provider: string) {
 
 function formatGeneratedModelName(name: string) {
   return name.replace(/^(AI\s*)?生成[:：]\s*/i, '').trim();
+}
+
+function getPhaseLabel(phase: WorkflowPhase) {
+  if (phase === 'input') return '待输入';
+  if (phase === 'prompt') return '打磨中';
+  if (phase === 'image') return '待确认';
+  if (phase === 'modeling') return '建模中';
+  if (phase === 'done') return '已入库';
+  return '失败';
 }
 
 function isImageProviderReady(status: ProviderStatusPayload | null, provider: string) {

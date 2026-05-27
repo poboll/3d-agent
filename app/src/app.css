@@ -476,7 +476,7 @@ body {
 .workflow-ladder {
   list-style: none;
   margin: 0;
-  padding: 4px 0;
+  padding: 3px 0;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 0;
@@ -489,7 +489,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 1px;
-  padding: 3px 4px 4px 0;
+  padding: 2px 4px 3px 0;
   color: var(--ink-whisper);
 }
 
@@ -508,7 +508,7 @@ body {
   display: block;
   color: var(--sumi-soft);
   font-family: var(--font-sans);
-  font-size: 8.2px;
+  font-size: 7.7px;
   font-weight: 600;
   line-height: 1.18;
   letter-spacing: 0;
@@ -521,7 +521,7 @@ body {
   overflow: hidden;
   color: var(--ink-whisper);
   font-family: var(--font-sans);
-  font-size: 6.8px;
+  font-size: 6.4px;
   line-height: 1.18;
   letter-spacing: 0;
   text-transform: none;
@@ -577,11 +577,11 @@ body {
 }
 
 .generation-field textarea {
-  min-height: 46px;
+  min-height: 42px;
   resize: vertical;
   padding: 8px 9px;
-  line-height: 1.38;
-  font-size: 12px;
+  line-height: 1.34;
+  font-size: 11.8px;
 }
 
 .generation-field select {
@@ -767,7 +767,10 @@ body {
   width: 100%;
   height: 100%;
   min-height: 62px;
-  object-fit: cover;
+  object-fit: contain;
+  background:
+    radial-gradient(60px 44px at 50% 55%, rgba(255, 250, 240, 0.72), transparent 76%),
+    rgba(251, 250, 244, 0.54);
 }
 
 .reference-empty {
@@ -975,6 +978,143 @@ body {
   background:
     linear-gradient(90deg, rgba(139, 58, 46, 0.075), rgba(251, 250, 244, 0.68)),
     repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.022) 0 1px, transparent 1px 15px);
+}
+
+.workflow-quick-status {
+  min-height: 25px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 3px;
+}
+
+.workflow-quick-status span {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 5px;
+  padding: 4px 6px;
+  border: 1px solid rgba(28, 31, 27, 0.08);
+  border-radius: 3px;
+  background:
+    linear-gradient(180deg, rgba(251, 250, 244, 0.56), rgba(232, 230, 221, 0.18)),
+    repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.014) 0 1px, transparent 1px 12px);
+  color: var(--ink-mute);
+  overflow: hidden;
+}
+
+.workflow-quick-status small {
+  color: var(--ink-whisper);
+  font-family: var(--font-mono);
+  font-size: 6.7px;
+  letter-spacing: 0.08em;
+}
+
+.workflow-quick-status strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--sumi-soft);
+  font-size: 9.2px;
+  font-weight: 700;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workflow-quick-status span.ok {
+  border-color: rgba(89, 111, 85, 0.18);
+  background:
+    linear-gradient(180deg, rgba(223, 233, 220, 0.36), rgba(251, 250, 244, 0.36)),
+    repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.016) 0 1px, transparent 1px 12px);
+}
+
+.workflow-quick-status span.ok strong {
+  color: var(--moss);
+}
+
+.workflow-quick-status span.warn {
+  border-color: rgba(139, 58, 46, 0.22);
+  background:
+    linear-gradient(180deg, rgba(139, 58, 46, 0.07), rgba(251, 250, 244, 0.38)),
+    repeating-linear-gradient(103deg, rgba(139, 58, 46, 0.012) 0 1px, transparent 1px 12px);
+}
+
+.workflow-quick-status span.warn strong {
+  color: var(--vermilion);
+}
+
+.workflow-quick-status span.pending strong {
+  color: rgba(139, 58, 46, 0.78);
+}
+
+.reference-mini-card {
+  width: 100%;
+  min-height: 36px;
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  padding: 3px 7px;
+  border: 1px solid rgba(89, 111, 85, 0.16);
+  border-radius: 4px;
+  background:
+    linear-gradient(90deg, rgba(223, 233, 220, 0.24), rgba(251, 250, 244, 0.44)),
+    repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.014) 0 1px, transparent 1px 13px);
+  color: inherit;
+  text-align: left;
+  box-shadow: inset 0 1px 0 rgba(255, 250, 240, 0.38);
+}
+
+.reference-mini-thumb {
+  width: 32px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(28, 31, 27, 0.1);
+  background: rgba(251, 250, 244, 0.62);
+  overflow: hidden;
+}
+
+.reference-mini-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.reference-mini-copy {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.reference-mini-copy small,
+.reference-mini-copy em {
+  overflow: hidden;
+  color: var(--ink-whisper);
+  font-family: var(--font-mono);
+  font-size: 6.8px;
+  font-style: normal;
+  letter-spacing: 0.08em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reference-mini-copy strong {
+  overflow: hidden;
+  color: var(--sumi);
+  font-family: var(--font-serif);
+  font-size: 11.4px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reference-mini-card:hover,
+.reference-mini-card:focus-visible {
+  border-color: rgba(89, 111, 85, 0.28);
+  background:
+    linear-gradient(90deg, rgba(223, 233, 220, 0.34), rgba(251, 250, 244, 0.58)),
+    repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.016) 0 1px, transparent 1px 13px);
 }
 
 .job-history {
