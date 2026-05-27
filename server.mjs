@@ -7,6 +7,7 @@ import {
   COMFYUI_BASE_URL,
   COMFYUI_WORKFLOW_TEMPLATE,
   LOCAL_MODEL_DIR,
+  LOCAL_IMAGE_GATEWAY_CONFIGURED,
   OPENAI_IMAGE_CONFIGURED,
   REFERENCE_CACHE_DIR,
   REFERENCE_TRASH_DIR,
@@ -25,6 +26,7 @@ import { appendAnalyticsEvents } from './server/analytics-store.mjs'
 import { getComfyUiStatus } from './server/comfyui-provider.mjs'
 import {
   createReferenceImage,
+  getLocalImageGatewayStatus,
   getReferenceImageStatus,
   getOpenAiProviderStatus,
   importReferenceImage,
@@ -62,8 +64,10 @@ const server = http.createServer(async (request, response) => {
         providers: {
           localCache: true,
           localGlb: true,
+          localImageGateway: await getLocalImageGatewayStatus({ check: false }),
           openai: await getOpenAiProviderStatus({ check: false }),
           openaiImage: OPENAI_IMAGE_CONFIGURED,
+          localImageGatewayImage: LOCAL_IMAGE_GATEWAY_CONFIGURED,
           selfhostTriposg: true,
           tencentHunyuan: TENCENT_HUNYUAN_CONFIGURED,
         },
@@ -95,6 +99,7 @@ const server = http.createServer(async (request, response) => {
       const check = url.searchParams.get('check') === '1'
       sendJson(response, 200, {
         image: {
+          localGateway: await getLocalImageGatewayStatus({ check }),
           openai: await getOpenAiProviderStatus({ check }),
         },
         model3d: {
@@ -150,7 +155,7 @@ const server = http.createServer(async (request, response) => {
       const job = await createWorkflowJob({
         prompt: sourcePrompt.length >= 6 ? sourcePrompt : `${sourcePrompt} 3D-ready 生物教学模型`,
         provider: input.provider || 'selfhost-triposg',
-        imageProvider: input.imageProvider || 'openai',
+        imageProvider: input.imageProvider,
         template: input.template,
         workflowMode: 'full-text-to-3d',
         deferReference: true,

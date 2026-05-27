@@ -3,6 +3,7 @@ import type { CellModel } from '../data/models';
 import {
   createFullTextTo3dJob,
   createReferenceImage,
+  fetchProviderStatus,
   createTextToCellJob,
   fetchDemoGeneratedModels,
   fetchWorkflowJob,
@@ -12,7 +13,7 @@ import {
   uploadReferenceImage,
   workflowJobToCellModel,
 } from '../services/fusionApi';
-import type { PromptPreviewPayload, ReferenceImagePayload, WorkflowJob } from '../services/fusionApi';
+import type { PromptPreviewPayload, ProviderStatusPayload, ReferenceImagePayload, WorkflowJob } from '../services/fusionApi';
 import { trackEvent } from '../lib/analytics';
 
 interface Props {
@@ -36,12 +37,14 @@ export function GenerationPanel({
   const [status, setStatus] = useState('先得到一张可确认的参考图，再进入图生 3D 建模。');
   const [busy, setBusy] = useState(false);
   const [prompt, setPrompt] = useState('植物细胞 3D 教学模型，突出叶绿体、细胞壁和大型液泡');
-  const [imageProvider, setImageProvider] = useState('openai');
+  const [imageProvider, setImageProvider] = useState('local-gateway');
   const [modelProvider, setModelProvider] = useState('selfhost-triposg');
   const [template, setTemplate] = useState('plant-cell');
   const [referenceImage, setReferenceImage] = useState<ReferenceImage | null>(null);
   const [referenceAccepted, setReferenceAccepted] = useState(false);
   const [promptPreview, setPromptPreview] = useState<PromptPreviewPayload | null>(null);
+  const [providerStatus, setProviderStatus] = useState<ProviderStatusPayload | null>(null);
+  const [providerStatusLoading, setProviderStatusLoading] = useState(false);
   const [activeJob, setActiveJob] = useState<WorkflowJob | null>(null);
   const [jobHistory, setJobHistory] = useState<WorkflowJob[]>([]);
 
@@ -50,6 +53,19 @@ export function GenerationPanel({
 
   useEffect(() => {
     let cancelled = false;
+    setProviderStatusLoading(true);
+    fetchProviderStatus(true)
+      .then((statusPayload) => {
+        if (cancelled) return;
+        setProviderStatus(statusPayload);
+      })
+      .catch(() => {
+        if (!cancelled) setProviderStatus(null);
+      })
+      .finally(() => {
+        if (!cancelled) setProviderStatusLoading(false);
+      });
+
     fetchWorkflowJobs()
       .then((jobs) => {
         if (cancelled) return;
@@ -284,6 +300,7 @@ export function GenerationPanel({
       const nextPreview = await previewReferencePrompt({
         prompt: prompt.trim(),
         template,
+        provider: imageProvider,
       });
       setPromptPreview(nextPreview);
       setStatus('Prompt 已生成，可检查后继续生成参考图。');
@@ -437,6 +454,9 @@ export function GenerationPanel({
   const progress = activeJob?.progress ?? 0;
   const canCreateReference = !busy && prompt.trim().length >= 6;
   const canConfirmModeling = !busy && !!referenceImage && referenceAccepted && activeJob?.status !== 'completed' && activeJob?.status !== 'processing' && activeJob?.status !== 'queued';
+  const selectedProviderOnline = isImageProviderReady(providerStatus, imageProvider);
+  const selectedProviderLabel = getImageProviderName(imageProvider);
+  const model3dReady = isModel3dReady(providerStatus);
 
   return (
     <section className="generation-panel" id={id}>
@@ -520,6 +540,7 @@ export function GenerationPanel({
         <label className="generation-field compact">
           <span>IMAGE MODEL</span>
           <select value={imageProvider} onChange={(event) => setImageProvider(event.target.value)}>
+            <option value="local-gateway">本地图片网关 · GPT Image 2</option>
             <option value="openai">OpenAI GPT Image</option>
           </select>
         </label>
@@ -542,6 +563,21 @@ export function GenerationPanel({
           <p>{promptPreview.imagePrompt}</p>
         </div>
       )}
+
+      <div className="provider-hint" aria-label="当前生成链路">
+        <span>{selectedProviderLabel}</span>
+        <strong>文生图 → 接收图片 → 图生 3D</strong>
+      </div>
+
+      <div className="provider-status-strip" aria-label="本地生成服务状态">
+        <span className={getProviderStatusClass(providerStatusLoading, selectedProviderOnline)}>
+          {providerStatusLoading ? '检查中' : selectedProviderOnline ? '图片服务正常' : '图片服务需检查'}
+        </span>
+        <span className={getProviderStatusClass(providerStatusLoading, model3dReady)}>
+          {providerStatusLoading ? '同步中' : model3dReady ? '3D 服务就绪' : '3D 服务需检查'}
+        </span>
+        <em>{buildProviderStatusText(providerStatus, imageProvider)}</em>
+      </div>
 
       <div id="reference-step" className={`reference-card${referenceImage ? ' has-image' : ''}`}>
         <div className="reference-preview">
@@ -710,6 +746,42 @@ function getWorkflowFailedPhase(activeJob: WorkflowJob | null): Exclude<Workflow
 }
 
 function getImageProviderName(provider: string) {
+  if (provider === 'local-gateway') return '本地图片网关';
   if (provider === 'openai') return 'OpenAI GPT Image';
   return '图片生成服务';
+}
+
+function isImageProviderReady(status: ProviderStatusPayload | null, provider: string) {
+  if (!status) return false;
+  if (provider === 'local-gateway') {
+    return Boolean(status.image.localGateway?.configured && status.image.localGateway?.health?.ok && status.image.localGateway?.models?.ok);
+  }
+  if (provider === 'openai') {
+    return Boolean(status.image.openai?.configured && status.image.openai?.auth?.ok);
+  }
+  return false;
+}
+
+function isModel3dReady(status: ProviderStatusPayload | null) {
+  if (!status) return false;
+  const selfhost = status.model3d.selfhostTriposg;
+  return Boolean(selfhost?.configured && selfhost.status?.ok !== false);
+}
+
+function getProviderStatusClass(loading: boolean, ready: boolean) {
+  if (loading) return 'pending';
+  return ready ? 'ok' : 'warn';
+}
+
+function buildProviderStatusText(status: ProviderStatusPayload | null, provider: string) {
+  if (!status) return '等待状态同步';
+  if (provider === 'local-gateway') {
+    const gateway = status.image.localGateway;
+    const imageModel = gateway?.imageModel || 'gpt-image-2';
+    const promptModel = gateway?.promptModel || 'gpt-5.5';
+    return `${promptModel} / ${imageModel}`;
+  }
+  const openai = status.image.openai;
+  if (openai?.auth?.message && !openai.auth.ok) return openai.auth.message;
+  return `${openai?.imageModel || 'OpenAI'} / ${openai?.imageToolModel || 'image tool'}`;
 }

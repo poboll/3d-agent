@@ -651,6 +651,95 @@ body {
   line-height: 1.52;
 }
 
+.provider-hint {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  min-height: 28px;
+  padding: 6px 9px;
+  border-left: 2px solid rgba(89, 111, 85, 0.38);
+  background:
+    linear-gradient(90deg, rgba(223, 233, 220, 0.34), rgba(251, 250, 244, 0.18)),
+    repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.018) 0 1px, transparent 1px 16px);
+}
+
+.provider-hint span {
+  color: var(--vermilion);
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.provider-hint strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--sumi-soft);
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.provider-status-strip {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  min-height: 27px;
+  padding: 5px 8px;
+  border-top: 1px solid var(--hairline-2);
+  border-bottom: 1px solid var(--hairline-2);
+  background:
+    linear-gradient(90deg, rgba(251, 250, 244, 0.56), rgba(223, 233, 220, 0.18)),
+    repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.018) 0 1px, transparent 1px 15px);
+}
+
+.provider-status-strip span {
+  min-width: 0;
+  padding: 2px 5px 3px;
+  border-left: 1px solid rgba(28, 31, 27, 0.12);
+  color: var(--ink-mute);
+  font-family: var(--font-mono);
+  font-size: 7.4px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.provider-status-strip span.ok {
+  border-left-color: rgba(89, 111, 85, 0.38);
+  color: var(--moss);
+  background: rgba(223, 233, 220, 0.28);
+}
+
+.provider-status-strip span.warn {
+  border-left-color: rgba(139, 58, 46, 0.38);
+  color: var(--vermilion);
+  background: rgba(139, 58, 46, 0.055);
+}
+
+.provider-status-strip span.pending {
+  color: var(--ink-whisper);
+  background: rgba(251, 250, 244, 0.38);
+}
+
+.provider-status-strip em {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink-whisper);
+  font-family: var(--font-mono);
+  font-size: 7.6px;
+  font-style: normal;
+  letter-spacing: 0.05em;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .prompt-preview-card::-webkit-scrollbar {
   width: 5px;
 }
@@ -899,11 +988,11 @@ body {
 .stage::before {
   content: '';
   position: absolute;
-  width: min(55vw, 760px);
-  aspect-ratio: 1.43;
+  width: min(61vw, 830px);
+  aspect-ratio: 1.5;
   left: 50%;
   top: 50.5%;
-  background-image: url("data:image/svg+xml,%3Csvg width='760' height='532' viewBox='0 0 760 532' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M386 69C556 62 680 156 687 267C695 392 532 470 361 462C199 454 74 364 82 254C90 146 221 78 399 70' fill='none' stroke='%231c1c1a' stroke-opacity='.14' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg width='830' height='552' viewBox='0 0 830 552' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M430 69C590 72 723 152 742 260C761 370 622 472 420 481C239 489 91 414 78 299C64 176 195 87 413 69' fill='none' stroke='%231c1c1a' stroke-opacity='.15' stroke-width='1.18' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-position: center;
   background-repeat: no-repeat;
   background-size: contain;
@@ -1048,7 +1137,7 @@ body {
 .stage-info-main {
   top: 18px;
   left: 22px;
-  width: min(186px, 20%);
+  width: min(176px, 19%);
   padding: 8px 10px;
 }
 
@@ -1152,7 +1241,7 @@ body {
   right: 22px;
   top: 18px;
   z-index: 9;
-  width: min(198px, 22%);
+  width: min(168px, 19%);
   padding: 9px 10px 10px;
   border: 1px solid rgba(28, 31, 27, 0.12);
   border-radius: 4px;
@@ -1338,7 +1427,7 @@ body {
 }
 
 .stage-question-drawer {
-  width: min(184px, 21%);
+  width: min(156px, 18%);
   right: 12px;
   bottom: 58px;
   z-index: 36;
@@ -1525,7 +1614,7 @@ body {
   left: 22px;
   bottom: 62px;
   z-index: 4;
-  width: min(148px, 15%);
+  width: min(140px, 14%);
   max-height: 124px;
   padding: 4px 0 4px 12px;
   overflow-y: auto;
@@ -1571,7 +1660,7 @@ body {
   right: 22px;
   bottom: 96px;
   z-index: 5;
-  width: min(194px, 21%);
+  width: min(182px, 20%);
   padding: 9px 10px 10px;
   border: 1px solid rgba(28, 31, 27, 0.1);
   border-radius: 4px;
@@ -1839,11 +1928,11 @@ body {
   position: relative;
   min-height: 0;
   display: grid;
-  grid-template-columns: 56px minmax(0, 1fr);
+  grid-template-columns: 50px minmax(0, 1fr);
   gap: 8px;
   align-items: stretch;
   margin-bottom: 0;
-  padding: 2px 9px 4px 0;
+  padding: 2px 8px 4px 0;
   border-right: 1px solid var(--hairline-2);
   overflow: visible;
 }
@@ -1851,7 +1940,7 @@ body {
 .specimen-summary::after {
   content: 'EUKARYOTA / PLANTAE';
   position: absolute;
-  left: 64px;
+  left: 58px;
   right: 9px;
   bottom: 3px;
   overflow: hidden;
@@ -1874,8 +1963,8 @@ body {
 
 .specimen-summary-image {
   position: relative;
-  width: 52px;
-  height: 52px;
+  width: 48px;
+  height: 48px;
   min-height: 0;
   align-self: start;
   border: 1px solid rgba(28, 28, 26, 0.16);
@@ -2005,9 +2094,9 @@ body {
   max-height: none;
   overflow-y: auto;
   color: rgba(43, 42, 38, 0.76);
-  font-size: 9.25px;
+  font-size: 9.7px;
   line-height: 14px;
-  padding: 0 8px 1px 0;
+  padding: 0 9px 1px 0;
   background-image: repeating-linear-gradient(
     to bottom,
     transparent 0,
@@ -2016,12 +2105,12 @@ body {
     rgba(28, 31, 27, 0.05) 15px
   );
   background-position: 0 14px;
-  scrollbar-color: rgba(139, 58, 46, 0.42) transparent;
+  scrollbar-color: rgba(139, 58, 46, 0.48) transparent;
   scrollbar-width: thin;
 }
 
 .specimen-summary-copy p::-webkit-scrollbar {
-  width: 3px;
+  width: 4px;
 }
 
 .specimen-summary-copy p::-webkit-scrollbar-track {
@@ -2029,9 +2118,11 @@ body {
 }
 
 .specimen-summary-copy p::-webkit-scrollbar-thumb {
-  border: 0;
+  border-left: 1px solid transparent;
+  border-right: 1px solid transparent;
   border-radius: 0;
   background: linear-gradient(180deg, rgba(139, 58, 46, 0.52), rgba(89, 111, 85, 0.28));
+  background-clip: content-box;
 }
 
 .specimen-learning {
@@ -2169,24 +2260,26 @@ body {
   margin: 0;
   padding: 0 5px 0 0;
   list-style: none;
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   align-content: start;
-  gap: 4px;
+  gap: 5px;
   overflow-x: hidden;
   overflow-y: auto;
-  scrollbar-color: rgba(139, 58, 46, 0.42) transparent;
+  scrollbar-color: rgba(139, 58, 46, 0.48) transparent;
   scrollbar-width: thin;
 }
 
 .cell-list::-webkit-scrollbar {
-  width: 3px;
+  width: 4px;
 }
 
 .cell-list::-webkit-scrollbar-thumb {
-  border: 0;
+  border-left: 1px solid transparent;
+  border-right: 1px solid transparent;
   border-radius: 0;
   background: linear-gradient(180deg, rgba(139, 58, 46, 0.52), rgba(89, 111, 85, 0.28));
+  background-clip: content-box;
 }
 
 .cell-list::-webkit-scrollbar-track {
@@ -2195,16 +2288,13 @@ body {
 
 .cell-list li {
   min-width: 0;
-  min-height: 34px;
-  flex: 1 1 calc(50% - 3px);
-  max-width: calc(50% - 3px);
+  min-height: 36px;
 }
 
 .cell-empty {
   display: grid;
   place-items: center;
-  flex-basis: 100%;
-  max-width: 100%;
+  grid-column: 1 / -1;
   min-height: 76px;
   border: 1px dashed rgba(28, 31, 27, 0.16);
   color: var(--ink-whisper);
@@ -2367,7 +2457,7 @@ body {
   position: relative;
   width: 100%;
   min-height: 0;
-  height: 34px;
+  height: 36px;
   display: flex;
   gap: 5px;
   align-items: center;
@@ -2415,8 +2505,8 @@ body {
 
 .cell-thumb {
   position: relative;
-  width: 19px;
-  height: 19px;
+  width: 21px;
+  height: 21px;
   border: 1px solid rgba(28, 28, 26, 0.1);
   border-radius: 3px;
   background: var(--paper-2);

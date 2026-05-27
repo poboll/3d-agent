@@ -23,7 +23,7 @@ const endpoints = [
     method: 'POST',
     path: '/api/references/text-to-image',
     title: '生成参考图',
-    note: '提交生物结构描述，后端先用 gpt-5.5 打磨 3D-ready prompt，再通过 Responses 图像工具生成单张参考图。',
+    note: '提交生物结构描述，后端先用 gpt-5.5 打磨 3D-ready prompt，再优先通过本地图片网关生成单张参考图。',
   },
   {
     method: 'POST',
@@ -71,7 +71,7 @@ export function LocalApiPanel() {
         <span className="card-eyebrow">§ LOCAL INTERFACE — WORKBENCH ADAPTER</span>
         <h2>本地接口与生成链路</h2>
         <p>
-          当前工作台已接入参考图缓存、OpenAI 文生图接口和本地 ComfyUI 三维生成适配器。
+          当前工作台已接入参考图缓存、本地图片网关、OpenAI 兼容接口和本地 ComfyUI 三维生成适配器。
           前端通过 <strong>VITE_API_BASE</strong> 指向本地后端，默认地址为 <strong>{API_BASE}</strong>。
         </p>
       </div>
@@ -79,7 +79,7 @@ export function LocalApiPanel() {
       <div className="api-flow" aria-label="生成流程">
         <span>用户输入文本 / 上传图片</span>
         <i />
-        <span>GPT 参考图生成与确认</span>
+        <span>本地网关参考图生成与确认</span>
         <i />
         <span>TripoSG + 混元贴图</span>
         <i />
@@ -128,6 +128,7 @@ export function LocalApiPanel() {
         <span>环境变量</span>
         <p>
           后端读取 <strong>OPENAI_API_KEY</strong>、<strong>OPENAI_IMAGE_MODEL</strong>、<strong>COMFYUI_BASE_URL</strong>、
+          <strong>LOCAL_IMAGE_GATEWAY_BASE_URL</strong>、<strong>LOCAL_IMAGE_GATEWAY_API_KEY</strong>、
           <strong>COMFYUI_WORKFLOW_TEMPLATE</strong> 等配置。生成结果统一写入本地缓存，再交给 3D 舞台加载。
         </p>
       </div>

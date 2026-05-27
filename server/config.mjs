@@ -37,6 +37,32 @@ export const OPENAI_IMAGE_FORMAT = process.env.OPENAI_IMAGE_FORMAT || 'png'
 export const OPENAI_RESPONSES_ENDPOINT = process.env.OPENAI_RESPONSES_ENDPOINT || `${OPENAI_BASE_URL}/responses`
 export const OPENAI_IMAGE_ENDPOINT = process.env.OPENAI_IMAGE_ENDPOINT || `${OPENAI_BASE_URL}/images/generations`
 export const OPENAI_IMAGE_CONFIGURED = Boolean(OPENAI_API_KEY)
+export const LOCAL_IMAGE_GATEWAY_BASE_URL = (process.env.LOCAL_IMAGE_GATEWAY_BASE_URL || 'http://127.0.0.1:48760').replace(/\/+$/, '')
+export const LOCAL_IMAGE_GATEWAY_API_KEY = process.env.LOCAL_IMAGE_GATEWAY_API_KEY || ''
+export const LOCAL_IMAGE_GATEWAY_HEALTH_ENDPOINT =
+  process.env.LOCAL_IMAGE_GATEWAY_HEALTH_ENDPOINT || `${LOCAL_IMAGE_GATEWAY_BASE_URL}/health`
+export const LOCAL_IMAGE_GATEWAY_MODELS_ENDPOINT =
+  process.env.LOCAL_IMAGE_GATEWAY_MODELS_ENDPOINT || `${LOCAL_IMAGE_GATEWAY_BASE_URL}/models`
+export const LOCAL_IMAGE_GATEWAY_RESPONSES_ENDPOINT =
+  process.env.LOCAL_IMAGE_GATEWAY_RESPONSES_ENDPOINT || `${LOCAL_IMAGE_GATEWAY_BASE_URL}/responses`
+export const LOCAL_IMAGE_GATEWAY_IMAGE_ENDPOINT =
+  process.env.LOCAL_IMAGE_GATEWAY_IMAGE_ENDPOINT || `${LOCAL_IMAGE_GATEWAY_BASE_URL}/images/generations`
+export const LOCAL_IMAGE_GATEWAY_PROMPT_MODEL = process.env.LOCAL_IMAGE_GATEWAY_PROMPT_MODEL || 'gpt-5.5'
+export const LOCAL_IMAGE_GATEWAY_IMAGE_MODEL = process.env.LOCAL_IMAGE_GATEWAY_IMAGE_MODEL || 'gpt-image-2'
+export const LOCAL_IMAGE_GATEWAY_IMAGE_MODEL_FALLBACKS = (
+  process.env.LOCAL_IMAGE_GATEWAY_IMAGE_MODEL_FALLBACKS || 'gpt-image-2,gpt-image-1.5,gpt-image-1'
+)
+  .split(',')
+  .map((item) => item.trim())
+  .filter(Boolean)
+export const LOCAL_IMAGE_GATEWAY_REASONING_EFFORT = process.env.LOCAL_IMAGE_GATEWAY_REASONING_EFFORT || 'xhigh'
+export const LOCAL_IMAGE_GATEWAY_DISABLE_RESPONSE_STORAGE =
+  process.env.LOCAL_IMAGE_GATEWAY_DISABLE_RESPONSE_STORAGE !== 'false'
+export const LOCAL_IMAGE_GATEWAY_IMAGE_SIZE = process.env.LOCAL_IMAGE_GATEWAY_IMAGE_SIZE || OPENAI_IMAGE_SIZE
+export const LOCAL_IMAGE_GATEWAY_IMAGE_QUALITY = process.env.LOCAL_IMAGE_GATEWAY_IMAGE_QUALITY || OPENAI_IMAGE_QUALITY
+export const LOCAL_IMAGE_GATEWAY_IMAGE_FORMAT = process.env.LOCAL_IMAGE_GATEWAY_IMAGE_FORMAT || OPENAI_IMAGE_FORMAT
+export const LOCAL_IMAGE_GATEWAY_TIMEOUT_MS = Number(process.env.LOCAL_IMAGE_GATEWAY_TIMEOUT_MS || 240000)
+export const LOCAL_IMAGE_GATEWAY_CONFIGURED = Boolean(LOCAL_IMAGE_GATEWAY_API_KEY)
 export const COMFYUI_BASE_URL = (process.env.COMFYUI_BASE_URL || 'http://47.242.195.8:8010').replace(/\/+$/, '')
 export const COMFYUI_OUTPUT_PREFIX = process.env.COMFYUI_OUTPUT_PREFIX || '/home/kk/projects/3d/ComfyUI/output/'
 export const COMFYUI_WORKFLOW_TEMPLATE = path.resolve(
@@ -50,7 +76,8 @@ export const COMFYUI_GUIDANCE_SCALE = Number(process.env.COMFYUI_GUIDANCE_SCALE 
 export const TENCENT_HUNYUAN_CONFIGURED = Boolean(
   process.env.TENCENT_SECRET_ID && process.env.TENCENT_SECRET_KEY && process.env.TENCENT_HUNYUAN_3D_ENDPOINT
 )
-export const SUPPORTED_IMAGE_PROVIDERS = ['openai']
+export const SUPPORTED_IMAGE_PROVIDERS = ['local-gateway', 'openai']
+export const DEFAULT_IMAGE_PROVIDER = process.env.DEFAULT_IMAGE_PROVIDER || (LOCAL_IMAGE_GATEWAY_CONFIGURED ? 'local-gateway' : 'openai')
 export const SUPPORTED_WORKFLOW_PROVIDERS = ['selfhost-triposg', 'local-demo', 'tencent-hunyuan']
 
 export const DEMO_MODELS = [

@@ -5,9 +5,9 @@ import {
   buildJobId,
   chooseTemplateForPrompt,
   estimateGenerationCost,
-  normalizeImageProvider,
   normalizePrompt,
   normalizeProvider,
+  normalizeWorkflowImageProvider,
   publicJob,
 } from './workflow-utils.mjs'
 import { getReferenceImageStatus } from './reference-store.mjs'
@@ -15,7 +15,7 @@ import { getReferenceImageStatus } from './reference-store.mjs'
 export async function createWorkflowJob(input = {}) {
   const prompt = normalizePrompt(input.prompt)
   const provider = normalizeProvider(input.provider)
-  const imageProvider = normalizeImageProvider(input.imageProvider || 'openai')
+  const imageProvider = normalizeWorkflowImageProvider(input.imageProvider || 'openai')
   const template = chooseTemplateForPrompt(prompt, input.template)
   const referenceId = String(input.referenceId || '').trim()
   const deferReference = Boolean(input.deferReference)

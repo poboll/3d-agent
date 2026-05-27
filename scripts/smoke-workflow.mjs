@@ -4,9 +4,11 @@ import '../server/env-loader.mjs'
 
 const API_BASE = process.env.SMOKE_API_BASE || `http://${process.env.API_HOST || '127.0.0.1'}:${process.env.API_PORT || 8791}`
 const LIVE_OPENAI = process.env.SMOKE_LIVE_OPENAI === '1'
+const LIVE_IMAGE_GATEWAY = process.env.SMOKE_LIVE_IMAGE_GATEWAY === '1'
 const LIVE_3D = process.env.SMOKE_LIVE_3D === '1'
 const FULL_WORKFLOW = process.env.SMOKE_FULL_WORKFLOW === '1'
 const REFERENCE_IMAGE = process.env.SMOKE_REFERENCE_IMAGE || 'app/public/images/plant-cell.jpg'
+const IMAGE_PROVIDER = process.env.SMOKE_IMAGE_PROVIDER || (LIVE_IMAGE_GATEWAY ? 'local-gateway' : 'openai')
 
 const prompt = process.argv.slice(2).join(' ').trim() || '线粒体开放剖面 3D 教学模型，突出外膜、内膜和嵴'
 
@@ -18,6 +20,7 @@ async function main() {
     return {
       service: health.service,
       openaiConfigured: health.providers?.openaiImage,
+      localImageGatewayConfigured: health.providers?.localImageGatewayImage,
       comfyuiBaseUrl: health.comfyuiBaseUrl,
     }
   })
@@ -46,17 +49,17 @@ async function main() {
         body: {
           prompt,
           template: 'auto',
-          imageProvider: 'openai',
+          imageProvider: IMAGE_PROVIDER,
           provider: LIVE_3D ? 'selfhost-triposg' : 'local-demo',
         },
       })
       return payload.job
     })
-  } else if (LIVE_OPENAI) {
-    reference = await step('OpenAI 文生参考图', async () => {
+  } else if (LIVE_OPENAI || LIVE_IMAGE_GATEWAY) {
+    reference = await step(`${IMAGE_PROVIDER} 文生参考图`, async () => {
       const payload = await api('/api/references/text-to-image', {
         method: 'POST',
-        body: { prompt, template: 'auto', provider: 'openai' },
+        body: { prompt, template: 'auto', provider: IMAGE_PROVIDER },
       })
       return payload.reference
     })
@@ -85,7 +88,7 @@ async function main() {
         body: {
           prompt,
           template: reference.template,
-          imageProvider: LIVE_OPENAI ? 'openai' : 'openai',
+          imageProvider: LIVE_OPENAI || LIVE_IMAGE_GATEWAY ? IMAGE_PROVIDER : 'upload',
           provider,
           referenceId: reference.id,
         },
@@ -110,7 +113,7 @@ async function main() {
     }
   })
 
-  console.log(JSON.stringify({ ok: true, mode: { LIVE_OPENAI, LIVE_3D, FULL_WORKFLOW }, report }, null, 2))
+  console.log(JSON.stringify({ ok: true, mode: { LIVE_OPENAI, LIVE_IMAGE_GATEWAY, LIVE_3D, FULL_WORKFLOW, IMAGE_PROVIDER }, report }, null, 2))
 }
 
 async function step(name, fn) {

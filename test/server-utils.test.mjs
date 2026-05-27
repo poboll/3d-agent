@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { getModelExtension, sanitizeModelId, validateModelBuffer } from '../server/model-store.mjs'
 import { buildBioReadyPrompt, normalizeReferencePrompt, validateImageBuffer } from '../server/reference-store.mjs'
 import { sanitizeFileName } from '../server/http-utils.mjs'
+import { DEFAULT_IMAGE_PROVIDER } from '../server/config.mjs'
 import {
   chooseTemplateForPrompt,
   createPromptTitle,
@@ -11,6 +12,7 @@ import {
   normalizeImageProvider,
   normalizePrompt,
   normalizeProvider,
+  normalizeWorkflowImageProvider,
 } from '../server/workflow-utils.mjs'
 
 describe('LearningCell fusion API utilities', () => {
@@ -51,7 +53,9 @@ describe('LearningCell fusion API utilities', () => {
     assert.equal(normalizeProvider('local-demo'), 'local-demo')
     assert.equal(normalizeProvider(''), 'selfhost-triposg')
     assert.equal(normalizeImageProvider('openai'), 'openai')
-    assert.equal(normalizeImageProvider(''), 'openai')
+    assert.equal(normalizeImageProvider('local-gateway'), 'local-gateway')
+    assert.equal(normalizeImageProvider(''), DEFAULT_IMAGE_PROVIDER)
+    assert.equal(normalizeWorkflowImageProvider('upload'), 'upload')
     assert.throws(() => normalizeProvider('unknown'), /provider/)
     assert.throws(() => normalizeImageProvider('unknown'), /图片生成/)
   })
@@ -59,6 +63,7 @@ describe('LearningCell fusion API utilities', () => {
   it('chooses sensible model templates from prompts', () => {
     assert.equal(chooseTemplateForPrompt('展示植物细胞、叶绿体和细胞壁'), 'plant-cell')
     assert.equal(chooseTemplateForPrompt('线粒体开放剖面'), 'mitochondrion')
+    assert.equal(chooseTemplateForPrompt('叶绿体开放剖面 3D 教学模型，突出类囊体、基粒和双层膜'), 'chloroplast')
     assert.equal(chooseTemplateForPrompt('杆状细菌教学模型'), 'bacterium')
     assert.equal(chooseTemplateForPrompt('DNA 双螺旋和碱基对'), 'dna')
     assert.equal(chooseTemplateForPrompt('神经元轴突树突结构'), 'neuron')

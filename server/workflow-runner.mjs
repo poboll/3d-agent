@@ -214,11 +214,14 @@ function accentForTemplate(template) {
 }
 
 function pickDemoModel(template) {
-  if (template === 'plant-cell') return DEMO_MODELS[0]
+  if (template === 'plant-cell' || template === 'chloroplast') return DEMO_MODELS[0]
   return DEMO_MODELS[1] || DEMO_MODELS[0]
 }
 
 async function resolveDemoSourcePath(template, demoModel) {
+  if (template === 'chloroplast' || template === 'plant-cell') {
+    return path.join(CELLFORGE_MODEL_DIR, DEMO_MODELS[0].fileName)
+  }
   const cachedTemplateModel = await findLatestCachedTemplateModel(template)
   if (cachedTemplateModel) return cachedTemplateModel
   return path.join(CELLFORGE_MODEL_DIR, demoModel.fileName)

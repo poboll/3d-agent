@@ -11,6 +11,7 @@ import './app.css';
 
 const GENERATED_MODELS_STORAGE_KEY = 'learning-cell-generated-models';
 const GUIDE_STORAGE_KEY = 'ma-cell-workflow-guide-seen';
+const GENERATED_MODEL_LIMIT = 16;
 
 type Route = 'workbench' | 'about' | 'api';
 
@@ -58,11 +59,32 @@ function readStoredGeneratedModels() {
     const stored = localStorage.getItem(GENERATED_MODELS_STORAGE_KEY);
     if (!stored) return [];
     const parsed = JSON.parse(stored) as CellModel[];
-    return Array.isArray(parsed) ? parsed.filter((model) => model?.id && model?.modelUrl).map(hydrateGeneratedModel).slice(0, 12) : [];
+    return Array.isArray(parsed)
+      ? uniqueGeneratedModels(parsed.filter((model) => model?.id && model?.modelUrl).map(hydrateGeneratedModel))
+      : [];
   } catch {
     localStorage.removeItem(GENERATED_MODELS_STORAGE_KEY);
     return [];
   }
+}
+
+function getGeneratedModelKey(model: CellModel) {
+  if (model.custom) {
+    return model.modelUrl || model.id || [model.name, model.source || model.subtitle, model.templateId || inferTemplateFromModel(model)].join('|');
+  }
+  return model.modelUrl || model.id;
+}
+
+function uniqueGeneratedModels(models: CellModel[]) {
+  const seen = new Set<string>();
+  const unique: CellModel[] = [];
+  for (const model of models) {
+    const key = getGeneratedModelKey(model);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(model);
+  }
+  return unique.slice(0, GENERATED_MODEL_LIMIT);
 }
 
 function hydrateGeneratedModel(model: CellModel): CellModel {
@@ -203,7 +225,7 @@ function App() {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem(GENERATED_MODELS_STORAGE_KEY, JSON.stringify(generatedModels.slice(0, 12)));
+    localStorage.setItem(GENERATED_MODELS_STORAGE_KEY, JSON.stringify(uniqueGeneratedModels(generatedModels)));
   }, [generatedModels]);
 
   useEffect(() => {
@@ -265,18 +287,15 @@ function App() {
 
   const handleModelsLoaded = useCallback((models: CellModel[]) => {
     setGeneratedModels((current) => {
-      const existingIds = new Set(current.map((model) => model.id));
-      const merged = [...current];
-      for (const model of models) {
-        if (!existingIds.has(model.id)) merged.push(hydrateGeneratedModel(model));
-      }
-      return merged;
+      const hydratedModels = models.map(hydrateGeneratedModel);
+      return uniqueGeneratedModels([...hydratedModels, ...current]);
     });
   }, []);
 
   const handleModelCreated = useCallback((model: CellModel) => {
     const hydrated = hydrateGeneratedModel(model);
-    setGeneratedModels((current) => [hydrated, ...current.filter((item) => item.id !== model.id)].slice(0, 12));
+    const key = getGeneratedModelKey(hydrated);
+    setGeneratedModels((current) => uniqueGeneratedModels([hydrated, ...current.filter((item) => getGeneratedModelKey(item) !== key)]));
   }, []);
 
   const openGuide = () => {

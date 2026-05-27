@@ -5,7 +5,7 @@
 ```text
 用户输入术语 / 课堂描述 / 上传图片
   -> 后端打磨 3D-ready 单图 prompt
-  -> GPT Image 生成单张参考图，或缓存用户上传图片
+  -> 本地图片网关 / GPT Image 生成单张参考图，或缓存用户上传图片
   -> 用户确认参考图
   -> ComfyUI 单图工作流
   -> TripoSG 输出 raw.glb
@@ -16,7 +16,7 @@
 
 当前实现按 `/Users/Apple/Downloads/苏增烨申请/deploy_3d/BIO_3D_FINAL_HANDOFF.md` 收敛后的路线接入：
 
-- gpt-5.5 使用 Responses API 打磨 3D-ready prompt，并通过 Responses 图像工具生成单张参考图。
+- gpt-5.5 使用 Responses API 打磨 3D-ready prompt，并优先通过本地图片网关生成单张参考图。
 - ComfyUI 使用单图 workflow：`LoadImage -> TripoSGImageTo3D -> Hunyuan3DPaintExistingMesh -> Preview3D`。
 - 前端默认展示 `textured.glb`，必要时可保留 `raw.glb` 做几何诊断。
 - 不默认使用四宫格、多视角拼图；当前固定结论是“只用单张 3D-ready 剖面图”。
@@ -40,6 +40,18 @@ OPENAI_IMAGE_TOOL_MODEL=gpt-image-2
 OPENAI_IMAGE_SIZE=1024x1024
 OPENAI_IMAGE_QUALITY=medium
 OPENAI_IMAGE_FORMAT=png
+
+LOCAL_IMAGE_GATEWAY_BASE_URL=http://127.0.0.1:48760
+LOCAL_IMAGE_GATEWAY_API_KEY=<填写本地图片网关 API Key>
+LOCAL_IMAGE_GATEWAY_PROMPT_MODEL=gpt-5.5
+LOCAL_IMAGE_GATEWAY_IMAGE_MODEL=gpt-image-2
+LOCAL_IMAGE_GATEWAY_IMAGE_MODEL_FALLBACKS=gpt-image-2,gpt-image-1.5,gpt-image-1
+LOCAL_IMAGE_GATEWAY_REASONING_EFFORT=xhigh
+LOCAL_IMAGE_GATEWAY_DISABLE_RESPONSE_STORAGE=true
+LOCAL_IMAGE_GATEWAY_IMAGE_SIZE=1024x1024
+LOCAL_IMAGE_GATEWAY_IMAGE_QUALITY=medium
+LOCAL_IMAGE_GATEWAY_IMAGE_FORMAT=png
+DEFAULT_IMAGE_PROVIDER=local-gateway
 ```
 
 三维生成服务使用本地/自托管 ComfyUI：
@@ -99,7 +111,7 @@ curl -X POST http://127.0.0.1:8791/api/references/prompt-preview \
 ```bash
 curl -X POST http://127.0.0.1:8791/api/references/text-to-image \
   -H 'Content-Type: application/json' \
-  --data '{"prompt":"线粒体开放剖面 3D 教学模型","template":"auto","provider":"openai"}'
+  --data '{"prompt":"线粒体开放剖面 3D 教学模型","template":"auto","provider":"local-gateway"}'
 ```
 
 上传参考图：
@@ -119,7 +131,7 @@ curl -X POST http://127.0.0.1:8791/api/workflows/text-to-cell \
   --data '{
     "prompt": "线粒体开放剖面 3D 教学模型",
     "template": "mitochondrion",
-    "imageProvider": "openai",
+    "imageProvider": "local-gateway",
     "provider": "selfhost-triposg",
     "referenceId": "ref-xxx"
   }'
@@ -139,7 +151,7 @@ curl -X POST http://127.0.0.1:8791/api/workflows/full-text-to-3d \
   --data '{
     "prompt": "线粒体",
     "template": "auto",
-    "imageProvider": "openai",
+    "imageProvider": "local-gateway",
     "provider": "selfhost-triposg"
   }'
 ```
@@ -176,13 +188,21 @@ npm run dev:api
 npm run smoke:workflow -- 线粒体开放剖面 3D 教学模型
 ```
 
+本地图片网关文生图 + 本地缓存 3D 冒烟测试：
+
+```bash
+SMOKE_LIVE_IMAGE_GATEWAY=1 SMOKE_FULL_WORKFLOW=1 SMOKE_IMAGE_PROVIDER=local-gateway \
+  npm run smoke:workflow -- 线粒体开放剖面 3D 教学模型
+```
+
 真实文生图 + 真实图生 3D 冒烟测试：
 
 ```bash
-SMOKE_LIVE_OPENAI=1 SMOKE_LIVE_3D=1 npm run smoke:workflow -- 线粒体开放剖面 3D 教学模型
+SMOKE_LIVE_IMAGE_GATEWAY=1 SMOKE_LIVE_3D=1 SMOKE_FULL_WORKFLOW=1 SMOKE_IMAGE_PROVIDER=local-gateway \
+  npm run smoke:workflow -- 线粒体开放剖面 3D 教学模型
 ```
 
-`SMOKE_LIVE_OPENAI=1` 会调用 OpenAI 图片生成，`SMOKE_LIVE_3D=1` 会提交 ComfyUI/TripoSG/Hunyuan3D-Paint 任务，可能产生模型服务成本与排队时间。默认不打开这两个开关，避免开发期间反复扣费。
+`SMOKE_LIVE_IMAGE_GATEWAY=1` 会调用本地图片网关生成参考图，`SMOKE_LIVE_3D=1` 会提交 ComfyUI/TripoSG/Hunyuan3D-Paint 任务，可能产生模型服务成本与排队时间。默认不打开这两个开关，避免开发期间反复扣费。
 
 ## 运行目录
 

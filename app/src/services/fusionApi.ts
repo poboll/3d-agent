@@ -74,10 +74,63 @@ export interface WorkflowJob {
 export interface PromptPreviewPayload {
   template: string;
   sourcePrompt: string;
+  provider?: string;
   model: string;
   imagePrompt: string;
   negativePrompt: string;
   qualityChecklist: string[];
+}
+
+export interface ProviderStatusPayload {
+  image: {
+    localGateway?: {
+      configured: boolean;
+      baseUrl: string;
+      promptModel?: string;
+      imageModel?: string;
+      health?: {
+        ok: boolean;
+        status: number;
+        message: string;
+      };
+      models?: {
+        ok: boolean;
+        status: number;
+        message: string;
+        modelIds?: string[];
+      };
+    };
+    openai?: {
+      configured: boolean;
+      baseUrl: string;
+      imageModel?: string;
+      imageToolModel?: string;
+      auth?: {
+        ok: boolean;
+        status: number;
+        message: string;
+      };
+    };
+  };
+  model3d: {
+    selfhostTriposg?: {
+      configured: boolean;
+      baseUrl: string;
+      status?: {
+        ok?: boolean;
+        queue?: {
+          running?: number;
+          pending?: number;
+        };
+      };
+    };
+    localCache?: {
+      configured: boolean;
+    };
+    tencentHunyuan?: {
+      configured: boolean;
+    };
+  };
 }
 
 export function apiUrl(path: string) {
@@ -137,6 +190,7 @@ export async function createReferenceImage(input: {
 export async function previewReferencePrompt(input: {
   prompt: string;
   template?: string;
+  provider?: string;
 }): Promise<PromptPreviewPayload> {
   const response = await fetch(apiUrl('/api/references/prompt-preview'), {
     method: 'POST',
@@ -224,6 +278,11 @@ export async function fetchWorkflowJobs(limit = 12): Promise<WorkflowJob[]> {
   const response = await fetch(apiUrl(`/api/jobs?limit=${limit}`));
   const payload = await readApiResponse<{ jobs: WorkflowJob[] }>(response);
   return payload.jobs.map(normalizeWorkflowJob);
+}
+
+export async function fetchProviderStatus(check = false): Promise<ProviderStatusPayload> {
+  const response = await fetch(apiUrl(`/api/providers/status${check ? '?check=1' : ''}`));
+  return readApiResponse<ProviderStatusPayload>(response);
 }
 
 export function workflowJobToCellModel(job: WorkflowJob): CellModel | null {

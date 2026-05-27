@@ -3,6 +3,22 @@ import { access, mkdir, readFile, rename, stat, writeFile } from 'node:fs/promis
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
 import {
+  LOCAL_IMAGE_GATEWAY_API_KEY,
+  LOCAL_IMAGE_GATEWAY_BASE_URL,
+  LOCAL_IMAGE_GATEWAY_CONFIGURED,
+  LOCAL_IMAGE_GATEWAY_DISABLE_RESPONSE_STORAGE,
+  LOCAL_IMAGE_GATEWAY_HEALTH_ENDPOINT,
+  LOCAL_IMAGE_GATEWAY_IMAGE_ENDPOINT,
+  LOCAL_IMAGE_GATEWAY_IMAGE_FORMAT,
+  LOCAL_IMAGE_GATEWAY_IMAGE_MODEL,
+  LOCAL_IMAGE_GATEWAY_IMAGE_MODEL_FALLBACKS,
+  LOCAL_IMAGE_GATEWAY_IMAGE_QUALITY,
+  LOCAL_IMAGE_GATEWAY_IMAGE_SIZE,
+  LOCAL_IMAGE_GATEWAY_MODELS_ENDPOINT,
+  LOCAL_IMAGE_GATEWAY_PROMPT_MODEL,
+  LOCAL_IMAGE_GATEWAY_REASONING_EFFORT,
+  LOCAL_IMAGE_GATEWAY_RESPONSES_ENDPOINT,
+  LOCAL_IMAGE_GATEWAY_TIMEOUT_MS,
   OPENAI_API_KEY,
   OPENAI_BASE_URL,
   OPENAI_DISABLE_RESPONSE_STORAGE,
@@ -37,33 +53,48 @@ export async function createReferenceImage(input = {}) {
   const template = chooseTemplateForPrompt(prompt, input.template)
   const provider = normalizeImageProvider(input.provider)
 
-  if (provider !== 'openai') {
-    throw Object.assign(new Error('当前图片生成接口仅开放 OpenAI GPT Image。'), { status: 400 })
-  }
-
   const promptPackage = await buildBioReadyPrompt(prompt, template)
-  const polishedPromptPackage = await polishBioReadyPrompt(promptPackage, prompt)
+  const polishedPromptPackage = await polishBioReadyPrompt(promptPackage, prompt, { provider })
 
-  if (!OPENAI_IMAGE_CONFIGURED) {
-    throw Object.assign(new Error('OpenAI 图片生成尚未配置，请在后端环境变量中设置 OPENAI_API_KEY。'), {
-      status: 503,
-      detail: {
-        requiredEnv: ['OPENAI_API_KEY'],
-        optionalEnv: ['OPENAI_IMAGE_MODEL', 'OPENAI_IMAGE_SIZE', 'OPENAI_IMAGE_QUALITY', 'OPENAI_IMAGE_FORMAT'],
-        imagePrompt: polishedPromptPackage.imagePrompt,
-      },
+  if (provider === 'openai' && !OPENAI_IMAGE_CONFIGURED) {
+    throwProviderConfigError({
+      providerName: 'OpenAI 图片生成',
+      requiredEnv: ['OPENAI_API_KEY'],
+      optionalEnv: ['OPENAI_IMAGE_MODEL', 'OPENAI_IMAGE_SIZE', 'OPENAI_IMAGE_QUALITY', 'OPENAI_IMAGE_FORMAT'],
+      imagePrompt: polishedPromptPackage.imagePrompt,
     })
   }
 
-  const imageResult = await requestOpenAiImage(polishedPromptPackage.imagePrompt)
-  const imageExt = imageResult.ext || detectImageExtension(imageResult.buffer) || normalizeImageExtension(OPENAI_IMAGE_FORMAT)
+  if (provider === 'local-gateway' && !LOCAL_IMAGE_GATEWAY_CONFIGURED) {
+    throwProviderConfigError({
+      providerName: '本地图片网关',
+      requiredEnv: ['LOCAL_IMAGE_GATEWAY_API_KEY'],
+      optionalEnv: [
+        'LOCAL_IMAGE_GATEWAY_BASE_URL',
+        'LOCAL_IMAGE_GATEWAY_PROMPT_MODEL',
+        'LOCAL_IMAGE_GATEWAY_IMAGE_MODEL',
+        'LOCAL_IMAGE_GATEWAY_IMAGE_SIZE',
+      ],
+      imagePrompt: polishedPromptPackage.imagePrompt,
+    })
+  }
+
+  const imageResult =
+    provider === 'local-gateway'
+      ? await requestLocalGatewayImage(polishedPromptPackage.imagePrompt)
+      : await requestOpenAiImage(polishedPromptPackage.imagePrompt)
+  const imageExt =
+    imageResult.ext ||
+    detectImageExtension(imageResult.buffer) ||
+    normalizeImageExtension(provider === 'local-gateway' ? LOCAL_IMAGE_GATEWAY_IMAGE_FORMAT : OPENAI_IMAGE_FORMAT)
+  const providerLabel = provider === 'local-gateway' ? '本地图片网关' : 'OpenAI GPT Image'
   const saved = await saveReferenceBuffer({
     buffer: imageResult.buffer,
     prompt,
     template,
     provider,
-    source: 'OpenAI GPT Image',
-    title: `${getTemplateDisplayName(template)} · GPT 参考图`,
+    source: providerLabel,
+    title: `${getTemplateDisplayName(template)} · ${provider === 'local-gateway' ? '本地参考图' : 'GPT 参考图'}`,
     note: '已生成适合图生 3D 的单图参考图，请确认主体、剖面和结构间距后再建模。',
     imagePrompt: polishedPromptPackage.imagePrompt,
     negativePrompt: polishedPromptPackage.negativePrompt,
@@ -74,6 +105,13 @@ export async function createReferenceImage(input = {}) {
   })
 
   return publicReference(saved)
+}
+
+function throwProviderConfigError({ providerName, requiredEnv, optionalEnv, imagePrompt }) {
+  throw Object.assign(new Error(`${providerName}尚未配置，请在后端环境变量中设置 ${requiredEnv.join('、')}。`), {
+    status: 503,
+    detail: { requiredEnv, optionalEnv, imagePrompt },
+  })
 }
 
 export async function getOpenAiProviderStatus({ check = false } = {}) {
@@ -128,15 +166,55 @@ export async function getOpenAiProviderStatus({ check = false } = {}) {
   }
 }
 
+export async function getLocalImageGatewayStatus({ check = false } = {}) {
+  const status = {
+    configured: LOCAL_IMAGE_GATEWAY_CONFIGURED,
+    baseUrl: LOCAL_IMAGE_GATEWAY_BASE_URL,
+    healthEndpoint: LOCAL_IMAGE_GATEWAY_HEALTH_ENDPOINT,
+    modelsEndpoint: LOCAL_IMAGE_GATEWAY_MODELS_ENDPOINT,
+    responsesEndpoint: LOCAL_IMAGE_GATEWAY_RESPONSES_ENDPOINT,
+    imageEndpoint: LOCAL_IMAGE_GATEWAY_IMAGE_ENDPOINT,
+    promptModel: LOCAL_IMAGE_GATEWAY_PROMPT_MODEL,
+    imageModel: LOCAL_IMAGE_GATEWAY_IMAGE_MODEL,
+    imageModelFallbacks: LOCAL_IMAGE_GATEWAY_IMAGE_MODEL_FALLBACKS,
+    imageSize: LOCAL_IMAGE_GATEWAY_IMAGE_SIZE,
+    imageQuality: LOCAL_IMAGE_GATEWAY_IMAGE_QUALITY,
+    disableResponseStorage: LOCAL_IMAGE_GATEWAY_DISABLE_RESPONSE_STORAGE,
+  }
+
+  if (!check) return status
+
+  const health = await checkGatewayTextEndpoint(LOCAL_IMAGE_GATEWAY_HEALTH_ENDPOINT, {
+    method: 'GET',
+    headers: LOCAL_IMAGE_GATEWAY_CONFIGURED ? buildLocalGatewayHeaders({ json: false }) : {},
+    timeoutMs: 5000,
+  })
+  const models = LOCAL_IMAGE_GATEWAY_CONFIGURED
+    ? await checkGatewayJsonEndpoint(LOCAL_IMAGE_GATEWAY_MODELS_ENDPOINT, {
+        method: 'GET',
+        headers: buildLocalGatewayHeaders({ json: false }),
+        timeoutMs: 12000,
+      })
+    : { ok: false, status: 0, message: '缺少本地图片网关 API Key。' }
+
+  return {
+    ...status,
+    health,
+    models,
+  }
+}
+
 export async function previewReferencePrompt(input = {}) {
   const prompt = normalizeReferencePrompt(input.prompt)
   const template = chooseTemplateForPrompt(prompt, input.template)
+  const provider = normalizeImageProvider(input.provider)
   const promptPackage = await buildBioReadyPrompt(prompt, template)
-  const polishedPromptPackage = await polishBioReadyPrompt(promptPackage, prompt)
+  const polishedPromptPackage = await polishBioReadyPrompt(promptPackage, prompt, { provider })
 
   return {
     template,
     sourcePrompt: prompt,
+    provider,
     model: polishedPromptPackage.promptModel || 'local-template',
     imagePrompt: polishedPromptPackage.imagePrompt,
     negativePrompt: polishedPromptPackage.negativePrompt,
@@ -238,8 +316,12 @@ export async function buildBioReadyPrompt(prompt, template = 'auto') {
   }
 }
 
-async function polishBioReadyPrompt(promptPackage, userPrompt) {
-  if (!OPENAI_IMAGE_CONFIGURED || !OPENAI_PROMPT_MODEL) {
+async function polishBioReadyPrompt(promptPackage, userPrompt, { provider = 'openai' } = {}) {
+  const useLocalGateway = provider === 'local-gateway'
+  const configured = useLocalGateway ? LOCAL_IMAGE_GATEWAY_CONFIGURED : OPENAI_IMAGE_CONFIGURED
+  const promptModel = useLocalGateway ? LOCAL_IMAGE_GATEWAY_PROMPT_MODEL : OPENAI_PROMPT_MODEL
+
+  if (!configured || !promptModel) {
     return promptPackage
   }
 
@@ -252,16 +334,21 @@ async function polishBioReadyPrompt(promptPackage, userPrompt) {
   ].join(' ')
 
   try {
-    const payload = await requestOpenAiResponse({
-      model: OPENAI_PROMPT_MODEL,
-      input: `${instruction}\n\nUser term/request: ${userPrompt}\n\nBase prompt:\n${promptPackage.imagePrompt}\n\nNegative constraints:\n${promptPackage.negativePrompt}`,
-    })
+    const payload = useLocalGateway
+      ? await requestLocalGatewayResponse({
+          model: promptModel,
+          input: `${instruction}\n\nUser term/request: ${userPrompt}\n\nBase prompt:\n${promptPackage.imagePrompt}\n\nNegative constraints:\n${promptPackage.negativePrompt}`,
+        })
+      : await requestOpenAiResponse({
+          model: promptModel,
+          input: `${instruction}\n\nUser term/request: ${userPrompt}\n\nBase prompt:\n${promptPackage.imagePrompt}\n\nNegative constraints:\n${promptPackage.negativePrompt}`,
+        })
     const text = normalizeGeneratedPrompt(extractResponseText(payload))
     if (text.length < 80) return promptPackage
     return {
       ...promptPackage,
       imagePrompt: text,
-      promptModel: OPENAI_PROMPT_MODEL,
+      promptModel,
     }
   } catch {
     return {
@@ -411,6 +498,155 @@ async function requestOpenAiImageViaImagesApi(prompt) {
   }
 }
 
+async function requestLocalGatewayImage(prompt) {
+  const models = uniqueImageModels([
+    LOCAL_IMAGE_GATEWAY_IMAGE_MODEL,
+    ...LOCAL_IMAGE_GATEWAY_IMAGE_MODEL_FALLBACKS,
+  ])
+  const errors = []
+
+  for (const model of models) {
+    try {
+      return await requestLocalGatewayImageWithModel(prompt, model)
+    } catch (error) {
+      errors.push(`${model}: ${error.message || '生成失败'}`)
+      if (!isRetryableImageModelError(error)) throw error
+    }
+  }
+
+  throw Object.assign(new Error(`本地图片网关未返回可用图片。${errors.join('；')}`), {
+    status: 502,
+    detail: { attempts: errors },
+  })
+}
+
+async function requestLocalGatewayImageWithModel(prompt, model) {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), LOCAL_IMAGE_GATEWAY_TIMEOUT_MS)
+
+  try {
+    const response = await fetch(LOCAL_IMAGE_GATEWAY_IMAGE_ENDPOINT, {
+      method: 'POST',
+      headers: buildLocalGatewayHeaders(),
+      body: JSON.stringify({
+        model,
+        prompt,
+        size: LOCAL_IMAGE_GATEWAY_IMAGE_SIZE,
+        quality: LOCAL_IMAGE_GATEWAY_IMAGE_QUALITY,
+        output_format: LOCAL_IMAGE_GATEWAY_IMAGE_FORMAT,
+        response_format: 'b64_json',
+        n: 1,
+      }),
+      signal: controller.signal,
+    })
+
+    const contentType = response.headers.get('content-type') || ''
+    const payload = await readImageGatewayPayload(response, contentType)
+    if (!response.ok) {
+      const message = extractOpenAiErrorMessage(payload, `本地图片网关返回 ${response.status}`)
+      throw Object.assign(new Error(message), { status: response.status, detail: payload, model })
+    }
+
+    const parsed = await imageResultFromPayload(payload, {
+      signal: controller.signal,
+      contentType,
+      fallbackExt: LOCAL_IMAGE_GATEWAY_IMAGE_FORMAT,
+    })
+    return {
+      ...parsed,
+      model,
+      mode: 'local-gateway-images-api',
+    }
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      throw Object.assign(new Error('本地图片网关生成超时，请稍后重试。'), { status: 504, model })
+    }
+    throw error
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
+async function requestLocalGatewayResponse(body) {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), LOCAL_IMAGE_GATEWAY_TIMEOUT_MS)
+  try {
+    const response = await fetch(LOCAL_IMAGE_GATEWAY_RESPONSES_ENDPOINT, {
+      method: 'POST',
+      headers: buildLocalGatewayHeaders(),
+      body: JSON.stringify({
+        store: !LOCAL_IMAGE_GATEWAY_DISABLE_RESPONSE_STORAGE,
+        reasoning: { effort: LOCAL_IMAGE_GATEWAY_REASONING_EFFORT },
+        ...body,
+      }),
+      signal: controller.signal,
+    })
+    const payload = await readOpenAiPayload(response)
+    if (!response.ok) {
+      const message = extractOpenAiErrorMessage(payload, `本地图片网关 Responses 接口返回 ${response.status}`)
+      throw Object.assign(new Error(message), { status: response.status, detail: payload })
+    }
+    return payload
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      throw Object.assign(new Error('本地图片网关 Responses 请求超时，请稍后重试。'), { status: 504 })
+    }
+    throw error
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
+async function readImageGatewayPayload(response, contentType = '') {
+  if (/^image\//i.test(contentType)) {
+    return Buffer.from(await response.arrayBuffer())
+  }
+  return readOpenAiPayload(response)
+}
+
+async function imageResultFromPayload(payload, { signal, contentType = '', fallbackExt = 'png' } = {}) {
+  if (Buffer.isBuffer(payload)) {
+    return {
+      buffer: payload,
+      ext: extensionFromContentType(contentType) || detectImageExtension(payload) || normalizeImageExtension(fallbackExt),
+    }
+  }
+
+  const image = extractResponseImage(payload)
+  if (image) {
+    const buffer = Buffer.from(image, 'base64')
+    return {
+      buffer,
+      ext: detectImageExtension(buffer) || normalizeImageExtension(fallbackExt),
+    }
+  }
+
+  const imageUrl = findImageUrl(payload)
+  if (imageUrl) {
+    const imageResponse = await fetch(imageUrl, { signal })
+    if (!imageResponse.ok) throw new Error(`参考图下载失败：${imageResponse.status}`)
+    const buffer = Buffer.from(await imageResponse.arrayBuffer())
+    return {
+      buffer,
+      ext:
+        extensionFromContentType(imageResponse.headers.get('content-type')) ||
+        detectImageExtension(buffer) ||
+        normalizeImageExtension(fallbackExt),
+    }
+  }
+
+  throw new Error('图片生成接口未返回可用图片。')
+}
+
+function uniqueImageModels(models) {
+  return [...new Set(models.map((item) => String(item || '').trim()).filter(Boolean))]
+}
+
+function isRetryableImageModelError(error) {
+  const message = String(error?.message || '')
+  return /image model|model|not found|invalid_request|unsupported|requires/i.test(message)
+}
+
 async function requestOpenAiResponse(body) {
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), OPENAI_IMAGE_TIMEOUT_MS)
@@ -461,6 +697,62 @@ function buildOpenAiHeaders() {
   return headers
 }
 
+function buildLocalGatewayHeaders({ json = true } = {}) {
+  const headers = {
+    Authorization: `Bearer ${LOCAL_IMAGE_GATEWAY_API_KEY}`,
+  }
+  if (json) headers['Content-Type'] = 'application/json'
+  return headers
+}
+
+async function checkGatewayTextEndpoint(endpoint, { method, headers, timeoutMs }) {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const response = await fetch(endpoint, { method, headers, signal: controller.signal })
+    const text = await response.text()
+    return {
+      ok: response.ok,
+      status: response.status,
+      message: response.ok ? text.slice(0, 160) || 'ok' : text.slice(0, 240) || `HTTP ${response.status}`,
+    }
+  } catch (error) {
+    return {
+      ok: false,
+      status: error.name === 'AbortError' ? 504 : 0,
+      message: error.name === 'AbortError' ? '本地图片网关检查超时。' : error.message || '本地图片网关检查失败。',
+    }
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
+async function checkGatewayJsonEndpoint(endpoint, { method, headers, timeoutMs }) {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const response = await fetch(endpoint, { method, headers, signal: controller.signal })
+    const payload = await readOpenAiPayload(response)
+    const modelIds = Array.isArray(payload?.data)
+      ? payload.data.map((item) => item?.id).filter(Boolean).slice(0, 12)
+      : []
+    return {
+      ok: response.ok,
+      status: response.status,
+      message: response.ok ? 'ok' : extractOpenAiErrorMessage(payload, `HTTP ${response.status}`),
+      modelIds,
+    }
+  } catch (error) {
+    return {
+      ok: false,
+      status: error.name === 'AbortError' ? 504 : 0,
+      message: error.name === 'AbortError' ? '本地图片网关模型检查超时。' : error.message || '本地图片网关模型检查失败。',
+    }
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
 function extractOpenAiErrorMessage(payload, fallback) {
   if (!payload) return fallback
   if (typeof payload === 'string') return payload || fallback
@@ -495,6 +787,32 @@ function extractResponseImage(payload) {
       if (content?.type === 'image_generation_call' && content.result) return content.result
       if (content?.type === 'output_image' && content.image_base64) return content.image_base64
       if (content?.type === 'input_image' && content.image_base64) return content.image_base64
+    }
+  }
+  return ''
+}
+
+function findImageUrl(value) {
+  if (!value) return ''
+  if (typeof value === 'string') {
+    if (/^https?:\/\/.+/i.test(value)) return value
+    return ''
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = findImageUrl(item)
+      if (found) return found
+    }
+    return ''
+  }
+  if (typeof value === 'object') {
+    for (const key of ['url', 'image_url', 'imageUrl']) {
+      const found = findImageUrl(value[key])
+      if (found) return found
+    }
+    for (const child of Object.values(value)) {
+      const found = findImageUrl(child)
+      if (found) return found
     }
   }
   return ''
