@@ -5,6 +5,7 @@ import {
   buildJobId,
   chooseTemplateForPrompt,
   estimateGenerationCost,
+  isRecoverableWorkflowJob,
   normalizePrompt,
   normalizeProvider,
   normalizeWorkflowImageProvider,
@@ -90,6 +91,14 @@ export async function listWorkflowJobs(limit = 20) {
   return jobs
     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
     .slice(0, safeLimit)
+    .map(publicJob)
+}
+
+export async function listRecoverableWorkflowJobs(options = {}) {
+  const jobs = await readJobs()
+  return jobs
+    .filter((job) => isRecoverableWorkflowJob(job, options))
+    .sort((a, b) => new Date(a.updatedAt || a.createdAt).getTime() - new Date(b.updatedAt || b.createdAt).getTime())
     .map(publicJob)
 }
 

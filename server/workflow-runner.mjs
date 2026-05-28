@@ -10,28 +10,17 @@ import {
 import { sanitizeModelId } from './model-store.mjs'
 import { getTemplateDisplayName } from './workflow-utils.mjs'
 import { updateWorkflowJob } from './job-store.mjs'
-import { generateComfyUiModel } from './comfyui-provider.mjs'
+import { generateComfyUiModel, resumeComfyUiModel } from './comfyui-provider.mjs'
 import { createReferenceImage } from './reference-store.mjs'
 
+const inMemoryJobs = new Set()
+
 export function startWorkflowJob(job) {
-  if (job.provider === 'tencent-hunyuan' && !TENCENT_HUNYUAN_CONFIGURED) {
-    void updateWorkflowJob(
-      job.id,
-      {
-        status: 'failed',
-        progress: 100,
-        stage: '腾讯混元生 3D provider 尚未配置，请切换到本地三维生成或本地缓存链路。',
-        error: '缺少 TENCENT_SECRET_ID、TENCENT_SECRET_KEY 或 TENCENT_HUNYUAN_3D_ENDPOINT。',
-      },
-      'provider-not-configured'
-    )
-    return
-  }
+  if (inMemoryJobs.has(job.id)) return
+  inMemoryJobs.add(job.id)
 
-  const runner = job.provider === 'selfhost-triposg' ? runSelfHostedWorkflow : runLocalDemoWorkflow
-
-  void runner(job).catch((error) => {
-    void updateWorkflowJob(
+  void executeWorkflowJob(job).catch((error) => {
+    return updateWorkflowJob(
       job.id,
       {
         status: 'failed',
@@ -41,12 +30,15 @@ export function startWorkflowJob(job) {
       },
       'failed'
     )
-  })
+  }).finally(() => inMemoryJobs.delete(job.id))
 }
 
 export function startFullTextTo3dWorkflow(job) {
+  if (inMemoryJobs.has(job.id)) return
+  inMemoryJobs.add(job.id)
+
   void runFullTextTo3dWorkflow(job).catch((error) => {
-    void updateWorkflowJob(
+    return updateWorkflowJob(
       job.id,
       {
         status: 'failed',
@@ -56,7 +48,53 @@ export function startFullTextTo3dWorkflow(job) {
       },
       'full-workflow-failed'
     )
-  })
+  }).finally(() => inMemoryJobs.delete(job.id))
+}
+
+export async function resumeWorkflowJob(job) {
+  if (!job || job.status === 'completed' || job.status === 'failed') return { resumed: false, reason: 'not-recoverable' }
+  if (inMemoryJobs.has(job.id)) return { resumed: false, reason: 'already-running' }
+
+  if (job.provider === 'selfhost-triposg' && job.providerJobId) {
+    inMemoryJobs.add(job.id)
+    void runResumedSelfHostedWorkflow(job)
+      .catch((error) => {
+        return updateWorkflowJob(
+          job.id,
+          {
+            status: 'failed',
+            progress: 100,
+            stage: '续接本地三维任务失败。',
+            error: error.message || '无法根据 ComfyUI prompt_id 续接任务。',
+          },
+          'resume-selfhost-failed'
+        )
+      })
+      .finally(() => inMemoryJobs.delete(job.id))
+    return { resumed: true, reason: 'selfhost-prompt-id' }
+  }
+
+  if (job.workflowMode === 'full-text-to-3d' && !job.referenceId) {
+    startFullTextTo3dWorkflow(job)
+    return { resumed: true, reason: 'full-text-to-3d' }
+  }
+
+  if (job.referenceId) {
+    startWorkflowJob(job)
+    return { resumed: true, reason: 'image-to-3d' }
+  }
+
+  await updateWorkflowJob(
+    job.id,
+    {
+      status: 'failed',
+      progress: 100,
+      stage: '任务恢复失败：没有可复用的参考图，请重新生成参考图后再提交建模。',
+      error: '缺少 referenceId，无法恢复图生 3D 任务。',
+    },
+    'resume-missing-reference'
+  )
+  return { resumed: false, reason: 'missing-reference' }
 }
 
 async function runFullTextTo3dWorkflow(job) {
@@ -89,7 +127,26 @@ async function runFullTextTo3dWorkflow(job) {
     'full-workflow-reference-ready'
   )
 
-  startWorkflowJob(nextJob)
+  await executeWorkflowJob(nextJob)
+}
+
+async function executeWorkflowJob(job) {
+  if (job.provider === 'tencent-hunyuan' && !TENCENT_HUNYUAN_CONFIGURED) {
+    await updateWorkflowJob(
+      job.id,
+      {
+        status: 'failed',
+        progress: 100,
+        stage: '腾讯混元生 3D provider 尚未配置，请切换到本地三维生成或本地缓存链路。',
+        error: '缺少 TENCENT_SECRET_ID、TENCENT_SECRET_KEY 或 TENCENT_HUNYUAN_3D_ENDPOINT。',
+      },
+      'provider-not-configured'
+    )
+    return
+  }
+
+  const runner = job.provider === 'selfhost-triposg' ? runSelfHostedWorkflow : runLocalDemoWorkflow
+  await runner(job)
 }
 
 async function runSelfHostedWorkflow(job) {
@@ -125,6 +182,32 @@ async function runSelfHostedWorkflow(job) {
       result,
     },
     'completed'
+  )
+}
+
+async function runResumedSelfHostedWorkflow(job) {
+  const result = await resumeComfyUiModel(job, async ({ progress, stage, eventName, patch = {} }) => {
+    await updateWorkflowJob(
+      job.id,
+      {
+        status: 'processing',
+        progress,
+        stage,
+        ...patch,
+      },
+      eventName
+    )
+  })
+
+  await updateWorkflowJob(
+    job.id,
+    {
+      status: 'completed',
+      progress: 100,
+      stage: '本地图生 3D 已续接完成，模型已写入缓存并加入标本索引。',
+      result,
+    },
+    'resume-selfhost-completed'
   )
 }
 

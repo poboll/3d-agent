@@ -81,9 +81,35 @@ export async function generateComfyUiModel(job, onProgress) {
     await onProgress({ progress, stage, eventName: 'selfhost-3d-polling' })
   })
 
+  return persistComfyUiOutputs(job, prompt.promptId, historyItem, onProgress)
+}
+
+export async function resumeComfyUiModel(job, onProgress) {
+  if (!job.providerJobId) {
+    throw Object.assign(new Error('缺少 ComfyUI prompt_id，无法续接本地三维任务。'), { status: 400 })
+  }
+
+  await onProgress({
+    progress: Math.max(job.progress || 0, 55),
+    stage: '服务已重启，正在根据 ComfyUI prompt_id 续接三维生成结果。',
+    eventName: 'selfhost-3d-resume-started',
+  })
+
+  const historyItem = await pollHistory(job.providerJobId, async (progress, stage) => {
+    await onProgress({
+      progress: Math.max(progress, Math.max(job.progress || 0, 55)),
+      stage,
+      eventName: 'selfhost-3d-resume-polling',
+    })
+  })
+
+  return persistComfyUiOutputs(job, job.providerJobId, historyItem, onProgress)
+}
+
+async function persistComfyUiOutputs(job, promptId, historyItem, onProgress) {
   const outputs = findGlbOutputs(historyItem)
   if (!outputs.length) {
-    await saveHistory(job.id, prompt.promptId, historyItem)
+    await saveHistory(job.id, promptId, historyItem)
     throw new Error('本地三维工作流已结束，但没有找到 GLB 输出。')
   }
 
@@ -111,7 +137,7 @@ export async function generateComfyUiModel(job, onProgress) {
     rawModelUrl = `/api/3d/local-model/${encodeURIComponent(rawName)}`
   }
 
-  await saveHistory(job.id, prompt.promptId, historyItem)
+  await saveHistory(job.id, promptId, historyItem)
   const info = await stat(targetPath)
 
   return {

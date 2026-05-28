@@ -7,6 +7,7 @@ import {
 } from './config.mjs'
 
 export const WORKFLOW_STATUSES = ['queued', 'processing', 'completed', 'failed']
+export const RECOVERABLE_WORKFLOW_STATUSES = ['queued', 'processing']
 
 export function buildJobId(now = Date.now()) {
   return `job-${now}-${randomUUID().slice(0, 8)}`
@@ -83,6 +84,14 @@ export function getTemplateDisplayName(template) {
     bacterium: '细菌',
   }
   return names[template] || '生物结构'
+}
+
+export function isRecoverableWorkflowJob(job, { now = Date.now(), maxAgeMs = 3 * 60 * 60 * 1000 } = {}) {
+  if (!job || !RECOVERABLE_WORKFLOW_STATUSES.includes(job.status)) return false
+  if (!job.id || !job.prompt || !job.provider) return false
+  const updatedAt = Date.parse(job.updatedAt || job.createdAt || '')
+  if (!Number.isFinite(updatedAt)) return true
+  return now - updatedAt <= maxAgeMs
 }
 
 export function publicJob(job) {

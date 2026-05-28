@@ -19,9 +19,9 @@ import {
   WORKFLOW_STORE_DIR,
 } from './server/config.mjs'
 import { readJsonBody, sendJson, setCorsHeaders } from './server/http-utils.mjs'
-import { createWorkflowJob, getWorkflowJob, listWorkflowJobs } from './server/job-store.mjs'
+import { createWorkflowJob, getWorkflowJob, listRecoverableWorkflowJobs, listWorkflowJobs } from './server/job-store.mjs'
 import { getDemoModels, importLocalModel, serveDemoModel, serveLocalModel } from './server/model-store.mjs'
-import { startFullTextTo3dWorkflow, startWorkflowJob } from './server/workflow-runner.mjs'
+import { resumeWorkflowJob, startFullTextTo3dWorkflow, startWorkflowJob } from './server/workflow-runner.mjs'
 import { appendAnalyticsEvents } from './server/analytics-store.mjs'
 import { getComfyUiStatus } from './server/comfyui-provider.mjs'
 import {
@@ -199,4 +199,19 @@ server.listen(API_PORT, API_HOST, () => {
   console.log(`LearningCell fusion API running at http://${API_HOST}:${API_PORT}`)
   console.log(`Local generated model cache: ${LOCAL_MODEL_DIR}`)
   console.log(`3DCellForge demo model source: ${CELLFORGE_MODEL_DIR}`)
+  void recoverInterruptedJobs()
 })
+
+async function recoverInterruptedJobs() {
+  try {
+    const jobs = await listRecoverableWorkflowJobs()
+    if (!jobs.length) return
+    console.log(`Recovering ${jobs.length} unfinished workflow job(s).`)
+    for (const job of jobs) {
+      const result = await resumeWorkflowJob(job)
+      console.log(`Recovery check ${job.id}: ${result.reason}`)
+    }
+  } catch (error) {
+    console.error(`Workflow recovery failed: ${error.message || error}`)
+  }
+}

@@ -9,6 +9,7 @@ import {
   createPromptTitle,
   estimateGenerationCost,
   getTemplateDisplayName,
+  isRecoverableWorkflowJob,
   normalizeImageProvider,
   normalizePrompt,
   normalizeProvider,
@@ -87,5 +88,26 @@ describe('LearningCell fusion API utilities', () => {
     assert.equal(getTemplateDisplayName('unknown'), '生物结构')
     assert.equal(estimateGenerationCost('local-demo'), 0)
     assert.equal(estimateGenerationCost('tencent-hunyuan') > 0, true)
+  })
+
+  it('detects recoverable workflow jobs without reviving stale or completed work', () => {
+    const now = Date.parse('2026-05-23T04:00:00.000Z')
+    const baseJob = {
+      id: 'job-1',
+      prompt: '线粒体开放剖面模型',
+      provider: 'local-demo',
+      status: 'processing',
+      updatedAt: '2026-05-23T03:58:00.000Z',
+    }
+
+    assert.equal(isRecoverableWorkflowJob(baseJob, { now }), true)
+    assert.equal(isRecoverableWorkflowJob({ ...baseJob, status: 'queued' }, { now }), true)
+    assert.equal(isRecoverableWorkflowJob({ ...baseJob, status: 'completed' }, { now }), false)
+    assert.equal(isRecoverableWorkflowJob({ ...baseJob, status: 'failed' }, { now }), false)
+    assert.equal(
+      isRecoverableWorkflowJob({ ...baseJob, updatedAt: '2026-05-22T23:00:00.000Z' }, { now }),
+      false
+    )
+    assert.equal(isRecoverableWorkflowJob({ ...baseJob, prompt: '' }, { now }), false)
   })
 })

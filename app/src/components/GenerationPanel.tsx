@@ -85,12 +85,14 @@ export function GenerationPanel({
           onModelsLoaded(completedModels);
         }
         if (!restoredLatestJobRef.current) {
-          const latestInspectableJob = jobs.find((job) => job.status === 'completed' && job.reference);
+          const latestInspectableJob =
+            jobs.find((job) => isLiveWorkflowJob(job)) ||
+            jobs.find((job) => job.status === 'completed' && job.reference);
           if (latestInspectableJob?.reference) {
             restoredLatestJobRef.current = true;
             setActiveJob(latestInspectableJob);
             setReferenceImage(toReferenceImage(latestInspectableJob.reference, false));
-            setReferenceAccepted(true);
+            setReferenceAccepted(Boolean(latestInspectableJob.referenceId));
             setPromptPreview({
               template: latestInspectableJob.reference.template,
               sourcePrompt: latestInspectableJob.reference.prompt,
@@ -99,7 +101,16 @@ export function GenerationPanel({
               negativePrompt: latestInspectableJob.reference.negativePrompt || '',
               qualityChecklist: [],
             });
-            setStatus('已恢复最近完成任务：参考图、建模结果与标本索引均可继续查看。');
+            setStatus(
+              isLiveWorkflowJob(latestInspectableJob)
+                ? `已恢复正在处理的任务：${latestInspectableJob.stage}`
+                : '已恢复最近完成任务：参考图、建模结果与标本索引均可继续查看。'
+            );
+          } else if (latestInspectableJob) {
+            restoredLatestJobRef.current = true;
+            setActiveJob(latestInspectableJob);
+            setReferenceAccepted(false);
+            setStatus(`已恢复正在处理的任务：${latestInspectableJob.stage}`);
           }
         }
       })
@@ -807,6 +818,10 @@ function mergeJobs(job: WorkflowJob, jobs: WorkflowJob[]) {
 }
 
 type WorkflowPhase = 'input' | 'prompt' | 'image' | 'modeling' | 'done' | 'failed';
+
+function isLiveWorkflowJob(job: WorkflowJob) {
+  return job.status === 'queued' || job.status === 'processing';
+}
 
 interface ReferenceImage {
   id: string;
