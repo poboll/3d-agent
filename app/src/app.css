@@ -1047,6 +1047,143 @@ body {
   color: rgba(139, 58, 46, 0.78);
 }
 
+.workflow-stage-monitor {
+  position: relative;
+  flex: 0 0 auto;
+  min-height: 66px;
+  display: grid;
+  gap: 5px;
+  padding: 7px 8px 7px 10px;
+  border: 1px solid rgba(28, 31, 27, 0.08);
+  border-left: 2px solid rgba(139, 58, 46, 0.34);
+  border-radius: 4px;
+  background:
+    linear-gradient(90deg, rgba(251, 250, 244, 0.7), rgba(232, 230, 221, 0.2)),
+    repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.015) 0 1px, transparent 1px 13px);
+  box-shadow: inset 0 1px 0 rgba(255, 250, 240, 0.38);
+  overflow: hidden;
+}
+
+.workflow-stage-monitor::after {
+  content: '';
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  width: 24px;
+  height: 24px;
+  border: 1px solid rgba(28, 31, 27, 0.12);
+  border-radius: 50%;
+  opacity: 0.58;
+  transform: rotate(-8deg);
+  pointer-events: none;
+}
+
+.workflow-stage-monitor.pending::after {
+  border-color: rgba(139, 58, 46, 0.22);
+  animation: stage-monitor-pulse 1.6s ease-in-out infinite;
+}
+
+.workflow-stage-monitor.ok {
+  border-left-color: rgba(89, 111, 85, 0.46);
+}
+
+.workflow-stage-monitor.warn {
+  border-left-color: rgba(157, 55, 43, 0.56);
+  background:
+    linear-gradient(90deg, rgba(139, 58, 46, 0.055), rgba(251, 250, 244, 0.5)),
+    repeating-linear-gradient(103deg, rgba(139, 58, 46, 0.012) 0 1px, transparent 1px 13px);
+}
+
+.stage-monitor-head {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 8px;
+  padding-right: 32px;
+}
+
+.stage-monitor-head span,
+.stage-monitor-grid small {
+  color: var(--ink-whisper);
+  font-family: var(--font-mono);
+  font-size: 6.9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.stage-monitor-head strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--sumi);
+  font-family: var(--font-serif);
+  font-size: 11.3px;
+  font-weight: 600;
+  line-height: 1.18;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workflow-stage-monitor.pending .stage-monitor-head strong {
+  color: var(--vermilion);
+}
+
+.workflow-stage-monitor.ok .stage-monitor-head strong {
+  color: var(--moss);
+}
+
+.stage-monitor-grid {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 0.6fr 1.25fr 1.15fr;
+  gap: 4px;
+}
+
+.stage-monitor-grid span {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(28, 31, 27, 0.065);
+}
+
+.stage-monitor-grid em {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--sumi-soft);
+  font-family: var(--font-mono);
+  font-size: 7.5px;
+  font-style: normal;
+  letter-spacing: 0.035em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workflow-stage-monitor p {
+  display: -webkit-box;
+  overflow: hidden;
+  color: rgba(43, 42, 38, 0.72);
+  font-size: 9.6px;
+  line-height: 1.42;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+@keyframes stage-monitor-pulse {
+  0%,
+  100% {
+    opacity: 0.34;
+    transform: rotate(-8deg) scale(0.94);
+  }
+
+  50% {
+    opacity: 0.82;
+    transform: rotate(4deg) scale(1.03);
+  }
+}
+
 .reference-mini-card {
   width: 100%;
   min-height: 36px;

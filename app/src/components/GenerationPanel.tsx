@@ -48,9 +48,18 @@ export function GenerationPanel({
   const [providerStatusLoading, setProviderStatusLoading] = useState(false);
   const [activeJob, setActiveJob] = useState<WorkflowJob | null>(null);
   const [jobHistory, setJobHistory] = useState<WorkflowJob[]>([]);
+  const [operationStartedAt, setOperationStartedAt] = useState<number | null>(null);
+  const [clockNow, setClockNow] = useState(() => Date.now());
 
   const phase = getWorkflowPhase({ referenceImage, activeJob, busy });
   const failedPhase = getWorkflowFailedPhase(activeJob);
+
+  useEffect(() => {
+    const shouldTick = busy || activeJob?.status === 'queued' || activeJob?.status === 'processing';
+    if (!shouldTick) return undefined;
+    const timer = window.setInterval(() => setClockNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [activeJob?.status, busy]);
 
   useEffect(() => {
     let cancelled = false;
@@ -143,6 +152,7 @@ export function GenerationPanel({
             onModelCreated(model);
             onSelect(model.id);
             setBusy(false);
+            setOperationStartedAt(null);
             setStatus('建模完成：结果已缓存并加入模型索引。');
             trackEvent('workflow_job_completed', {
               jobId: job.id,
@@ -154,6 +164,7 @@ export function GenerationPanel({
 
           if (job.status === 'failed') {
             setBusy(false);
+            setOperationStartedAt(null);
             setStatus(job.error || job.stage || '生成任务失败。');
             trackEvent('workflow_job_failed', {
               jobId: job.id,
@@ -166,6 +177,7 @@ export function GenerationPanel({
         .catch((error) => {
           if (cancelled) return;
           setBusy(false);
+          setOperationStartedAt(null);
           setStatus(error instanceof Error ? error.message : '任务状态查询失败。');
         });
     }, 900);
@@ -178,6 +190,7 @@ export function GenerationPanel({
 
   const handleLoadDemo = async () => {
     setBusy(true);
+    setOperationStartedAt(Date.now());
     setStatus('正在读取 3DCellForge 缓存模型...');
     try {
       const models = await fetchDemoGeneratedModels();
@@ -188,11 +201,13 @@ export function GenerationPanel({
       setStatus(error instanceof Error ? error.message : '读取缓存模型失败。');
     } finally {
       setBusy(false);
+      setOperationStartedAt(null);
     }
   };
 
   const handleUpload = async (file: File) => {
     setBusy(true);
+    setOperationStartedAt(Date.now());
     setStatus(`正在导入 ${file.name}...`);
     trackEvent('local_model_upload_start', {
       fileName: file.name,
@@ -217,12 +232,14 @@ export function GenerationPanel({
       });
     } finally {
       setBusy(false);
+      setOperationStartedAt(null);
       if (modelInputRef.current) modelInputRef.current.value = '';
     }
   };
 
   const handleReferenceUpload = async (file: File) => {
     setBusy(true);
+    setOperationStartedAt(Date.now());
     setStatus('正在写入参考图缓存...');
     trackEvent('workflow_reference_upload_start', {
       fileName: file.name,
@@ -252,6 +269,7 @@ export function GenerationPanel({
       });
     } finally {
       setBusy(false);
+      setOperationStartedAt(null);
       if (imageInputRef.current) imageInputRef.current.value = '';
     }
   };
@@ -263,6 +281,7 @@ export function GenerationPanel({
     }
 
     setBusy(true);
+    setOperationStartedAt(Date.now());
     setStatus(`${getImageProviderName(imageProvider)} 正在生成 3D-ready 单图参考图...`);
     setPromptPreview(null);
     trackEvent('workflow_reference_generate_start', {
@@ -304,6 +323,7 @@ export function GenerationPanel({
       });
     } finally {
       setBusy(false);
+      setOperationStartedAt(null);
     }
   };
 
@@ -314,6 +334,7 @@ export function GenerationPanel({
     }
 
     setBusy(true);
+    setOperationStartedAt(Date.now());
     setStatus('正在打磨 3D-ready 单图 prompt...');
     try {
       const nextPreview = await previewReferencePrompt({
@@ -327,6 +348,7 @@ export function GenerationPanel({
       setStatus(error instanceof Error ? error.message : 'Prompt 预览失败。');
     } finally {
       setBusy(false);
+      setOperationStartedAt(null);
     }
   };
 
@@ -337,6 +359,7 @@ export function GenerationPanel({
     }
 
     setBusy(true);
+    setOperationStartedAt(Date.now());
     setReferenceImage(null);
     setReferenceAccepted(false);
     setPromptPreview(null);
@@ -381,6 +404,7 @@ export function GenerationPanel({
     } catch (error) {
       setStatus(error instanceof Error ? error.message : '完整生成链路启动失败。');
       setBusy(false);
+      setOperationStartedAt(null);
       trackEvent('workflow_job_failed', {
         template,
         provider: modelProvider,
@@ -407,6 +431,7 @@ export function GenerationPanel({
     setReferenceImage(null);
     setReferenceAccepted(false);
     setActiveJob(null);
+    setOperationStartedAt(null);
     setStatus('已退回参考图，请修改描述后重新生成，或上传一张图片。');
     trackEvent('workflow_reference_reject', { template });
   };
@@ -422,6 +447,7 @@ export function GenerationPanel({
     }
 
     setBusy(true);
+    setOperationStartedAt(Date.now());
     setStatus('已确认参考图，正在创建图生 3D 建模任务...');
     trackEvent('workflow_model_confirm', {
       template,
@@ -456,6 +482,7 @@ export function GenerationPanel({
         message: error instanceof Error ? error.message : 'unknown',
       });
       setBusy(false);
+      setOperationStartedAt(null);
     }
   };
 
@@ -476,6 +503,17 @@ export function GenerationPanel({
   const selectedProviderOnline = isImageProviderReady(providerStatus, imageProvider);
   const selectedProviderLabel = getImageProviderName(imageProvider);
   const model3dReady = isModel3dReady(providerStatus);
+  const stageMonitor = buildStageMonitor({
+    activeJob,
+    busy,
+    clockNow,
+    imageProviderLabel: selectedProviderLabel,
+    modelProvider,
+    operationStartedAt,
+    phase,
+    referenceAccepted,
+    referenceImage,
+  });
   const latestGeneratedModel = generatedModels[0];
   const latestGeneratedName = latestGeneratedModel ? formatGeneratedModelName(latestGeneratedModel.name) : '';
   const latestResultLabel = latestGeneratedModel
@@ -598,6 +636,30 @@ export function GenerationPanel({
           导入 GLB
         </button>
       </div>
+
+      {stageMonitor && (
+        <div className={`workflow-stage-monitor ${stageMonitor.state}`} aria-label="生成阶段反馈">
+          <div className="stage-monitor-head">
+            <span>{stageMonitor.label}</span>
+            <strong>{stageMonitor.primary}</strong>
+          </div>
+          <div className="stage-monitor-grid">
+            <span>
+              <small>耗时</small>
+              <em>{stageMonitor.elapsed}</em>
+            </span>
+            <span>
+              <small>链路</small>
+              <em>{stageMonitor.chain}</em>
+            </span>
+            <span>
+              <small>预计</small>
+              <em>{stageMonitor.estimate}</em>
+            </span>
+          </div>
+          <p>{stageMonitor.nextAction}</p>
+        </div>
+      )}
 
       <ol className="workflow-ladder" aria-label="生成流程">
         {WORKFLOW_STEPS.map((step) => (
@@ -760,6 +822,16 @@ interface ReferenceImage {
   generationMode?: string;
 }
 
+interface StageMonitor {
+  state: 'idle' | 'pending' | 'ok' | 'warn';
+  label: string;
+  primary: string;
+  elapsed: string;
+  chain: string;
+  estimate: string;
+  nextAction: string;
+}
+
 function toReferenceImage(reference: ReferenceImagePayload, uploaded: boolean): ReferenceImage {
   return {
     id: reference.id,
@@ -774,6 +846,105 @@ function toReferenceImage(reference: ReferenceImagePayload, uploaded: boolean): 
     promptModel: reference.promptModel,
     generationMode: reference.generationMode,
   };
+}
+
+function buildStageMonitor({
+  activeJob,
+  busy,
+  clockNow,
+  imageProviderLabel,
+  modelProvider,
+  operationStartedAt,
+  phase,
+  referenceAccepted,
+  referenceImage,
+}: {
+  activeJob: WorkflowJob | null;
+  busy: boolean;
+  clockNow: number;
+  imageProviderLabel: string;
+  modelProvider: string;
+  operationStartedAt: number | null;
+  phase: WorkflowPhase;
+  referenceAccepted: boolean;
+  referenceImage: ReferenceImage | null;
+}): StageMonitor | null {
+  const hasLiveJob = activeJob?.status === 'queued' || activeJob?.status === 'processing';
+  const shouldShow = busy || hasLiveJob || Boolean(activeJob) || Boolean(referenceImage);
+  if (!shouldShow) return null;
+
+  const startedAt = activeJob?.createdAt ? Date.parse(activeJob.createdAt) : operationStartedAt;
+  const elapsed = startedAt && Number.isFinite(startedAt)
+    ? formatElapsedMs(Math.max(0, clockNow - startedAt))
+    : '刚刚';
+  const jobShortId = activeJob ? activeJob.id.slice(-6).toUpperCase() : referenceImage ? referenceImage.id.slice(-6).toUpperCase() : 'LOCAL';
+  const modelProviderLabel = getModelProviderName(modelProvider);
+
+  if (activeJob?.status === 'failed' || phase === 'failed') {
+    return {
+      state: 'warn',
+      label: `任务 ${jobShortId}`,
+      primary: '链路中断',
+      elapsed,
+      chain: `${imageProviderLabel} / ${modelProviderLabel}`,
+      estimate: '需人工复查',
+      nextAction: activeJob?.error || activeJob?.stage || '请检查本地网关、参考图缓存与 3D 服务状态。',
+    };
+  }
+
+  if (activeJob?.status === 'completed' || phase === 'done') {
+    return {
+      state: 'ok',
+      label: `任务 ${jobShortId}`,
+      primary: '已缓存入库',
+      elapsed,
+      chain: `${imageProviderLabel} / ${modelProviderLabel}`,
+      estimate: '可立即展示',
+      nextAction: '模型已进入标本索引，可在 3D 舞台继续观察、复位或全局放大。',
+    };
+  }
+
+  if (hasLiveJob) {
+    return {
+      state: 'pending',
+      label: `任务 ${jobShortId}`,
+      primary: activeJob.stage || '正在执行生成任务',
+      elapsed,
+      chain: `${imageProviderLabel} / ${modelProviderLabel}`,
+      estimate: activeJob.referenceId ? '3D 建模通常数分钟' : '参考图约 1-3 分钟',
+      nextAction: activeJob.referenceId
+        ? '保持页面开启，完成后会自动加入标本列表并切换到新模型。'
+        : '系统正在准备单张 3D-ready 参考图，生成后会自动进入建模队列。',
+    };
+  }
+
+  if (busy) {
+    return {
+      state: 'pending',
+      label: '本地操作',
+      primary: phase === 'prompt' ? '正在准备参考图' : '正在同步文件',
+      elapsed,
+      chain: `${imageProviderLabel} / ${modelProviderLabel}`,
+      estimate: phase === 'prompt' ? '约 1-3 分钟' : '少于 1 分钟',
+      nextAction: '请等待当前步骤完成，完成后按钮会恢复可操作状态。',
+    };
+  }
+
+  if (referenceImage) {
+    return {
+      state: referenceAccepted ? 'ok' : 'idle',
+      label: `参考图 ${jobShortId}`,
+      primary: referenceAccepted ? '已接收图片' : '等待图片确认',
+      elapsed: '待提交',
+      chain: `${referenceImage.source || imageProviderLabel} / ${modelProviderLabel}`,
+      estimate: referenceAccepted ? '可进入 3D 建模' : '确认后再建模',
+      nextAction: referenceAccepted
+        ? '点击“确认建模”进入图生 3D，或点击“完整生成”重新跑默认链路。'
+        : '检查主体、剖面和构图后点击“接收图片”，不满意可重试或上传图片。',
+    };
+  }
+
+  return null;
 }
 
 const WORKFLOW_STEPS: Array<{
@@ -831,6 +1002,21 @@ function getImageProviderName(provider: string) {
   if (provider === 'local-gateway') return '本地图片网关';
   if (provider === 'openai') return 'OpenAI GPT Image';
   return '图片生成服务';
+}
+
+function getModelProviderName(provider: string) {
+  if (provider === 'selfhost-triposg') return 'TripoSG + 混元贴图';
+  if (provider === 'local-demo') return '本地缓存链路';
+  if (provider === 'tencent-hunyuan') return '腾讯混元';
+  return '3D 生成服务';
+}
+
+function formatElapsedMs(ms: number) {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  if (minutes <= 0) return `${seconds}s`;
+  return `${minutes}m ${String(seconds).padStart(2, '0')}s`;
 }
 
 function formatGeneratedModelName(name: string) {
