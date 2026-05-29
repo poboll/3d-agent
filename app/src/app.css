@@ -1265,6 +1265,149 @@ body {
     repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.016) 0 1px, transparent 1px 13px);
 }
 
+.task-watch-card {
+  position: relative;
+  flex: 0 0 auto;
+  min-height: 104px;
+  display: grid;
+  gap: 7px;
+  padding: 8px;
+  border: 1px solid rgba(28, 31, 27, 0.075);
+  border-left: 2px solid rgba(139, 58, 46, 0.38);
+  border-radius: 4px;
+  background:
+    linear-gradient(180deg, rgba(251, 250, 244, 0.72), rgba(232, 230, 221, 0.22)),
+    repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.015) 0 1px, transparent 1px 13px);
+  box-shadow: inset 0 1px 0 rgba(255, 250, 240, 0.38);
+  overflow: hidden;
+}
+
+.task-watch-card.ok {
+  border-left-color: rgba(89, 111, 85, 0.46);
+}
+
+.task-watch-card.warn {
+  border-left-color: rgba(157, 55, 43, 0.56);
+}
+
+.task-watch-head {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 0.78fr) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+}
+
+.task-watch-head span,
+.task-watch-grid small {
+  color: var(--ink-whisper);
+  font-family: var(--font-mono);
+  font-size: 6.9px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.task-watch-head strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--sumi);
+  font-family: var(--font-serif);
+  font-size: 11.4px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.task-watch-head button {
+  min-height: 22px;
+  padding: 3px 6px;
+  border: 1px solid rgba(28, 31, 27, 0.1);
+  border-radius: 3px;
+  background: rgba(251, 250, 244, 0.64);
+  color: var(--vermilion);
+  font-family: var(--font-mono);
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.task-watch-head button:disabled {
+  cursor: progress;
+  opacity: 0.48;
+}
+
+.task-watch-rail {
+  height: 4px;
+  overflow: hidden;
+  background: rgba(28, 31, 27, 0.1);
+}
+
+.task-watch-rail span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, rgba(139, 58, 46, 0.74), rgba(89, 111, 85, 0.62));
+  transition: width 0.24s ease;
+}
+
+.task-watch-card.ok .task-watch-rail span {
+  background: rgba(89, 111, 85, 0.72);
+}
+
+.task-watch-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(58px, 1fr));
+  gap: 4px;
+}
+
+.task-watch-grid span {
+  min-width: 58px;
+  min-height: 34px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 2px;
+  padding: 4px 5px;
+  border-top: 1px solid rgba(28, 31, 27, 0.065);
+  background: rgba(251, 250, 244, 0.28);
+}
+
+.task-watch-grid strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--sumi-soft);
+  font-family: var(--font-mono);
+  font-size: 7.2px;
+  font-weight: 700;
+  letter-spacing: 0.025em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.task-watch-grid .ok strong {
+  color: var(--moss);
+}
+
+.task-watch-grid .warn strong {
+  color: var(--danger);
+}
+
+.task-watch-grid .pending strong {
+  color: var(--vermilion);
+}
+
+.task-watch-card p {
+  display: -webkit-box;
+  overflow: hidden;
+  color: rgba(43, 42, 38, 0.72);
+  font-size: 9.5px;
+  line-height: 1.42;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
 .job-detail-drawer {
   flex: 0 0 auto;
   min-height: 32px;

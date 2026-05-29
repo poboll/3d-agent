@@ -4,6 +4,7 @@ import { getModelExtension, sanitizeModelId, validateModelBuffer } from '../serv
 import { buildBioReadyPrompt, normalizeReferencePrompt, validateImageBuffer } from '../server/reference-store.mjs'
 import { sanitizeFileName } from '../server/http-utils.mjs'
 import { DEFAULT_IMAGE_PROVIDER } from '../server/config.mjs'
+import { isAnalyticsEventAllowed } from '../server/analytics-store.mjs'
 import {
   chooseTemplateForPrompt,
   createPromptTitle,
@@ -88,6 +89,13 @@ describe('LearningCell fusion API utilities', () => {
     assert.equal(getTemplateDisplayName('unknown'), '生物结构')
     assert.equal(estimateGenerationCost('local-demo'), 0)
     assert.equal(estimateGenerationCost('tencent-hunyuan') > 0, true)
+  })
+
+  it('accepts frontend workflow analytics used by the generation panel', () => {
+    assert.equal(isAnalyticsEventAllowed('workflow_full_reference_ready'), true)
+    assert.equal(isAnalyticsEventAllowed('workflow_job_prompt_reuse'), true)
+    assert.equal(isAnalyticsEventAllowed('workflow_job_manual_sync'), true)
+    assert.equal(isAnalyticsEventAllowed('unknown_workflow_event'), false)
   })
 
   it('detects recoverable workflow jobs without reviving stale or completed work', () => {

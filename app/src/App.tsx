@@ -220,6 +220,16 @@ function App() {
     () => allModels.find((m) => m.id === activeId) ?? MODELS[0],
     [activeId, allModels]
   );
+  const selectModel = useCallback((id: string) => {
+    shouldPreferLatestGeneratedRef.current = false;
+    setActiveId(id);
+    const model = allModels.find((item) => item.id === id);
+    trackEvent('specimen_select', {
+      modelId: id,
+      modelName: model?.name,
+      custom: Boolean(model?.custom),
+    });
+  }, [allModels]);
 
   useEffect(() => {
     const syncRoute = () => {
@@ -245,22 +255,6 @@ function App() {
       // Ignore storage failures; model selection still works for the current session.
     }
   }, [activeId]);
-
-  useEffect(() => {
-    if (!generatedModels.length || !shouldPreferLatestGeneratedRef.current) return;
-    const latestGenerated = generatedModels[0];
-    if (latestGenerated && activeId === DEFAULT_MODEL_ID) {
-      setActiveId(latestGenerated.id);
-    }
-    shouldPreferLatestGeneratedRef.current = false;
-  }, [activeId, generatedModels]);
-
-  useEffect(() => {
-    if (allModels.some((model) => model.id === activeId)) return;
-    const storedActiveId = readStoredActiveId();
-    const restored = allModels.find((model) => model.id === storedActiveId);
-    setActiveId(restored?.id || generatedModels[0]?.id || DEFAULT_MODEL_ID);
-  }, [activeId, allModels, generatedModels]);
 
   useEffect(() => {
     if (!guideOpen) return;
@@ -320,11 +314,18 @@ function App() {
   }, [guideOpen, guideStep]);
 
   const handleModelsLoaded = useCallback((models: CellModel[]) => {
+    const hydratedModels = models.map(hydrateGeneratedModel);
+    const shouldActivateLatest = shouldPreferLatestGeneratedRef.current && hydratedModels[0] && activeId === DEFAULT_MODEL_ID;
+    if (shouldPreferLatestGeneratedRef.current) {
+      shouldPreferLatestGeneratedRef.current = false;
+    }
     setGeneratedModels((current) => {
-      const hydratedModels = models.map(hydrateGeneratedModel);
       return uniqueGeneratedModels([...hydratedModels, ...current]);
     });
-  }, []);
+    if (shouldActivateLatest) {
+      setActiveId(hydratedModels[0].id);
+    }
+  }, [activeId]);
 
   const handleModelCreated = useCallback((model: CellModel) => {
     const hydrated = hydrateGeneratedModel(model);
@@ -339,17 +340,6 @@ function App() {
     setGuideOpen(true);
     trackEvent('guide_open');
   };
-
-  const selectModel = useCallback((id: string) => {
-    shouldPreferLatestGeneratedRef.current = false;
-    setActiveId(id);
-    const model = allModels.find((item) => item.id === id);
-    trackEvent('specimen_select', {
-      modelId: id,
-      modelName: model?.name,
-      custom: Boolean(model?.custom),
-    });
-  }, [allModels]);
 
   const focusSpecimenIndex = () => {
     setRoute('workbench');

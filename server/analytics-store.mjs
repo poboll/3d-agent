@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from 'node:fs/promises'
 import { ANALYTICS_EVENTS_FILE, WORKFLOW_STORE_DIR } from './config.mjs'
 
-const ALLOWED_EVENTS = new Set([
+export const ALLOWED_ANALYTICS_EVENTS = new Set([
   'workflow_prompt_focus',
   'workflow_reference_generate_start',
   'workflow_reference_generate',
@@ -13,6 +13,9 @@ const ALLOWED_EVENTS = new Set([
   'workflow_reference_reject',
   'workflow_model_confirm',
   'workflow_full_run_start',
+  'workflow_full_reference_ready',
+  'workflow_job_prompt_reuse',
+  'workflow_job_manual_sync',
   'workflow_job_created',
   'workflow_job_completed',
   'workflow_job_failed',
@@ -39,7 +42,7 @@ export async function appendAnalyticsEvents(input = {}) {
 
 function normalizeAnalyticsEvent(event) {
   const name = String(event?.name || '').trim()
-  if (!ALLOWED_EVENTS.has(name)) return null
+  if (!isAnalyticsEventAllowed(name)) return null
 
   return {
     name,
@@ -47,6 +50,10 @@ function normalizeAnalyticsEvent(event) {
     clientCreatedAt: String(event.createdAt || ''),
     receivedAt: new Date().toISOString(),
   }
+}
+
+export function isAnalyticsEventAllowed(name) {
+  return ALLOWED_ANALYTICS_EVENTS.has(String(name || '').trim())
 }
 
 function sanitizePayload(payload) {

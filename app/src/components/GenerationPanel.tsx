@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { CellModel } from '../data/models';
 import {
   createFullTextTo3dJob,
@@ -34,6 +34,7 @@ export function GenerationPanel({
   const modelInputRef = useRef<HTMLInputElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const reportedFullReferenceIds = useRef<Set<string>>(new Set());
+  const reportedCompletedJobIds = useRef<Set<string>>(new Set());
   const restoredLatestJobRef = useRef(false);
   const [status, setStatus] = useState('先得到一张可确认的参考图，再进入图生 3D 建模。');
   const [busy, setBusy] = useState(false);
@@ -45,26 +46,90 @@ export function GenerationPanel({
   const [referenceAccepted, setReferenceAccepted] = useState(false);
   const [promptPreview, setPromptPreview] = useState<PromptPreviewPayload | null>(null);
   const [providerStatus, setProviderStatus] = useState<ProviderStatusPayload | null>(null);
-  const [providerStatusLoading, setProviderStatusLoading] = useState(false);
+  const [providerStatusLoading, setProviderStatusLoading] = useState(true);
   const [activeJob, setActiveJob] = useState<WorkflowJob | null>(null);
   const [jobHistory, setJobHistory] = useState<WorkflowJob[]>([]);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [operationStartedAt, setOperationStartedAt] = useState<number | null>(null);
-  const [clockNow, setClockNow] = useState(() => Date.now());
+  const [clockNow, setClockNow] = useState(getTimestamp);
+  const [syncingJobId, setSyncingJobId] = useState<string | null>(null);
 
   const phase = getWorkflowPhase({ referenceImage, activeJob, busy });
   const failedPhase = getWorkflowFailedPhase(activeJob);
 
+  const applyWorkflowJobUpdate = useCallback((
+    job: WorkflowJob,
+    options: { selectModel?: boolean; statusOverride?: string; trackCompletion?: boolean } = {}
+  ) => {
+    setActiveJob(job);
+    const jobReference = job.reference;
+    if (jobReference) {
+      setReferenceImage((current) => {
+        if (current?.id === jobReference.id) return current;
+        return toReferenceImage(jobReference, false);
+      });
+      setReferenceAccepted(Boolean(job.referenceId));
+      setPromptPreview((current) => current ?? {
+        template: jobReference.template,
+        sourcePrompt: jobReference.prompt,
+        model: jobReference.promptModel || 'local-template',
+        imagePrompt: jobReference.imagePrompt || '',
+        negativePrompt: jobReference.negativePrompt || '',
+        qualityChecklist: [],
+      });
+      if (!reportedFullReferenceIds.current.has(jobReference.id)) {
+        reportedFullReferenceIds.current.add(jobReference.id);
+        trackEvent('workflow_full_reference_ready', {
+          jobId: job.id,
+          template: job.template,
+          referenceId: jobReference.id,
+        });
+      }
+    }
+
+    setStatus(options.statusOverride || job.stage);
+    setJobHistory((current) => mergeJobs(job, current));
+
+    const model = workflowJobToCellModel(job);
+    if (model) {
+      onModelCreated(model);
+      if (options.selectModel !== false) onSelect(model.id);
+      setBusy(false);
+      setOperationStartedAt(null);
+      setStatus(options.statusOverride || '建模完成：结果已缓存并加入模型索引。');
+      if (options.trackCompletion !== false && !reportedCompletedJobIds.current.has(job.id)) {
+        reportedCompletedJobIds.current.add(job.id);
+        trackEvent('workflow_job_completed', {
+          jobId: job.id,
+          template: job.template,
+          provider: job.provider,
+          modelId: model.id,
+        });
+      }
+    }
+
+    if (job.status === 'failed') {
+      setBusy(false);
+      setOperationStartedAt(null);
+      setStatus(job.error || job.stage || '生成任务失败。');
+      trackEvent('workflow_job_failed', {
+        jobId: job.id,
+        template: job.template,
+        provider: job.provider,
+        message: job.error || job.stage,
+      });
+    }
+  }, [onModelCreated, onSelect]);
+
   useEffect(() => {
     const shouldTick = busy || activeJob?.status === 'queued' || activeJob?.status === 'processing';
     if (!shouldTick) return undefined;
-    const timer = window.setInterval(() => setClockNow(Date.now()), 1000);
+    const timer = window.setInterval(() => setClockNow(getTimestamp()), 1000);
     return () => window.clearInterval(timer);
   }, [activeJob?.status, busy]);
 
   useEffect(() => {
     let cancelled = false;
-    setProviderStatusLoading(true);
     fetchProviderStatus(true)
       .then((statusPayload) => {
         if (cancelled) return;
@@ -133,60 +198,7 @@ export function GenerationPanel({
       fetchWorkflowJob(activeJob.id)
         .then((job) => {
           if (cancelled) return;
-          setActiveJob(job);
-          const jobReference = job.reference;
-          if (jobReference) {
-            setReferenceImage((current) => {
-              if (current?.id === jobReference.id) return current;
-              return toReferenceImage(jobReference, false);
-            });
-            setReferenceAccepted(true);
-            setPromptPreview((current) => current ?? {
-              template: jobReference.template,
-              sourcePrompt: jobReference.prompt,
-              model: jobReference.promptModel || 'local-template',
-              imagePrompt: jobReference.imagePrompt || '',
-              negativePrompt: jobReference.negativePrompt || '',
-              qualityChecklist: [],
-            });
-            if (!reportedFullReferenceIds.current.has(jobReference.id)) {
-              reportedFullReferenceIds.current.add(jobReference.id);
-              trackEvent('workflow_full_reference_ready', {
-                jobId: job.id,
-                template: job.template,
-                referenceId: jobReference.id,
-              });
-            }
-          }
-          setStatus(job.stage);
-          setJobHistory((current) => mergeJobs(job, current));
-
-          const model = workflowJobToCellModel(job);
-          if (model) {
-            onModelCreated(model);
-            onSelect(model.id);
-            setBusy(false);
-            setOperationStartedAt(null);
-            setStatus('建模完成：结果已缓存并加入模型索引。');
-            trackEvent('workflow_job_completed', {
-              jobId: job.id,
-              template: job.template,
-              provider: job.provider,
-              modelId: model.id,
-            });
-          }
-
-          if (job.status === 'failed') {
-            setBusy(false);
-            setOperationStartedAt(null);
-            setStatus(job.error || job.stage || '生成任务失败。');
-            trackEvent('workflow_job_failed', {
-              jobId: job.id,
-              template: job.template,
-              provider: job.provider,
-              message: job.error || job.stage,
-            });
-          }
+          applyWorkflowJobUpdate(job);
         })
         .catch((error) => {
           if (cancelled) return;
@@ -200,11 +212,11 @@ export function GenerationPanel({
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [activeJob, onModelCreated, onSelect]);
+  }, [activeJob, applyWorkflowJobUpdate]);
 
   const handleLoadDemo = async () => {
     setBusy(true);
-    setOperationStartedAt(Date.now());
+    setOperationStartedAt(getTimestamp());
     setStatus('正在读取 3DCellForge 缓存模型...');
     try {
       const models = await fetchDemoGeneratedModels();
@@ -221,7 +233,7 @@ export function GenerationPanel({
 
   const handleUpload = async (file: File) => {
     setBusy(true);
-    setOperationStartedAt(Date.now());
+    setOperationStartedAt(getTimestamp());
     setStatus(`正在导入 ${file.name}...`);
     trackEvent('local_model_upload_start', {
       fileName: file.name,
@@ -253,7 +265,7 @@ export function GenerationPanel({
 
   const handleReferenceUpload = async (file: File) => {
     setBusy(true);
-    setOperationStartedAt(Date.now());
+    setOperationStartedAt(getTimestamp());
     setStatus('正在写入参考图缓存...');
     trackEvent('workflow_reference_upload_start', {
       fileName: file.name,
@@ -309,7 +321,7 @@ export function GenerationPanel({
     }
 
     setBusy(true);
-    setOperationStartedAt(Date.now());
+    setOperationStartedAt(getTimestamp());
     setPrompt(nextPrompt);
     setTemplate(nextTemplate);
     setImageProvider(nextImageProvider);
@@ -369,7 +381,7 @@ export function GenerationPanel({
     }
 
     setBusy(true);
-    setOperationStartedAt(Date.now());
+    setOperationStartedAt(getTimestamp());
     setStatus('正在打磨 3D-ready 单图 prompt...');
     try {
       const nextPreview = await previewReferencePrompt({
@@ -394,7 +406,7 @@ export function GenerationPanel({
     }
 
     setBusy(true);
-    setOperationStartedAt(Date.now());
+    setOperationStartedAt(getTimestamp());
     setReferenceImage(null);
     setReferenceAccepted(false);
     setPromptPreview(null);
@@ -501,7 +513,7 @@ export function GenerationPanel({
     }
 
     setBusy(true);
-    setOperationStartedAt(Date.now());
+    setOperationStartedAt(getTimestamp());
     setPrompt(nextPrompt);
     setTemplate(nextTemplate);
     setImageProvider(nextImageProvider);
@@ -551,18 +563,39 @@ export function GenerationPanel({
   };
 
   const handleSelectJob = (job: WorkflowJob) => {
-    setActiveJob(job);
+    applyWorkflowJobUpdate(job, {
+      selectModel: true,
+      statusOverride: job.error || job.stage,
+      trackCompletion: false,
+    });
     setDetailsOpen(true);
-    setStatus(job.error || job.stage);
     hydrateJobIntoWorkspace(job, {
       acceptReference: Boolean(job.referenceId),
       keepPrompt: true,
     });
+  };
 
-    const model = workflowJobToCellModel(job);
-    if (model) {
-      onModelCreated(model);
-      onSelect(model.id);
+  const handleSyncActiveJob = async () => {
+    if (!activeJob || syncingJobId) return;
+    setSyncingJobId(activeJob.id);
+    setStatus('正在同步生成任务状态...');
+    trackEvent('workflow_job_manual_sync', {
+      jobId: activeJob.id,
+      provider: activeJob.provider,
+      status: activeJob.status,
+    });
+    try {
+      const job = await fetchWorkflowJob(activeJob.id);
+      applyWorkflowJobUpdate(job, {
+        statusOverride: job.status === 'completed'
+          ? '同步完成：模型已写入缓存并加入标本索引。'
+          : job.stage,
+      });
+      setDetailsOpen(true);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : '任务状态同步失败。');
+    } finally {
+      setSyncingJobId(null);
     }
   };
 
@@ -655,6 +688,7 @@ export function GenerationPanel({
     referenceImage,
   });
   const latestGeneratedModel = generatedModels[0];
+  const taskWatch = activeJob ? buildTaskWatch(activeJob, clockNow) : null;
   const latestGeneratedName = latestGeneratedModel ? formatGeneratedModelName(latestGeneratedModel.name) : '';
   const latestResultLabel = latestGeneratedModel
     ? [latestGeneratedModel.source || latestGeneratedModel.generationStatus, latestGeneratedModel.subtitle]
@@ -713,6 +747,30 @@ export function GenerationPanel({
           </span>
         ))}
       </div>
+
+      {taskWatch && (
+        <section className={`task-watch-card ${taskWatch.state}`} aria-label="长任务观察">
+          <div className="task-watch-head">
+            <span>{taskWatch.eyebrow}</span>
+            <strong>{taskWatch.title}</strong>
+            <button type="button" onClick={handleSyncActiveJob} disabled={Boolean(syncingJobId)}>
+              {syncingJobId ? '同步中' : '同步状态'}
+            </button>
+          </div>
+          <div className="task-watch-rail" aria-label={`任务进度 ${taskWatch.progress}%`}>
+            <span style={{ width: `${taskWatch.progress}%` }} />
+          </div>
+          <div className="task-watch-grid">
+            {taskWatch.items.map((item) => (
+              <span className={item.state} key={item.label}>
+                <small>{item.label}</small>
+                <strong>{item.value}</strong>
+              </span>
+            ))}
+          </div>
+          <p>{taskWatch.hint}</p>
+        </section>
+      )}
 
       {referenceImage && (
         <button
@@ -1112,11 +1170,11 @@ function formatFileSize(bytes?: number) {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
-function formatRelativeTime(value?: string) {
+function formatRelativeTime(value?: string, now = getTimestamp()) {
   if (!value) return '刚刚';
   const time = Date.parse(value);
   if (!Number.isFinite(time)) return '刚刚';
-  const diffSeconds = Math.max(0, Math.floor((Date.now() - time) / 1000));
+  const diffSeconds = Math.max(0, Math.floor((now - time) / 1000));
   if (diffSeconds < 60) return `${diffSeconds}s 前`;
   const minutes = Math.floor(diffSeconds / 60);
   if (minutes < 60) return `${minutes}m 前`;
@@ -1155,6 +1213,19 @@ interface StageMonitor {
   nextAction: string;
 }
 
+interface TaskWatch {
+  state: 'pending' | 'ok' | 'warn';
+  eyebrow: string;
+  title: string;
+  progress: number;
+  hint: string;
+  items: Array<{
+    label: string;
+    value: string;
+    state: 'idle' | 'pending' | 'ok' | 'warn';
+  }>;
+}
+
 function toReferenceImage(reference: ReferenceImagePayload, uploaded: boolean): ReferenceImage {
   return {
     id: reference.id,
@@ -1168,6 +1239,73 @@ function toReferenceImage(reference: ReferenceImagePayload, uploaded: boolean): 
     model: reference.model,
     promptModel: reference.promptModel,
     generationMode: reference.generationMode,
+  };
+}
+
+function getTimestamp() {
+  return Date.now();
+}
+
+function buildTaskWatch(job: WorkflowJob, now: number): TaskWatch {
+  const progress = Math.max(0, Math.min(100, job.progress || 0));
+  const isLive = isLiveWorkflowJob(job);
+  const hasReference = Boolean(job.referenceId || job.reference);
+  const hasResult = Boolean(job.result?.modelUrl);
+  const updatedAt = Date.parse(job.updatedAt || job.createdAt || '');
+  const secondsSinceUpdate = Number.isFinite(updatedAt) ? Math.max(0, Math.floor((now - updatedAt) / 1000)) : 0;
+  const state: TaskWatch['state'] = job.status === 'failed' ? 'warn' : job.status === 'completed' ? 'ok' : 'pending';
+  const providerName = getModelProviderName(job.provider);
+  const imageName = getImageProviderName(job.imageProvider || 'local-gateway');
+
+  let title = '任务正在运行';
+  let hint = job.stage || '系统正在同步生成任务。';
+  if (job.status === 'completed') {
+    title = '模型已缓存';
+    hint = '结果已写入标本索引，可点击查看模型或复用参考图继续迭代。';
+  } else if (job.status === 'failed') {
+    title = '任务需要复查';
+    hint = job.error || job.stage || '请检查图片网关、3D 服务和参考图缓存。';
+  } else if (job.provider === 'selfhost-triposg' && progress >= 80) {
+    title = '正在等待贴图与 GLB 输出';
+    hint = '80% 后通常是远端三维服务的打包、贴图或文件写入阶段；可保持页面开启，或稍后点击同步状态。';
+  } else if (hasReference) {
+    title = '参考图已就绪，正在建模';
+    hint = job.stage || '图生 3D 队列已接收参考图，完成后会自动加入标本索引。';
+  }
+
+  return {
+    state,
+    eyebrow: `${getWorkflowModeLabel(job.workflowMode || 'image-to-3d')} · ${getShortJobId(job.id)}`,
+    title,
+    progress,
+    hint,
+    items: [
+      {
+        label: '参考图',
+        value: hasReference ? '已就绪' : '生成中',
+        state: hasReference ? 'ok' : 'pending',
+      },
+      {
+        label: '三维服务',
+        value: providerName,
+        state: job.status === 'failed' ? 'warn' : isLive ? 'pending' : 'ok',
+      },
+      {
+        label: '图片模型',
+        value: imageName,
+        state: hasReference ? 'ok' : 'pending',
+      },
+      {
+        label: '最近更新',
+        value: job.status === 'completed' ? formatRelativeTime(job.updatedAt, now) : formatElapsedMs(secondsSinceUpdate * 1000),
+        state: secondsSinceUpdate > 180 && isLive ? 'warn' : isLive ? 'pending' : 'ok',
+      },
+      {
+        label: '结果',
+        value: hasResult ? formatFileSize(job.result?.fileSize) : `${progress}%`,
+        state: hasResult ? 'ok' : isLive ? 'pending' : 'idle',
+      },
+    ],
   };
 }
 
