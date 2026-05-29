@@ -334,5 +334,14 @@ function normalizeWorkflowJob(job: WorkflowJob): WorkflowJob {
           imageUrl: apiUrl(job.reference.imageUrl),
         }
       : job.reference,
+    referenceImageUrl: job.referenceImageUrl ? apiUrl(job.referenceImageUrl) : job.referenceImageUrl,
+    result: job.result
+      ? {
+          ...job.result,
+          modelUrl: apiUrl(job.result.modelUrl),
+          referenceImageUrl: job.result.referenceImageUrl ? apiUrl(job.result.referenceImageUrl) : job.result.referenceImageUrl,
+          rawModelUrl: job.result.rawModelUrl ? apiUrl(job.result.rawModelUrl) : job.result.rawModelUrl,
+        }
+      : job.result,
   };
 }

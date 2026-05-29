@@ -1050,6 +1050,7 @@ body {
 .workflow-stage-monitor {
   position: relative;
   flex: 0 0 auto;
+  width: 100%;
   min-height: 66px;
   display: grid;
   gap: 5px;
@@ -1062,6 +1063,8 @@ body {
     repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.015) 0 1px, transparent 1px 13px);
   box-shadow: inset 0 1px 0 rgba(255, 250, 240, 0.38);
   overflow: hidden;
+  color: inherit;
+  text-align: left;
 }
 
 .workflow-stage-monitor::after {
@@ -1171,6 +1174,14 @@ body {
   -webkit-box-orient: vertical;
 }
 
+.workflow-stage-monitor:hover,
+.workflow-stage-monitor:focus-visible {
+  border-color: rgba(139, 58, 46, 0.22);
+  background:
+    linear-gradient(90deg, rgba(251, 250, 244, 0.78), rgba(232, 230, 221, 0.26)),
+    repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.018) 0 1px, transparent 1px 13px);
+}
+
 @keyframes stage-monitor-pulse {
   0%,
   100% {
@@ -1254,6 +1265,225 @@ body {
     repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.016) 0 1px, transparent 1px 13px);
 }
 
+.job-detail-drawer {
+  flex: 0 0 auto;
+  min-height: 32px;
+  display: grid;
+  border: 1px solid rgba(28, 31, 27, 0.075);
+  border-left: 2px solid rgba(89, 111, 85, 0.34);
+  border-radius: 4px;
+  background:
+    linear-gradient(180deg, rgba(251, 250, 244, 0.66), rgba(232, 230, 221, 0.24)),
+    repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.014) 0 1px, transparent 1px 14px);
+  box-shadow: inset 0 1px 0 rgba(255, 250, 240, 0.38);
+  overflow: hidden;
+}
+
+.job-detail-drawer.open {
+  border-left-color: rgba(139, 58, 46, 0.42);
+}
+
+.job-detail-toggle {
+  flex: 0 0 auto;
+  width: 100%;
+  min-height: 30px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 0;
+  background: rgba(251, 250, 244, 0.22);
+  color: var(--sumi-soft);
+  text-align: left;
+}
+
+.job-detail-toggle span,
+.job-detail-toggle em,
+.job-detail-grid small,
+.job-detail-reference small,
+.job-detail-result small,
+.job-detail-prompt summary {
+  color: var(--ink-whisper);
+  font-family: var(--font-mono);
+  font-size: 7.2px;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.job-detail-toggle strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--sumi);
+  font-family: var(--font-mono);
+  font-size: 8.4px;
+  letter-spacing: 0.06em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.job-detail-toggle em {
+  color: var(--vermilion);
+}
+
+.job-detail-body {
+  max-height: 154px;
+  display: grid;
+  gap: 7px;
+  padding: 0 8px 8px;
+  overflow-y: auto;
+}
+
+.job-detail-body::-webkit-scrollbar {
+  width: 5px;
+}
+
+.job-detail-body::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  background: rgba(28, 31, 27, 0.3);
+  background-clip: content-box;
+}
+
+.job-detail-reference {
+  min-height: 44px;
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  padding: 6px;
+  border-top: 1px solid rgba(28, 31, 27, 0.06);
+  color: inherit;
+  text-decoration: none;
+}
+
+.job-detail-reference img {
+  width: 50px;
+  height: 38px;
+  border: 1px solid rgba(28, 31, 27, 0.08);
+  object-fit: contain;
+  background: rgba(251, 250, 244, 0.7);
+}
+
+.job-detail-reference span,
+.job-detail-result span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.job-detail-reference strong,
+.job-detail-result strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--sumi);
+  font-family: var(--font-serif);
+  font-size: 11.2px;
+  font-weight: 600;
+  line-height: 1.18;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.job-detail-reference em,
+.job-detail-result em {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink-whisper);
+  font-family: var(--font-mono);
+  font-size: 7.4px;
+  font-style: normal;
+  letter-spacing: 0.055em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.job-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.job-detail-grid span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  padding: 4px 5px;
+  border-top: 1px solid rgba(28, 31, 27, 0.065);
+  background: rgba(251, 250, 244, 0.28);
+}
+
+.job-detail-grid strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--sumi-soft);
+  font-family: var(--font-mono);
+  font-size: 7.4px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.job-detail-error {
+  padding: 7px 8px;
+  border-left: 2px solid var(--danger);
+  background: rgba(157, 51, 47, 0.055);
+  color: var(--danger) !important;
+  font-size: 9.6px !important;
+  line-height: 1.45 !important;
+}
+
+.job-detail-result {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 7px;
+  border: 1px solid rgba(89, 111, 85, 0.14);
+  background: rgba(223, 233, 220, 0.2);
+}
+
+.job-detail-result div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 5px;
+}
+
+.job-detail-result a {
+  padding: 3px 6px;
+  border: 1px solid rgba(28, 31, 27, 0.1);
+  border-radius: 3px;
+  background: rgba(251, 250, 244, 0.58);
+  color: var(--vermilion);
+  font-family: var(--font-mono);
+  font-size: 7.2px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-decoration: none;
+}
+
+.job-detail-prompt {
+  border-top: 1px solid rgba(28, 31, 27, 0.06);
+  padding-top: 6px;
+}
+
+.job-detail-prompt summary {
+  cursor: pointer;
+  color: var(--vermilion);
+}
+
+.job-detail-prompt p {
+  max-height: 44px;
+  margin-top: 6px;
+  overflow-y: auto;
+  color: rgba(46, 48, 43, 0.78);
+  font-size: 9.8px;
+  line-height: 1.5;
+}
+
 .job-history {
   display: grid;
   gap: 7px;
@@ -1272,6 +1502,14 @@ body {
   background: rgba(252, 250, 244, 0.54);
   color: var(--sumi-soft);
   text-align: left;
+}
+
+.job-row.active {
+  border-color: rgba(139, 58, 46, 0.24);
+  border-left: 2px solid var(--vermilion);
+  background:
+    linear-gradient(90deg, rgba(139, 58, 46, 0.055), rgba(252, 250, 244, 0.62)),
+    repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.014) 0 1px, transparent 1px 13px);
 }
 
 .job-row span,

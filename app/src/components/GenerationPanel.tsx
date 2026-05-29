@@ -48,6 +48,7 @@ export function GenerationPanel({
   const [providerStatusLoading, setProviderStatusLoading] = useState(false);
   const [activeJob, setActiveJob] = useState<WorkflowJob | null>(null);
   const [jobHistory, setJobHistory] = useState<WorkflowJob[]>([]);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [operationStartedAt, setOperationStartedAt] = useState<number | null>(null);
   const [clockNow, setClockNow] = useState(() => Date.now());
 
@@ -91,6 +92,7 @@ export function GenerationPanel({
           if (latestInspectableJob?.reference) {
             restoredLatestJobRef.current = true;
             setActiveJob(latestInspectableJob);
+            setDetailsOpen(isLiveWorkflowJob(latestInspectableJob));
             setReferenceImage(toReferenceImage(latestInspectableJob.reference, false));
             setReferenceAccepted(Boolean(latestInspectableJob.referenceId));
             setPromptPreview({
@@ -109,6 +111,7 @@ export function GenerationPanel({
           } else if (latestInspectableJob) {
             restoredLatestJobRef.current = true;
             setActiveJob(latestInspectableJob);
+            setDetailsOpen(true);
             setReferenceAccepted(false);
             setStatus(`已恢复正在处理的任务：${latestInspectableJob.stage}`);
           }
@@ -403,6 +406,7 @@ export function GenerationPanel({
         });
       }
       setActiveJob(job);
+      setDetailsOpen(true);
       setJobHistory((current) => mergeJobs(job, current));
       setStatus(job.stage);
       trackEvent('workflow_job_created', {
@@ -477,6 +481,7 @@ export function GenerationPanel({
         referenceId: referenceImage.id,
       });
       setActiveJob(job);
+      setDetailsOpen(true);
       setJobHistory((current) => mergeJobs(job, current));
       setStatus(job.stage);
       trackEvent('workflow_job_created', {
@@ -499,6 +504,7 @@ export function GenerationPanel({
 
   const handleSelectJob = (job: WorkflowJob) => {
     setActiveJob(job);
+    setDetailsOpen(true);
     setStatus(job.error || job.stage);
 
     const model = workflowJobToCellModel(job);
@@ -532,6 +538,10 @@ export function GenerationPanel({
         .filter(Boolean)
         .join(' / ')
     : '';
+  const detailReference = activeJob?.reference || (referenceImage ? referenceImageToPayload(referenceImage, prompt, template) : null);
+  const detailsRows = activeJob ? buildJobDetailRows(activeJob) : [];
+  const resultModelUrl = activeJob?.result?.modelUrl;
+  const rawModelUrl = activeJob?.result?.rawModelUrl;
   const quickStatusItems = [
     {
       label: '图片',
@@ -649,7 +659,12 @@ export function GenerationPanel({
       </div>
 
       {stageMonitor && (
-        <div className={`workflow-stage-monitor ${stageMonitor.state}`} aria-label="生成阶段反馈">
+        <button
+          type="button"
+          className={`workflow-stage-monitor ${stageMonitor.state}`}
+          aria-label="生成阶段反馈，点击查看任务详情"
+          onClick={() => setDetailsOpen((current) => !current)}
+        >
           <div className="stage-monitor-head">
             <span>{stageMonitor.label}</span>
             <strong>{stageMonitor.primary}</strong>
@@ -669,7 +684,7 @@ export function GenerationPanel({
             </span>
           </div>
           <p>{stageMonitor.nextAction}</p>
-        </div>
+        </button>
       )}
 
       <ol className="workflow-ladder" aria-label="生成流程">
@@ -793,13 +808,83 @@ export function GenerationPanel({
         )}
       </div>
 
+      {(activeJob || referenceImage) && (
+        <section className={`job-detail-drawer${detailsOpen ? ' open' : ''}`} aria-label="任务详情">
+          <button
+            type="button"
+            className="job-detail-toggle"
+            onClick={() => setDetailsOpen((current) => !current)}
+            aria-expanded={detailsOpen}
+          >
+            <span>{activeJob ? '任务详情' : '参考图详情'}</span>
+            <strong>{activeJob ? getShortJobId(activeJob.id) : getShortJobId(referenceImage?.id || '')}</strong>
+            <em>{detailsOpen ? '收起' : '展开'}</em>
+          </button>
+
+          {detailsOpen && (
+            <div className="job-detail-body">
+              {detailReference?.imageUrl && (
+                <a className="job-detail-reference" href={detailReference.imageUrl} target="_blank" rel="noreferrer">
+                  <img src={detailReference.imageUrl} alt={detailReference.title || '参考图'} />
+                  <span>
+                    <small>REFERENCE</small>
+                    <strong>{detailReference.title || '参考图'}</strong>
+                    <em>{[detailReference.provider, detailReference.model].filter(Boolean).join(' · ')}</em>
+                  </span>
+                </a>
+              )}
+
+              {activeJob && (
+                <div className="job-detail-grid">
+                  {detailsRows.map((row) => (
+                    <span key={row.label}>
+                      <small>{row.label}</small>
+                      <strong>{row.value}</strong>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {activeJob?.error && (
+                <p className="job-detail-error">{activeJob.error}</p>
+              )}
+
+              {activeJob?.result && (
+                <div className="job-detail-result">
+                  <span>
+                    <small>RESULT</small>
+                    <strong>{activeJob.result.name}</strong>
+                    <em>{formatFileSize(activeJob.result.fileSize)} · {activeJob.result.provider}</em>
+                  </span>
+                  <div>
+                    {resultModelUrl && (
+                      <a href={resultModelUrl} target="_blank" rel="noreferrer">贴图 GLB</a>
+                    )}
+                    {rawModelUrl && (
+                      <a href={rawModelUrl} target="_blank" rel="noreferrer">Raw GLB</a>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {(activeJob?.reference?.imagePrompt || referenceImage?.imagePrompt || promptPreview?.imagePrompt) && (
+                <details className="job-detail-prompt">
+                  <summary>查看 3D-ready prompt</summary>
+                  <p>{activeJob?.reference?.imagePrompt || referenceImage?.imagePrompt || promptPreview?.imagePrompt}</p>
+                </details>
+              )}
+            </div>
+          )}
+        </section>
+      )}
+
       {jobHistory.length > 0 && (
         <div className="job-history">
           <div className="job-history-title">最近任务</div>
           {jobHistory.slice(0, 4).map((job) => (
             <button
               type="button"
-              className={`job-row ${job.status}`}
+              className={`job-row ${job.status}${activeJob?.id === job.id ? ' active' : ''}`}
               key={job.id}
               onClick={() => handleSelectJob(job)}
             >
@@ -815,6 +900,77 @@ export function GenerationPanel({
 
 function mergeJobs(job: WorkflowJob, jobs: WorkflowJob[]) {
   return [job, ...jobs.filter((item) => item.id !== job.id)].slice(0, 12);
+}
+
+function referenceImageToPayload(reference: ReferenceImage, prompt: string, template: string): ReferenceImagePayload {
+  return {
+    id: reference.id,
+    prompt: reference.prompt || prompt,
+    template,
+    provider: reference.source || 'local',
+    source: reference.source || 'local',
+    title: reference.title,
+    note: reference.note,
+    fileName: `${reference.id}.png`,
+    fileSize: 0,
+    model: reference.model || '',
+    promptModel: reference.promptModel,
+    generationMode: reference.generationMode,
+    imagePrompt: reference.imagePrompt,
+    negativePrompt: '',
+    imageUrl: reference.url,
+    createdAt: '',
+  };
+}
+
+function buildJobDetailRows(job: WorkflowJob) {
+  return [
+    { label: '状态', value: getWorkflowStatusLabel(job.status) },
+    { label: '进度', value: `${Math.max(0, Math.min(100, job.progress || 0))}%` },
+    { label: '图片', value: getImageProviderName(job.imageProvider || 'local-gateway') },
+    { label: '三维', value: getModelProviderName(job.provider) },
+    { label: '模式', value: getWorkflowModeLabel(job.workflowMode || 'image-to-3d') },
+    { label: '模板', value: job.template || 'auto' },
+    { label: '成本', value: job.costEstimateCny ? `约 ${job.costEstimateCny} 元` : '本地链路' },
+    { label: '更新', value: formatRelativeTime(job.updatedAt) },
+  ];
+}
+
+function getWorkflowStatusLabel(status: WorkflowJob['status']) {
+  if (status === 'queued') return '排队中';
+  if (status === 'processing') return '生成中';
+  if (status === 'completed') return '已完成';
+  return '失败';
+}
+
+function getWorkflowModeLabel(mode: string) {
+  if (mode === 'full-text-to-3d') return '完整生成';
+  if (mode === 'image-to-3d') return '图生 3D';
+  return mode;
+}
+
+function getShortJobId(id: string) {
+  if (!id) return 'LOCAL';
+  return id.slice(-8).toUpperCase();
+}
+
+function formatFileSize(bytes?: number) {
+  if (!bytes) return '缓存文件';
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function formatRelativeTime(value?: string) {
+  if (!value) return '刚刚';
+  const time = Date.parse(value);
+  if (!Number.isFinite(time)) return '刚刚';
+  const diffSeconds = Math.max(0, Math.floor((Date.now() - time) / 1000));
+  if (diffSeconds < 60) return `${diffSeconds}s 前`;
+  const minutes = Math.floor(diffSeconds / 60);
+  if (minutes < 60) return `${minutes}m 前`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h 前`;
+  return `${Math.floor(hours / 24)}d 前`;
 }
 
 type WorkflowPhase = 'input' | 'prompt' | 'image' | 'modeling' | 'done' | 'failed';

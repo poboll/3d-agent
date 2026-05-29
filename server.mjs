@@ -97,17 +97,22 @@ const server = http.createServer(async (request, response) => {
 
     if (request.method === 'GET' && url.pathname === '/api/providers/status') {
       const check = url.searchParams.get('check') === '1'
+      const [localGateway, openai, selfhostStatus] = await Promise.all([
+        getLocalImageGatewayStatus({ check }),
+        getOpenAiProviderStatus({ check }),
+        check ? getComfyUiStatus() : Promise.resolve(undefined),
+      ])
       sendJson(response, 200, {
         image: {
-          localGateway: await getLocalImageGatewayStatus({ check }),
-          openai: await getOpenAiProviderStatus({ check }),
+          localGateway,
+          openai,
         },
         model3d: {
           selfhostTriposg: {
             configured: true,
             baseUrl: COMFYUI_BASE_URL,
             workflowTemplate: COMFYUI_WORKFLOW_TEMPLATE,
-            status: check ? await getComfyUiStatus() : undefined,
+            status: selfhostStatus,
           },
           localCache: { configured: true },
           tencentHunyuan: { configured: TENCENT_HUNYUAN_CONFIGURED },
