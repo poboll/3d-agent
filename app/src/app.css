@@ -1329,7 +1329,7 @@ body {
 }
 
 .job-detail-body {
-  max-height: 154px;
+  max-height: 166px;
   display: grid;
   gap: 7px;
   padding: 0 8px 8px;
@@ -1463,6 +1463,47 @@ body {
   font-weight: 700;
   letter-spacing: 0.05em;
   text-decoration: none;
+}
+
+.job-detail-actions {
+  position: sticky;
+  z-index: 2;
+  top: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  padding: 6px 0 2px;
+  background:
+    linear-gradient(180deg, rgba(246, 243, 232, 0.96), rgba(246, 243, 232, 0.84)),
+    repeating-linear-gradient(112deg, rgba(83, 102, 80, 0.024) 0 1px, transparent 1px 10px);
+  box-shadow: 0 7px 12px rgba(36, 33, 26, 0.035);
+}
+
+.job-detail-actions button {
+  min-height: 22px;
+  padding: 3px 4px;
+  border: 1px solid rgba(28, 31, 27, 0.1);
+  border-radius: 3px;
+  background:
+    linear-gradient(180deg, rgba(251, 250, 244, 0.72), rgba(232, 230, 221, 0.28)),
+    repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.012) 0 1px, transparent 1px 12px);
+  color: var(--sumi-soft);
+  font-family: var(--font-mono);
+  font-size: 7.2px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.job-detail-actions button:hover,
+.job-detail-actions button:focus-visible {
+  border-color: rgba(139, 58, 46, 0.28);
+  color: var(--vermilion);
+}
+
+.job-detail-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
 }
 
 .job-detail-prompt {

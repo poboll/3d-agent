@@ -92,7 +92,7 @@ export function GenerationPanel({
           if (latestInspectableJob?.reference) {
             restoredLatestJobRef.current = true;
             setActiveJob(latestInspectableJob);
-            setDetailsOpen(isLiveWorkflowJob(latestInspectableJob));
+            setDetailsOpen(true);
             setReferenceImage(toReferenceImage(latestInspectableJob.reference, false));
             setReferenceAccepted(Boolean(latestInspectableJob.referenceId));
             setPromptPreview({
@@ -289,25 +289,43 @@ export function GenerationPanel({
   };
 
   const handleCreateReference = async () => {
-    if (!prompt.trim()) {
+    await runCreateReference();
+  };
+
+  const runCreateReference = async (options: {
+    promptValue?: string;
+    templateValue?: string;
+    imageProviderValue?: string;
+    statusPrefix?: string;
+    eventSource?: string;
+  } = {}) => {
+    const nextPrompt = (options.promptValue ?? prompt).trim();
+    const nextTemplate = options.templateValue || template;
+    const nextImageProvider = normalizeUiImageProvider(options.imageProviderValue || imageProvider);
+
+    if (!nextPrompt) {
       setStatus('请先输入生物结构描述，或上传一张参考图。');
       return;
     }
 
     setBusy(true);
     setOperationStartedAt(Date.now());
-    setStatus(`${getImageProviderName(imageProvider)} 正在生成 3D-ready 单图参考图...`);
+    setPrompt(nextPrompt);
+    setTemplate(nextTemplate);
+    setImageProvider(nextImageProvider);
+    setStatus(options.statusPrefix || `${getImageProviderName(nextImageProvider)} 正在生成 3D-ready 单图参考图...`);
     setPromptPreview(null);
     trackEvent('workflow_reference_generate_start', {
-      template,
-      imageProvider,
-      promptLength: prompt.trim().length,
+      template: nextTemplate,
+      imageProvider: nextImageProvider,
+      promptLength: nextPrompt.length,
+      source: options.eventSource || 'panel',
     });
     try {
       const reference = await createReferenceImage({
-        prompt: prompt.trim(),
-        provider: imageProvider,
-        template,
+        prompt: nextPrompt,
+        provider: nextImageProvider,
+        template: nextTemplate,
       });
       setReferenceImage(toReferenceImage(reference, false));
       setReferenceAccepted(false);
@@ -320,20 +338,23 @@ export function GenerationPanel({
         qualityChecklist: [],
       });
       setActiveJob(null);
-      setStatus(`${getImageProviderName(imageProvider)} 已产出参考图，请检查后点击“接收图片”，再确认建模。`);
+      setDetailsOpen(true);
+      setStatus(`${getImageProviderName(nextImageProvider)} 已产出参考图，请检查后点击“接收图片”，再确认建模。`);
       trackEvent('workflow_reference_generate', {
-        template,
-        imageProvider,
-        promptLength: prompt.trim().length,
+        template: nextTemplate,
+        imageProvider: nextImageProvider,
+        promptLength: nextPrompt.length,
         referenceId: reference.id,
         model: reference.model,
+        source: options.eventSource || 'panel',
       });
     } catch (error) {
       setStatus(error instanceof Error ? error.message : '参考图生成失败。');
       trackEvent('workflow_reference_generate_failed', {
-        template,
-        imageProvider,
+        template: nextTemplate,
+        imageProvider: nextImageProvider,
         message: error instanceof Error ? error.message : 'unknown',
+        source: options.eventSource || 'panel',
       });
     } finally {
       setBusy(false);
@@ -446,39 +467,64 @@ export function GenerationPanel({
     setReferenceImage(null);
     setReferenceAccepted(false);
     setActiveJob(null);
+    setDetailsOpen(false);
     setOperationStartedAt(null);
     setStatus('已退回参考图，请修改描述后重新生成，或上传一张图片。');
     trackEvent('workflow_reference_reject', { template });
   };
 
   const handleConfirmModeling = async () => {
-    if (!referenceImage) {
+    await runConfirmModeling();
+  };
+
+  const runConfirmModeling = async (options: {
+    promptValue?: string;
+    templateValue?: string;
+    imageProviderValue?: string;
+    modelProviderValue?: string;
+    reference?: ReferenceImage;
+    eventSource?: string;
+  } = {}) => {
+    const nextReference = options.reference || referenceImage;
+    const nextPrompt = (options.promptValue ?? prompt).trim();
+    const nextTemplate = options.templateValue || template;
+    const nextImageProvider = normalizeUiImageProvider(options.imageProviderValue || imageProvider);
+    const nextModelProvider = options.modelProviderValue || modelProvider;
+
+    if (!nextReference) {
       setStatus('需要先生成或上传参考图，再确认图生建模。');
       return;
     }
-    if (!referenceAccepted) {
+    if (!options.reference && !referenceAccepted) {
       setStatus('请先检查参考图并点击“接收图片”，再提交图生 3D 建模。');
       return;
     }
 
     setBusy(true);
     setOperationStartedAt(Date.now());
+    setPrompt(nextPrompt);
+    setTemplate(nextTemplate);
+    setImageProvider(nextImageProvider);
+    setModelProvider(nextModelProvider);
+    setReferenceImage(nextReference);
+    setReferenceAccepted(true);
     setStatus('已确认参考图，正在创建图生 3D 建模任务...');
     trackEvent('workflow_model_confirm', {
-      template,
-      provider: modelProvider,
-      uploaded: referenceImage.uploaded,
+      template: nextTemplate,
+      provider: nextModelProvider,
+      uploaded: nextReference.uploaded,
+      source: options.eventSource || 'panel',
     });
     try {
-      const fallbackPrompt = referenceImage.uploaded
-        ? `${referenceImage.title} 生物 3D 教学模型`
-        : prompt;
+      const fallbackPrompt = nextReference.uploaded
+        ? `${nextReference.title} 生物 3D 教学模型`
+        : nextPrompt;
       const job = await createTextToCellJob({
         prompt: fallbackPrompt,
-        provider: modelProvider,
-        template,
-        imageProvider,
-        referenceId: referenceImage.id,
+        provider: nextModelProvider,
+        template: nextTemplate,
+        imageProvider: nextImageProvider,
+        referenceId: nextReference.id,
       });
       setActiveJob(job);
       setDetailsOpen(true);
@@ -489,13 +535,15 @@ export function GenerationPanel({
         template: job.template,
         provider: job.provider,
         costEstimateCny: job.costEstimateCny,
+        source: options.eventSource || 'panel',
       });
     } catch (error) {
       setStatus(error instanceof Error ? error.message : '文本生成任务创建失败。');
       trackEvent('workflow_job_failed', {
-        template,
-        provider: modelProvider,
+        template: nextTemplate,
+        provider: nextModelProvider,
         message: error instanceof Error ? error.message : 'unknown',
+        source: options.eventSource || 'panel',
       });
       setBusy(false);
       setOperationStartedAt(null);
@@ -506,12 +554,87 @@ export function GenerationPanel({
     setActiveJob(job);
     setDetailsOpen(true);
     setStatus(job.error || job.stage);
+    hydrateJobIntoWorkspace(job, {
+      acceptReference: Boolean(job.referenceId),
+      keepPrompt: true,
+    });
 
     const model = workflowJobToCellModel(job);
     if (model) {
       onModelCreated(model);
       onSelect(model.id);
     }
+  };
+
+  const hydrateJobIntoWorkspace = (
+    job: WorkflowJob,
+    options: { acceptReference?: boolean; keepPrompt?: boolean } = {}
+  ) => {
+    if (!options.keepPrompt) setPrompt(job.prompt);
+    setTemplate(job.template || 'auto');
+    setImageProvider(normalizeUiImageProvider(job.imageProvider || imageProvider));
+    setModelProvider(job.provider || modelProvider);
+    if (job.reference) {
+      setReferenceImage(toReferenceImage(job.reference, false));
+      setReferenceAccepted(Boolean(options.acceptReference));
+      setPromptPreview({
+        template: job.reference.template,
+        sourcePrompt: job.reference.prompt,
+        model: job.reference.promptModel || 'local-template',
+        imagePrompt: job.reference.imagePrompt || '',
+        negativePrompt: job.reference.negativePrompt || '',
+        qualityChecklist: [],
+      });
+    }
+  };
+
+  const handleReuseJobPrompt = (job: WorkflowJob) => {
+    hydrateJobIntoWorkspace(job, {
+      acceptReference: Boolean(job.referenceId),
+      keepPrompt: false,
+    });
+    setActiveJob(job);
+    setDetailsOpen(true);
+    setStatus('已复用该任务描述，可直接重试参考图或重新完整生成。');
+    trackEvent('workflow_job_prompt_reuse', {
+      jobId: job.id,
+      template: job.template,
+      provider: job.provider,
+    });
+  };
+
+  const handleRetryJobReference = async (job: WorkflowJob) => {
+    hydrateJobIntoWorkspace(job, { keepPrompt: false });
+    setActiveJob(null);
+    setReferenceAccepted(false);
+    setDetailsOpen(true);
+    await runCreateReference({
+      promptValue: job.prompt,
+      templateValue: job.template,
+      imageProviderValue: normalizeUiImageProvider(job.imageProvider || imageProvider),
+      statusPrefix: '正在基于历史任务重新生成参考图...',
+      eventSource: 'job-detail',
+    });
+  };
+
+  const handleRemodelJobReference = async (job: WorkflowJob) => {
+    if (!job.reference) {
+      setStatus('该任务没有可复用的参考图，请先重试参考图。');
+      return;
+    }
+    hydrateJobIntoWorkspace(job, {
+      acceptReference: true,
+      keepPrompt: false,
+    });
+    setDetailsOpen(true);
+    await runConfirmModeling({
+      promptValue: job.prompt,
+      templateValue: job.template,
+      imageProviderValue: normalizeUiImageProvider(job.imageProvider || imageProvider),
+      modelProviderValue: job.provider || modelProvider,
+      reference: toReferenceImage(job.reference, false),
+      eventSource: 'job-detail',
+    });
   };
 
   const progress = activeJob?.progress ?? 0;
@@ -687,6 +810,105 @@ export function GenerationPanel({
         </button>
       )}
 
+      {(activeJob || referenceImage) && (
+        <section className={`job-detail-drawer${detailsOpen ? ' open' : ''}`} aria-label="任务详情">
+          <button
+            type="button"
+            className="job-detail-toggle"
+            onClick={() => setDetailsOpen((current) => !current)}
+            aria-expanded={detailsOpen}
+          >
+            <span>{activeJob ? '任务详情' : '参考图详情'}</span>
+            <strong>{activeJob ? getShortJobId(activeJob.id) : getShortJobId(referenceImage?.id || '')}</strong>
+            <em>{detailsOpen ? '收起' : '展开'}</em>
+          </button>
+
+          {detailsOpen && (
+            <div className="job-detail-body">
+              {activeJob && (
+                <div className="job-detail-actions" aria-label="任务快捷操作">
+                  <button type="button" onClick={() => handleReuseJobPrompt(activeJob)} disabled={busy}>
+                    复用描述
+                  </button>
+                  <button type="button" onClick={() => void handleRetryJobReference(activeJob)} disabled={busy}>
+                    重试参考图
+                  </button>
+                  <button type="button" onClick={() => void handleRemodelJobReference(activeJob)} disabled={busy || !activeJob.reference}>
+                    重新建模
+                  </button>
+                  {activeJob.result && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const model = workflowJobToCellModel(activeJob);
+                        if (model) {
+                          onModelCreated(model);
+                          onSelect(model.id);
+                          setStatus('已切换到该任务生成的 3D 模型。');
+                        }
+                      }}
+                    >
+                      查看模型
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {detailReference?.imageUrl && (
+                <a className="job-detail-reference" href={detailReference.imageUrl} target="_blank" rel="noreferrer">
+                  <img src={detailReference.imageUrl} alt={detailReference.title || '参考图'} />
+                  <span>
+                    <small>REFERENCE</small>
+                    <strong>{detailReference.title || '参考图'}</strong>
+                    <em>{[detailReference.provider, detailReference.model].filter(Boolean).join(' · ')}</em>
+                  </span>
+                </a>
+              )}
+
+              {activeJob && (
+                <div className="job-detail-grid">
+                  {detailsRows.map((row) => (
+                    <span key={row.label}>
+                      <small>{row.label}</small>
+                      <strong>{row.value}</strong>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {activeJob?.error && (
+                <p className="job-detail-error">{activeJob.error}</p>
+              )}
+
+              {activeJob?.result && (
+                <div className="job-detail-result">
+                  <span>
+                    <small>RESULT</small>
+                    <strong>{activeJob.result.name}</strong>
+                    <em>{formatFileSize(activeJob.result.fileSize)} · {activeJob.result.provider}</em>
+                  </span>
+                  <div>
+                    {resultModelUrl && (
+                      <a href={resultModelUrl} target="_blank" rel="noreferrer">贴图 GLB</a>
+                    )}
+                    {rawModelUrl && (
+                      <a href={rawModelUrl} target="_blank" rel="noreferrer">Raw GLB</a>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {(activeJob?.reference?.imagePrompt || referenceImage?.imagePrompt || promptPreview?.imagePrompt) && (
+                <details className="job-detail-prompt">
+                  <summary>查看 3D-ready prompt</summary>
+                  <p>{activeJob?.reference?.imagePrompt || referenceImage?.imagePrompt || promptPreview?.imagePrompt}</p>
+                </details>
+              )}
+            </div>
+          )}
+        </section>
+      )}
+
       <ol className="workflow-ladder" aria-label="生成流程">
         {WORKFLOW_STEPS.map((step) => (
           <li className={getStepClass(step.id, phase, failedPhase)} key={step.id}>
@@ -807,76 +1029,6 @@ export function GenerationPanel({
           </div>
         )}
       </div>
-
-      {(activeJob || referenceImage) && (
-        <section className={`job-detail-drawer${detailsOpen ? ' open' : ''}`} aria-label="任务详情">
-          <button
-            type="button"
-            className="job-detail-toggle"
-            onClick={() => setDetailsOpen((current) => !current)}
-            aria-expanded={detailsOpen}
-          >
-            <span>{activeJob ? '任务详情' : '参考图详情'}</span>
-            <strong>{activeJob ? getShortJobId(activeJob.id) : getShortJobId(referenceImage?.id || '')}</strong>
-            <em>{detailsOpen ? '收起' : '展开'}</em>
-          </button>
-
-          {detailsOpen && (
-            <div className="job-detail-body">
-              {detailReference?.imageUrl && (
-                <a className="job-detail-reference" href={detailReference.imageUrl} target="_blank" rel="noreferrer">
-                  <img src={detailReference.imageUrl} alt={detailReference.title || '参考图'} />
-                  <span>
-                    <small>REFERENCE</small>
-                    <strong>{detailReference.title || '参考图'}</strong>
-                    <em>{[detailReference.provider, detailReference.model].filter(Boolean).join(' · ')}</em>
-                  </span>
-                </a>
-              )}
-
-              {activeJob && (
-                <div className="job-detail-grid">
-                  {detailsRows.map((row) => (
-                    <span key={row.label}>
-                      <small>{row.label}</small>
-                      <strong>{row.value}</strong>
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              {activeJob?.error && (
-                <p className="job-detail-error">{activeJob.error}</p>
-              )}
-
-              {activeJob?.result && (
-                <div className="job-detail-result">
-                  <span>
-                    <small>RESULT</small>
-                    <strong>{activeJob.result.name}</strong>
-                    <em>{formatFileSize(activeJob.result.fileSize)} · {activeJob.result.provider}</em>
-                  </span>
-                  <div>
-                    {resultModelUrl && (
-                      <a href={resultModelUrl} target="_blank" rel="noreferrer">贴图 GLB</a>
-                    )}
-                    {rawModelUrl && (
-                      <a href={rawModelUrl} target="_blank" rel="noreferrer">Raw GLB</a>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {(activeJob?.reference?.imagePrompt || referenceImage?.imagePrompt || promptPreview?.imagePrompt) && (
-                <details className="job-detail-prompt">
-                  <summary>查看 3D-ready prompt</summary>
-                  <p>{activeJob?.reference?.imagePrompt || referenceImage?.imagePrompt || promptPreview?.imagePrompt}</p>
-                </details>
-              )}
-            </div>
-          )}
-        </section>
-      )}
 
       {jobHistory.length > 0 && (
         <div className="job-history">
@@ -1172,7 +1324,13 @@ function getWorkflowFailedPhase(activeJob: WorkflowJob | null): Exclude<Workflow
 function getImageProviderName(provider: string) {
   if (provider === 'local-gateway') return '本地图片网关';
   if (provider === 'openai') return 'OpenAI GPT Image';
+  if (provider === 'upload') return '上传图片';
   return '图片生成服务';
+}
+
+function normalizeUiImageProvider(provider: string) {
+  if (provider === 'openai') return 'openai';
+  return 'local-gateway';
 }
 
 function getModelProviderName(provider: string) {
