@@ -109,7 +109,7 @@ export function Sidebar({ models, activeId, onSelect, onOpenIndex, guideOpen = f
         )}
         {activeModel && (
           <section className="specimen-learning" aria-label="教学信息">
-            <article className="learning-card index-card" id="specimen-index-card">
+            <article className="learning-card index-card" id="specimen-index-card" data-testid="specimen-index-card">
               <div className="index-toolbar">
                 <button type="button" className="card-title-button" onClick={focusIndexSearch}>标本列表</button>
                 <label className="specimen-search">
@@ -121,6 +121,7 @@ export function Sidebar({ models, activeId, onSelect, onOpenIndex, guideOpen = f
                     onChange={(event) => setQuery(event.target.value)}
                     placeholder="植物细胞 / 真核 / 叶绿体"
                     aria-label="搜索标本列表"
+                    data-testid="specimen-search"
                   />
                 </label>
               </div>
@@ -203,6 +204,7 @@ function CellItem({
         className={`cell-item${active ? ' active' : ''}${model.custom ? ' custom' : ''}`}
         onClick={onSelect}
         style={{ '--accent': model.accent } as React.CSSProperties}
+        data-testid="specimen-list-item"
       >
         {active && <span className="cell-current-mark">当前</span>}
         <div className="cell-thumb">

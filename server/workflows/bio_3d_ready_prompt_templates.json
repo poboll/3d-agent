@@ -1,6 +1,6 @@
 {
   "version": "2026-05-17",
-  "base_prompt_en": "Create one 3D-ready educational biological model of {object}, centered on a clean white background. Use a three-quarter open cutaway view, not a flat diagram. The model must have a thick visible cut rim, one continuous outer silhouette, readable front-side depth, and clearly exposed internal structures arranged with generous spacing. Use semi-matte opaque teaching-model materials, low specular highlights, soft studio shadows, and natural color separation. Make the surface slightly textured but not glossy, glassy, transparent, jelly-like, translucent, wet, metallic, or toy-plastic. Keep only the major structures needed for recognition, with clear large forms and low-frequency geometry suitable for image-to-3D reconstruction.",
+  "base_prompt_en": "Create one 3D-ready educational biological model of {object}, centered on a clean white background. Use a three-quarter open cutaway view, not a flat diagram. The model must have a thick visible cut rim, one continuous outer silhouette, readable front-side depth, and clearly exposed internal structures arranged with generous spacing. Use semi-matte opaque teaching-model materials, low specular highlights, bright even studio lighting, soft ground shadow, and natural color separation. Make the surface slightly textured but not glossy, glassy, transparent, jelly-like, translucent, wet, metallic, or toy-plastic. Keep only the major structures needed for recognition, with clear large forms and low-frequency geometry suitable for image-to-3D reconstruction.",
   "negative_prompt_en": "Do not create transparent jelly, glass, wet plastic, glossy toy material, labels, arrows, text, UI marks, multiple views in one image, collage, four panels, infographic layout, flat front-only diagram, dense tiny particles, noisy micro-texture, floating parts, background scenery, decorative lighting, or crowded organelles touching each other.",
   "object_presets": {
     "细菌": {
@@ -62,7 +62,7 @@
     "opaque semi-matte material",
     "clear structure spacing",
     "5-7 major structures maximum",
-    "plain background and soft shadow",
+    "plain background, bright even lighting, and soft shadow",
     "no labels or arrows",
     "no multiview collage",
     "no transparent jelly or glossy plastic"

@@ -39,6 +39,8 @@
   --border-strong: var(--hairline);
   --shadow-soft: 0 10px 28px -24px rgba(28, 28, 26, 0.34);
   --shadow-card: 0 18px 42px -34px rgba(28, 28, 26, 0.38);
+  --scroll-line: rgba(139, 58, 46, 0.42);
+  --scroll-line-soft: rgba(89, 111, 85, 0.22);
 
   --radius-sm: 4px;
   --radius-md: 6px;
@@ -143,13 +145,14 @@ button {
 }
 
 ::-webkit-scrollbar {
-  width: 7px;
-  height: 7px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-thumb {
-  border: 3px solid transparent;
-  background: rgba(28, 28, 26, 0.26);
+  border-left: 2px solid transparent;
+  border-right: 2px solid transparent;
+  background: linear-gradient(180deg, var(--scroll-line), var(--scroll-line-soft));
   background-clip: content-box;
   border-radius: 0;
 }

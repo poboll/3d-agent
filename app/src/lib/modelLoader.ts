@@ -161,9 +161,28 @@ export function cloneScene(gltf: GLTF): THREE.Group {
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       mesh.frustumCulled = true;
+      brightenMeshMaterial(mesh.material);
     }
   });
   return cloned;
+}
+
+function brightenMeshMaterial(material: THREE.Material | THREE.Material[]) {
+  const materials = Array.isArray(material) ? material : [material];
+  for (const item of materials) {
+    if (!item) continue;
+    const standard = item as THREE.MeshStandardMaterial;
+    if ('envMapIntensity' in standard) {
+      standard.envMapIntensity = Math.max(standard.envMapIntensity || 0, 0.82);
+    }
+    if ('roughness' in standard && typeof standard.roughness === 'number') {
+      standard.roughness = Math.min(Math.max(standard.roughness, 0.48), 0.82);
+    }
+    if ('metalness' in standard && typeof standard.metalness === 'number') {
+      standard.metalness = Math.min(standard.metalness, 0.08);
+    }
+    item.needsUpdate = true;
+  }
 }
 
 function trimParsedCache(activeUrl: string) {

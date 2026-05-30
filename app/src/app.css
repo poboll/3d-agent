@@ -745,13 +745,37 @@ body {
   white-space: nowrap;
 }
 
-.prompt-preview-card::-webkit-scrollbar {
-  width: 5px;
+.prompt-preview-card,
+.job-detail-body,
+.specimen-summary-copy p,
+.cell-list {
+  scrollbar-color: var(--scroll-line) transparent;
+  scrollbar-width: thin;
 }
 
-.prompt-preview-card::-webkit-scrollbar-thumb {
-  border: 2px solid transparent;
-  background: rgba(28, 31, 27, 0.28);
+.prompt-preview-card::-webkit-scrollbar,
+.job-detail-body::-webkit-scrollbar,
+.specimen-summary-copy p::-webkit-scrollbar,
+.cell-list::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.prompt-preview-card::-webkit-scrollbar-track,
+.job-detail-body::-webkit-scrollbar-track,
+.specimen-summary-copy p::-webkit-scrollbar-track,
+.cell-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.prompt-preview-card::-webkit-scrollbar-thumb,
+.job-detail-body::-webkit-scrollbar-thumb,
+.specimen-summary-copy p::-webkit-scrollbar-thumb,
+.cell-list::-webkit-scrollbar-thumb {
+  border-left: 2px solid transparent;
+  border-right: 2px solid transparent;
+  border-radius: 0;
+  background: linear-gradient(180deg, var(--scroll-line), var(--scroll-line-soft));
   background-clip: content-box;
 }
 
@@ -1320,7 +1344,15 @@ body {
   white-space: nowrap;
 }
 
-.task-watch-head button {
+.task-watch-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.task-watch-head button,
+.task-watch-actions button {
   min-height: 22px;
   padding: 3px 6px;
   border: 1px solid rgba(28, 31, 27, 0.1);
@@ -1334,7 +1366,12 @@ body {
   white-space: nowrap;
 }
 
-.task-watch-head button:disabled {
+.task-watch-actions button + button {
+  color: var(--moss);
+}
+
+.task-watch-head button:disabled,
+.task-watch-actions button:disabled {
   cursor: progress;
   opacity: 0.48;
 }
@@ -1477,16 +1514,6 @@ body {
   gap: 7px;
   padding: 0 8px 8px;
   overflow-y: auto;
-}
-
-.job-detail-body::-webkit-scrollbar {
-  width: 5px;
-}
-
-.job-detail-body::-webkit-scrollbar-thumb {
-  border: 2px solid transparent;
-  background: rgba(28, 31, 27, 0.3);
-  background-clip: content-box;
 }
 
 .job-detail-reference {
@@ -1670,17 +1697,50 @@ body {
 
 .job-history {
   display: grid;
-  gap: 7px;
+  gap: 5px;
+  max-height: 112px;
+  overflow: hidden;
+}
+
+.job-history-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--ink-whisper);
+  font-family: var(--font-mono);
+  font-size: 7.4px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.job-history-title em {
+  overflow: hidden;
+  color: rgba(43, 42, 38, 0.48);
+  font-style: normal;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.job-history-title strong {
+  flex: 0 0 auto;
+  color: rgba(89, 111, 85, 0.8);
+  font-size: 7.2px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
 }
 
 .job-row {
   width: 100%;
-  min-height: 32px;
+  min-height: 28px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
-  padding: 7px 9px;
+  padding: 5px 7px;
   border: 1px solid var(--hairline-2);
   border-radius: 4px;
   background: rgba(252, 250, 244, 0.54);
@@ -1702,7 +1762,7 @@ body {
   white-space: nowrap;
   text-overflow: ellipsis;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 8.8px;
 }
 
 .job-row.completed strong {
@@ -1718,7 +1778,7 @@ body {
   grid-area: stage;
   position: relative;
   min-height: 0;
-  overflow: visible;
+  overflow: hidden;
   border: 1px solid rgba(28, 28, 26, 0.19);
   border-radius: 4px;
   background:
@@ -1769,6 +1829,7 @@ body {
   width: 100%;
   height: 100%;
   overflow: hidden;
+  contain: layout paint;
 }
 
 .viewer.is-stage-expanded {
@@ -1800,7 +1861,7 @@ body {
 
 .viewer-canvas-zone {
   position: absolute;
-  inset: 0;
+  inset: 5px;
   z-index: 3;
   overflow: visible;
   pointer-events: auto;
@@ -1838,6 +1899,7 @@ body {
 .viewer.is-model-focus .viewer-canvas-zone {
   z-index: 50;
   filter: drop-shadow(0 22px 38px rgba(28, 28, 26, 0.16));
+  pointer-events: auto;
 }
 
 .viewer.is-model-focus .stage-info-main,
@@ -1845,6 +1907,7 @@ body {
 .viewer.is-model-focus .stage-note-panel,
 .viewer.is-model-focus .stage-concept-card {
   z-index: 1;
+  pointer-events: none;
 }
 
 .viewer.is-model-focus .viewer-interaction-frame {
@@ -1990,7 +2053,8 @@ body {
   right: 22px;
   top: 18px;
   z-index: 9;
-  width: min(168px, 19%);
+  width: clamp(154px, 20vw, 232px);
+  max-width: calc(100% - 44px);
   padding: 9px 10px 10px;
   border: 1px solid rgba(28, 31, 27, 0.12);
   border-radius: 4px;
@@ -2003,6 +2067,8 @@ body {
     inset 0 1px 0 rgba(255, 250, 240, 0.42),
     0 18px 48px -42px rgba(28, 31, 27, 0.48);
   pointer-events: auto;
+  contain: layout paint;
+  overflow: hidden;
 }
 
 .stage-order-card header {
@@ -2015,10 +2081,14 @@ body {
 }
 
 .stage-order-card header span {
+  min-width: 0;
+  overflow: hidden;
   color: var(--sumi);
   font-family: var(--font-serif);
   font-size: 12px;
   letter-spacing: 0.08em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .stage-order-card header small {
@@ -2038,7 +2108,7 @@ body {
 
 .stage-order-card li {
   display: grid;
-  grid-template-columns: 19px minmax(0, 1fr);
+  grid-template-columns: 18px minmax(0, 1fr);
   gap: 2px 6px;
   padding-left: 6px;
   border-left: 1px solid rgba(139, 58, 46, 0.24);
@@ -2054,6 +2124,8 @@ body {
 }
 
 .stage-order-card strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
   color: var(--sumi);
   font-family: var(--font-serif);
   font-size: 10px;
@@ -2062,16 +2134,16 @@ body {
 }
 
 .stage-order-card li p {
-  display: -webkit-box;
+  display: block;
   margin-top: 0;
-  overflow: hidden;
+  overflow: visible;
   color: var(--ink-mute);
   font-family: var(--font-sans);
   font-size: 8.4px;
   line-height: 1.32;
   letter-spacing: 0;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .stage-drawer button {
@@ -2176,32 +2248,33 @@ body {
 }
 
 .stage-question-drawer {
-  width: min(156px, 18%);
+  width: 40px;
   right: 12px;
   bottom: 58px;
   z-index: 36;
   max-height: none;
-  overflow: visible;
+  overflow: hidden;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 40px;
-  transform: translateX(calc(100% - 40px));
-  transition: transform 0.24s ease, filter 0.2s ease;
+  grid-template-columns: 0 40px;
+  transition: width 0.24s ease, filter 0.2s ease;
 }
 
 .stage-question-drawer::before {
   content: '';
   position: absolute;
   left: auto;
-  right: -8px;
-  top: -14px;
-  bottom: -14px;
-  width: 62px;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 42px;
 }
 
 .stage-question-drawer:hover,
 .stage-question-drawer.open,
 .stage-question-drawer.pinned {
-  transform: translateX(0);
+  width: min(170px, 20%);
+  grid-template-columns: minmax(0, 1fr) 40px;
+  overflow: visible;
 }
 
 .stage-question-drawer button {
@@ -2257,16 +2330,23 @@ body {
     repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.018) 0 1px, transparent 1px 16px),
     rgba(251, 250, 244, 0.83);
   opacity: 0;
+  transform: translateX(10px);
   box-shadow: 0 18px 46px -38px rgba(28, 31, 27, 0.46);
-  transition: opacity 0.2s ease;
+  transition: opacity 0.2s ease, transform 0.24s ease;
   grid-column: 1;
   grid-row: 1;
+  overflow: hidden;
+}
+
+.stage-question-drawer:not(:hover):not(.open):not(.pinned) .question-clue {
+  display: none;
 }
 
 .stage-question-drawer:hover .question-clue,
 .stage-question-drawer.open .question-clue,
 .stage-question-drawer.pinned .question-clue {
   opacity: 1;
+  transform: translateX(0);
 }
 
 .stage-question-drawer .question-clue span {
@@ -2283,6 +2363,7 @@ body {
   font-size: 9px;
   line-height: 1.54;
   letter-spacing: 0.025em;
+  overflow-wrap: anywhere;
 }
 
 .stage-side-card,
@@ -2409,7 +2490,8 @@ body {
   right: 22px;
   bottom: 96px;
   z-index: 5;
-  width: min(182px, 20%);
+  width: clamp(174px, 23vw, 264px);
+  max-width: calc(100% - 44px);
   padding: 9px 10px 10px;
   border: 1px solid rgba(28, 31, 27, 0.1);
   border-radius: 4px;
@@ -2422,6 +2504,8 @@ body {
     inset 0 1px 0 rgba(255, 250, 240, 0.42),
     0 18px 48px -42px rgba(28, 31, 27, 0.42);
   pointer-events: auto;
+  contain: layout paint;
+  overflow: hidden;
 }
 
 .stage-concept-card header {
@@ -2433,10 +2517,14 @@ body {
 }
 
 .stage-concept-card header span {
+  min-width: 0;
+  overflow: hidden;
   color: var(--sumi);
   font-family: var(--font-serif);
   font-size: 12px;
   letter-spacing: 0.08em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .stage-concept-card header small,
@@ -2464,9 +2552,12 @@ body {
   align-items: baseline;
   justify-content: space-between;
   gap: 8px;
+  min-width: 0;
 }
 
 .concept-list strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
   color: var(--sumi);
   font-family: var(--font-serif);
   font-size: 11.2px;
@@ -2474,15 +2565,15 @@ body {
 }
 
 .concept-list p {
-  display: -webkit-box;
+  display: block;
   margin-top: 3px;
   overflow: hidden;
   color: var(--ink-mute);
   font-size: 8.9px;
   line-height: 1.45;
   letter-spacing: 0;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .concept-list em {
@@ -2493,9 +2584,8 @@ body {
   font-size: 7.4px;
   font-style: normal;
   letter-spacing: 0.02em;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .tool-btn {
@@ -2854,24 +2944,6 @@ body {
     rgba(28, 31, 27, 0.05) 15px
   );
   background-position: 0 14px;
-  scrollbar-color: rgba(139, 58, 46, 0.48) transparent;
-  scrollbar-width: thin;
-}
-
-.specimen-summary-copy p::-webkit-scrollbar {
-  width: 4px;
-}
-
-.specimen-summary-copy p::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.specimen-summary-copy p::-webkit-scrollbar-thumb {
-  border-left: 1px solid transparent;
-  border-right: 1px solid transparent;
-  border-radius: 0;
-  background: linear-gradient(180deg, rgba(139, 58, 46, 0.52), rgba(89, 111, 85, 0.28));
-  background-clip: content-box;
 }
 
 .specimen-learning {
@@ -3015,24 +3087,6 @@ body {
   gap: 5px;
   overflow-x: hidden;
   overflow-y: auto;
-  scrollbar-color: rgba(139, 58, 46, 0.48) transparent;
-  scrollbar-width: thin;
-}
-
-.cell-list::-webkit-scrollbar {
-  width: 3px;
-}
-
-.cell-list::-webkit-scrollbar-thumb {
-  border-left: 1px solid transparent;
-  border-right: 1px solid transparent;
-  border-radius: 0;
-  background: linear-gradient(180deg, rgba(139, 58, 46, 0.52), rgba(89, 111, 85, 0.28));
-  background-clip: content-box;
-}
-
-.cell-list::-webkit-scrollbar-track {
-  background: transparent;
 }
 
 .cell-list li {

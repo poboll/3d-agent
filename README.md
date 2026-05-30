@@ -120,12 +120,14 @@ OPENAI_DISABLE_RESPONSE_STORAGE=true
 OPENAI_IMAGE_MODE=responses-tool
 OPENAI_IMAGE_MODEL=gpt-5.5
 OPENAI_IMAGE_TOOL_MODEL=gpt-image-2
-OPENAI_IMAGE_SIZE=1024x1024
-OPENAI_IMAGE_QUALITY=medium
+OPENAI_IMAGE_SIZE=1536x1536
+OPENAI_IMAGE_QUALITY=high
 OPENAI_IMAGE_FORMAT=png
 ```
 
 默认实现使用 Responses API：先由 `gpt-5.5` 把术语打磨为 3D-ready 单图 prompt，再通过 Responses 的 `image_generation` 工具生成参考图。`OPENAI_IMAGE_MODE=images-api` 时可切换到 `/v1/images/generations` 备用路径。
+
+默认参考图配置为 `1536x1536 / high`，用于兼顾图生 3D 的结构清晰度和本地生成耗时；这不是 2K/4K。若网关支持并且预算允许，可把 `OPENAI_IMAGE_SIZE` 或 `LOCAL_IMAGE_GATEWAY_IMAGE_SIZE` 调高。
 
 本地 ComfyUI / TripoSG / Hunyuan3D-Paint：
 

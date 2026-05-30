@@ -88,6 +88,8 @@ export interface ProviderStatusPayload {
       baseUrl: string;
       promptModel?: string;
       imageModel?: string;
+      imageSize?: string;
+      imageQuality?: string;
       health?: {
         ok: boolean;
         status: number;
@@ -105,6 +107,8 @@ export interface ProviderStatusPayload {
       baseUrl: string;
       imageModel?: string;
       imageToolModel?: string;
+      imageSize?: string;
+      imageQuality?: string;
       auth?: {
         ok: boolean;
         status: number;

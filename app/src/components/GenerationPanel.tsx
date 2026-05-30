@@ -130,9 +130,15 @@ export function GenerationPanel({
 
   useEffect(() => {
     let cancelled = false;
-    fetchProviderStatus(true)
+    fetchProviderStatus(false)
       .then((statusPayload) => {
         if (cancelled) return;
+        setProviderStatus(statusPayload);
+        setProviderStatusLoading(false);
+        return fetchProviderStatus(true);
+      })
+      .then((statusPayload) => {
+        if (cancelled || !statusPayload) return;
         setProviderStatus(statusPayload);
       })
       .catch(() => {
@@ -599,6 +605,19 @@ export function GenerationPanel({
     }
   };
 
+  const handleOpenActiveJobModel = () => {
+    if (!activeJob) return;
+    const model = workflowJobToCellModel(activeJob);
+    if (!model) {
+      setStatus('当前任务还没有可查看的 3D 模型，请等待建模完成。');
+      return;
+    }
+    onModelCreated(model);
+    onSelect(model.id);
+    setDetailsOpen(true);
+    setStatus('已切换到该任务生成的 3D 模型。');
+  };
+
   const hydrateJobIntoWorkspace = (
     job: WorkflowJob,
     options: { acceptReference?: boolean; keepPrompt?: boolean } = {}
@@ -699,6 +718,8 @@ export function GenerationPanel({
   const detailsRows = activeJob ? buildJobDetailRows(activeJob) : [];
   const resultModelUrl = activeJob?.result?.modelUrl;
   const rawModelUrl = activeJob?.result?.rawModelUrl;
+  const visibleJobHistory = buildVisibleJobHistory(jobHistory, activeJob);
+  const hiddenJobCount = Math.max(0, jobHistory.length - visibleJobHistory.length);
   const quickStatusItems = [
     {
       label: '图片',
@@ -718,7 +739,7 @@ export function GenerationPanel({
   ];
 
   return (
-    <section className="generation-panel" id={id}>
+    <section className="generation-panel" id={id} data-testid="generation-panel">
       <div>
         <span className="generation-eyebrow">§ 01 — WORKFLOW DESK</span>
         <h2>生成工坊</h2>
@@ -729,6 +750,7 @@ export function GenerationPanel({
         <button
           type="button"
           className="latest-result-card"
+          data-testid="latest-result-card"
           onClick={() => {
             if (latestGeneratedModel) onSelect(latestGeneratedModel.id);
           }}
@@ -749,13 +771,20 @@ export function GenerationPanel({
       </div>
 
       {taskWatch && (
-        <section className={`task-watch-card ${taskWatch.state}`} aria-label="长任务观察">
+        <section className={`task-watch-card ${taskWatch.state}`} aria-label="长任务观察" data-testid="task-watch-card">
           <div className="task-watch-head">
             <span>{taskWatch.eyebrow}</span>
             <strong>{taskWatch.title}</strong>
-            <button type="button" onClick={handleSyncActiveJob} disabled={Boolean(syncingJobId)}>
-              {syncingJobId ? '同步中' : '同步状态'}
-            </button>
+            <div className="task-watch-actions">
+              <button type="button" onClick={handleSyncActiveJob} disabled={Boolean(syncingJobId)} data-testid="sync-active-job">
+                {syncingJobId ? '同步中' : '同步状态'}
+              </button>
+              {activeJob?.result && (
+                <button type="button" onClick={handleOpenActiveJobModel} data-testid="open-active-job-model">
+                  查看模型
+                </button>
+              )}
+            </div>
           </div>
           <div className="task-watch-rail" aria-label={`任务进度 ${taskWatch.progress}%`}>
             <span style={{ width: `${taskWatch.progress}%` }} />
@@ -807,28 +836,28 @@ export function GenerationPanel({
       </label>
 
       <div className="generation-actions" id="workflow-actions">
-        <button type="button" className="generation-primary" onClick={handleCreateReference} disabled={!canCreateReference}>
+        <button type="button" className="generation-primary" onClick={handleCreateReference} disabled={!canCreateReference} data-testid="generate-reference">
           生成参考图
         </button>
-        <button type="button" className="generation-secondary" onClick={handlePreviewPrompt} disabled={!canCreateReference}>
+        <button type="button" className="generation-secondary" onClick={handlePreviewPrompt} disabled={!canCreateReference} data-testid="preview-prompt">
           预览 Prompt
         </button>
-        <button type="button" className="generation-primary full-action" onClick={handleRunFullWorkflow} disabled={!canCreateReference || busy}>
+        <button type="button" className="generation-primary full-action" onClick={handleRunFullWorkflow} disabled={!canCreateReference || busy} data-testid="run-full-workflow">
           完整生成
         </button>
-        <button type="button" className="generation-primary confirm-action" onClick={handleConfirmModeling} disabled={!canConfirmModeling}>
+        <button type="button" className="generation-primary confirm-action" onClick={handleConfirmModeling} disabled={!canConfirmModeling} data-testid="confirm-modeling">
           确认建模
         </button>
-        <button type="button" className="generation-secondary" onClick={() => imageInputRef.current?.click()} disabled={busy}>
+        <button type="button" className="generation-secondary" onClick={() => imageInputRef.current?.click()} disabled={busy} data-testid="upload-reference-image">
           上传图片
         </button>
-        <button type="button" className="generation-secondary" onClick={handleCreateReference} disabled={!canCreateReference}>
+        <button type="button" className="generation-secondary" onClick={handleCreateReference} disabled={!canCreateReference} data-testid="retry-reference-image">
           重试图片
         </button>
-        <button type="button" className="generation-secondary" onClick={handleAcceptReference} disabled={!referenceImage || busy}>
+        <button type="button" className="generation-secondary" onClick={handleAcceptReference} disabled={!referenceImage || busy} data-testid="accept-reference-image">
           {referenceAccepted ? '已接收' : '接收图片'}
         </button>
-        <button type="button" className="generation-secondary" onClick={handleRejectReference} disabled={!referenceImage || busy}>
+        <button type="button" className="generation-secondary" onClick={handleRejectReference} disabled={!referenceImage || busy} data-testid="reject-reference-image">
           退回图片
         </button>
         <button type="button" className="generation-secondary" onClick={handleLoadDemo} disabled={busy}>
@@ -1088,10 +1117,14 @@ export function GenerationPanel({
         )}
       </div>
 
-      {jobHistory.length > 0 && (
+      {visibleJobHistory.length > 0 && (
         <div className="job-history">
-          <div className="job-history-title">最近任务</div>
-          {jobHistory.slice(0, 4).map((job) => (
+          <div className="job-history-title">
+            <span>最近任务</span>
+            <strong>关键 3 条</strong>
+            <em>{hiddenJobCount > 0 ? `已收起 ${hiddenJobCount} 条历史` : '没有更多历史'}</em>
+          </div>
+          {visibleJobHistory.map((job) => (
             <button
               type="button"
               className={`job-row ${job.status}${activeJob?.id === job.id ? ' active' : ''}`}
@@ -1110,6 +1143,37 @@ export function GenerationPanel({
 
 function mergeJobs(job: WorkflowJob, jobs: WorkflowJob[]) {
   return [job, ...jobs.filter((item) => item.id !== job.id)].slice(0, 12);
+}
+
+function buildVisibleJobHistory(jobs: WorkflowJob[], activeJob: WorkflowJob | null) {
+  const visible: WorkflowJob[] = [];
+  const seenPrompts = new Set<string>();
+  const addJob = (job?: WorkflowJob | null) => {
+    if (!job || visible.some((item) => item.id === job.id)) return;
+    const promptKey = normalizeJobHistoryPrompt(job.prompt);
+    if (promptKey && seenPrompts.has(promptKey) && visible.length > 0) return;
+    if (promptKey) seenPrompts.add(promptKey);
+    visible.push(job);
+  };
+
+  addJob(activeJob);
+  addJob(jobs.find((job) => isLiveWorkflowJob(job)));
+  addJob(jobs.find((job) => job.status === 'completed'));
+  addJob(jobs.find((job) => job.status === 'failed'));
+
+  for (const job of jobs) {
+    if (visible.length >= 3) break;
+    addJob(job);
+  }
+
+  return visible.slice(0, 3);
+}
+
+function normalizeJobHistoryPrompt(prompt: string) {
+  return String(prompt || '')
+    .replace(/\s+/g, '')
+    .replace(/[，。,.!！?？:：；;]/g, '')
+    .slice(0, 36);
 }
 
 function referenceImageToPayload(reference: ReferenceImage, prompt: string, template: string): ReferenceImagePayload {
@@ -1502,10 +1566,15 @@ function getPhaseLabel(phase: WorkflowPhase) {
 function isImageProviderReady(status: ProviderStatusPayload | null, provider: string) {
   if (!status) return false;
   if (provider === 'local-gateway') {
-    return Boolean(status.image.localGateway?.configured && status.image.localGateway?.health?.ok && status.image.localGateway?.models?.ok);
+    const gateway = status.image.localGateway;
+    const healthReady = gateway?.health ? gateway.health.ok : true;
+    const modelsReady = gateway?.models ? gateway.models.ok : true;
+    return Boolean(gateway?.configured && healthReady && modelsReady);
   }
   if (provider === 'openai') {
-    return Boolean(status.image.openai?.configured && status.image.openai?.auth?.ok);
+    const openai = status.image.openai;
+    const authReady = openai?.auth ? openai.auth.ok : true;
+    return Boolean(openai?.configured && authReady);
   }
   return false;
 }
@@ -1527,9 +1596,11 @@ function buildProviderStatusText(status: ProviderStatusPayload | null, provider:
     const gateway = status.image.localGateway;
     const imageModel = gateway?.imageModel || 'gpt-image-2';
     const promptModel = gateway?.promptModel || 'gpt-5.5';
-    return `${promptModel} / ${imageModel}`;
+    const size = gateway?.imageSize || '1536x1536';
+    const quality = gateway?.imageQuality || 'high';
+    return `${promptModel} / ${imageModel} / ${size} / ${quality}`;
   }
   const openai = status.image.openai;
   if (openai?.auth?.message && !openai.auth.ok) return openai.auth.message;
-  return `${openai?.imageModel || 'OpenAI'} / ${openai?.imageToolModel || 'image tool'}`;
+  return `${openai?.imageModel || 'OpenAI'} / ${openai?.imageToolModel || 'image tool'} / ${openai?.imageSize || '1536x1536'} / ${openai?.imageQuality || 'high'}`;
 }

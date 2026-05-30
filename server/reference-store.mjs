@@ -328,7 +328,7 @@ async function polishBioReadyPrompt(promptPackage, userPrompt, { provider = 'ope
   const instruction = [
     'You are preparing a prompt for a single-image image-to-3D biology workflow.',
     'Rewrite the prompt in English only.',
-    'Keep exactly one centered subject, three-quarter open cutaway, thick visible cut rim, matte opaque material, plain white or very light gray background, soft shadow.',
+    'Keep exactly one centered subject, three-quarter open cutaway, thick visible cut rim, matte opaque material, bright even studio lighting, plain white or very light gray background, soft ground shadow.',
     'Keep 5-7 major readable structures maximum. Increase spacing between structures. Avoid labels, arrows, text, multi-view grids, transparent jelly, glass, wet plastic, glossy toy material, crowded tiny details, floating parts.',
     'Return only the final image prompt, no markdown, no explanation.',
   ].join(' ')

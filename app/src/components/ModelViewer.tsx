@@ -61,6 +61,7 @@ export function ModelViewer({ model }: Props) {
       className={`viewer${modelFocus ? ' is-model-focus' : ''}${expanded ? ' is-stage-expanded' : ''}`}
       onPointerMove={handleViewerPointerMove}
       onPointerLeave={() => setModelFocus(false)}
+      data-testid="model-viewer"
     >
       <div className="viewer-interaction-frame">
         <div
@@ -78,20 +79,21 @@ export function ModelViewer({ model }: Props) {
               preserveDrawingBuffer: true,
             }}
           >
-            <ambientLight intensity={0.72} />
+            <ambientLight intensity={1.02} />
             <directionalLight
               position={[5, 6, 4]}
-              intensity={1.28}
+              intensity={1.72}
               castShadow
               shadow-mapSize-width={1024}
               shadow-mapSize-height={1024}
             />
-            <directionalLight position={[-3, 2, -4]} intensity={0.48} />
+            <directionalLight position={[-3, 2, -4]} intensity={0.78} />
+            <hemisphereLight args={['#fff7e6', '#d9e4d2', 0.48]} />
 
-            <Environment resolution={96} frames={1} environmentIntensity={0.74}>
-              <Lightformer form="rect" intensity={1.95} position={[0, 4, 4]} scale={[5, 2, 1]} />
-              <Lightformer form="rect" intensity={1.1} position={[-4, 2, -2]} scale={[3, 4, 1]} />
-              <Lightformer form="ring" intensity={0.7} position={[4, 1.5, -3]} scale={2.4} />
+            <Environment resolution={128} frames={1} environmentIntensity={1.08}>
+              <Lightformer form="rect" intensity={2.6} position={[0, 4, 4]} scale={[5.4, 2.4, 1]} />
+              <Lightformer form="rect" intensity={1.58} position={[-4, 2, -2]} scale={[3.4, 4.4, 1]} />
+              <Lightformer form="ring" intensity={1.02} position={[4, 1.5, -3]} scale={2.6} />
             </Environment>
 
             {isReady && entry?.gltf && (
@@ -107,9 +109,9 @@ export function ModelViewer({ model }: Props) {
 
             <ContactShadows
               position={[0, -1.35, 0]}
-              opacity={0.28}
+              opacity={0.16}
               scale={6}
-              blur={2.4}
+              blur={3.4}
               far={3.2}
             />
 
