@@ -8,6 +8,7 @@ const UI_SOURCE_FILES = [
   'app/src/components/GenerationPanel.tsx',
   'app/src/components/Sidebar.tsx',
   'app/src/components/ModelViewer.tsx',
+  'app/src/data/models.ts',
 ]
 
 const report = []
@@ -41,12 +42,16 @@ async function main() {
       'run-full-workflow',
       'confirm-modeling',
       'specimen-index-card',
+      'specimen-concept-card',
       'model-viewer',
       '生成参考图',
       '完整生成',
       '确认建模',
       '上传图片',
       '重试图片',
+      '概念速读',
+      'ATP',
+      '光合作用',
     ]
     for (const text of required) assertIncludes(searchableText, text, `缺少 UI 标识或文案：${text}`)
     return {

@@ -327,6 +327,7 @@ function toCellModel(item: DemoModelPayload): CellModel {
     generationStatus: `${source} · 已缓存`,
     funFact: template.funFact,
     whereItOccurs: template.whereItOccurs,
+    concepts: template.concepts,
   };
 }
 

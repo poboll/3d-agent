@@ -2972,7 +2972,7 @@ body {
   min-height: 0;
   display: flex;
   align-items: stretch;
-  gap: 7px;
+  gap: 6px;
   overflow: hidden;
 }
 
@@ -3015,7 +3015,7 @@ body {
 .index-card {
   display: flex;
   flex-direction: column;
-  flex: 1 1 49%;
+  flex: 1 1 43%;
   min-height: 0;
   overflow: hidden;
 }
@@ -3131,9 +3131,10 @@ body {
 .specimen-art-card {
   position: relative;
   display: flex;
-  flex: 0 1 29%;
+  flex: 0 1 23%;
+  min-width: 190px;
   flex-direction: column;
-  gap: 5px;
+  gap: 4px;
   overflow: hidden;
 }
 
@@ -3144,7 +3145,7 @@ body {
   bottom: -4px;
   color: rgba(28, 28, 26, 0.045);
   font-family: var(--font-serif);
-  font-size: 76px;
+  font-size: 68px;
   line-height: 1;
   pointer-events: none;
 }
@@ -3160,8 +3161,8 @@ body {
   flex: 1 1 auto;
   min-height: 0;
   display: grid;
-  grid-template-columns: 76px minmax(0, 1fr);
-  gap: 9px;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 7px;
   align-items: stretch;
 }
 
@@ -3172,7 +3173,7 @@ body {
   flex-direction: column;
   justify-content: space-between;
   border-right: 1px solid var(--hairline-2);
-  padding-right: 8px;
+  padding-right: 7px;
   min-width: 0;
   min-height: 0;
 }
@@ -3180,8 +3181,8 @@ body {
 .art-display {
   color: var(--sumi);
   font-family: "Klee One", "LXGW WenKai", "STKaiti", "KaiTi", var(--font-serif);
-  font-size: clamp(13.5px, 1vw, 17px);
-  font-weight: 500;
+  font-size: clamp(12px, 0.88vw, 15px);
+  font-weight: 600;
   line-height: 1.12;
   letter-spacing: 0.02em;
   writing-mode: horizontal-tb;
@@ -3189,10 +3190,10 @@ body {
 }
 
 .art-subtitle {
-  margin-top: 5px;
+  margin-top: 4px;
   color: var(--vermilion);
   font-family: "Klee One", "LXGW WenKai", "STKaiti", "KaiTi", var(--font-serif);
-  font-size: 9.1px;
+  font-size: 8.4px;
   font-style: italic;
   line-height: 1.35;
 }
@@ -3201,7 +3202,7 @@ body {
   margin-top: auto;
   color: var(--ink-whisper);
   font-family: var(--font-mono);
-  font-size: 7px;
+  font-size: 6.6px;
   letter-spacing: 0.1em;
   line-height: 1.45;
   text-transform: uppercase;
@@ -3216,22 +3217,22 @@ body {
   overflow: hidden;
   color: rgba(43, 42, 38, 0.9);
   font-family: "Klee One", "LXGW WenKai", "STKaiti", "KaiTi", var(--font-serif);
-  font-size: clamp(10.4px, 0.8vw, 12.4px);
+  font-size: clamp(9.8px, 0.72vw, 11.3px);
   font-weight: 400;
-  line-height: 1.5;
+  line-height: 1.46;
   letter-spacing: 0.025em;
   text-wrap: pretty;
   padding-right: 4px;
   display: -webkit-box;
   align-self: center;
-  -webkit-line-clamp: 4;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
 }
 
 .specimen-habitat-card {
   position: relative;
-  flex: 0 1 22%;
-  min-width: 170px;
+  flex: 0 1 18%;
+  min-width: 148px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -3257,7 +3258,7 @@ body {
   align-items: center;
   color: rgba(43, 42, 38, 0.9);
   font-family: "Klee One", "LXGW WenKai", "Songti SC", var(--font-serif);
-  font-size: clamp(13.6px, 1.08vw, 16.4px);
+  font-size: clamp(12px, 0.95vw, 14.8px);
   font-weight: 500;
   line-height: 1.56;
   letter-spacing: 0.018em;
@@ -3270,6 +3271,123 @@ body {
   font-size: 7.8px;
   font-style: normal;
   letter-spacing: 0.08em;
+}
+
+.specimen-concept-card {
+  position: relative;
+  flex: 0 1 16%;
+  min-width: 152px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  background:
+    linear-gradient(180deg, rgba(223, 233, 220, 0.18), rgba(251, 250, 244, 0.36)),
+    repeating-linear-gradient(101deg, rgba(139, 58, 46, 0.014) 0 1px, transparent 1px 15px);
+}
+
+.specimen-concept-card::before {
+  content: '';
+  position: absolute;
+  left: 9px;
+  right: 9px;
+  top: 31px;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(139, 58, 46, 0.22), rgba(89, 111, 85, 0.08));
+  pointer-events: none;
+}
+
+.concept-card-heading {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 7px;
+  color: var(--ink-whisper);
+  font-family: var(--font-mono);
+  font-size: 8.4px;
+  letter-spacing: 0.12em;
+}
+
+.concept-card-heading span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.concept-card-heading small {
+  flex: 0 0 auto;
+  color: var(--vermilion);
+  font-size: 7px;
+  letter-spacing: 0.08em;
+}
+
+.specimen-concept-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  gap: 4px;
+  padding-top: 6px;
+  overflow: hidden;
+}
+
+.specimen-concept-item {
+  min-width: 0;
+  padding-left: 7px;
+  border-left: 1px solid rgba(89, 111, 85, 0.28);
+}
+
+.specimen-concept-item header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+}
+
+.specimen-concept-item strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--sumi);
+  font-family: var(--font-serif);
+  font-size: 10.8px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.specimen-concept-item i {
+  flex: 0 0 auto;
+  color: var(--vermilion);
+  font-family: var(--font-mono);
+  font-size: 6.8px;
+  font-style: normal;
+  letter-spacing: 0.08em;
+}
+
+.specimen-concept-item p {
+  display: -webkit-box;
+  margin-top: 2px;
+  overflow: hidden;
+  color: rgba(43, 42, 38, 0.76);
+  font-size: 8.2px;
+  line-height: 1.36;
+  letter-spacing: 0;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.specimen-concept-item em {
+  display: block;
+  margin-top: 2px;
+  overflow: hidden;
+  color: rgba(89, 111, 85, 0.88);
+  font-family: var(--font-mono);
+  font-size: 6.8px;
+  font-style: normal;
+  letter-spacing: 0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .art-quote::first-letter {

@@ -33,6 +33,7 @@ export function Sidebar({ models, activeId, onSelect, onOpenIndex, guideOpen = f
           model.visibleInLM,
           model.source,
           model.features.map((feature) => `${feature.name} ${feature.detail}`).join(' '),
+          model.concepts?.map((concept) => `${concept.term} ${concept.level} ${concept.explanation} ${concept.visualHint}`).join(' '),
         ]
           .filter(Boolean)
           .map((field) => String(field).toLowerCase());
@@ -156,6 +157,26 @@ export function Sidebar({ models, activeId, onSelect, onOpenIndex, guideOpen = f
               <p>{activeModel.whereItOccurs.text}</p>
               <em>{activeModel.whereItOccurs.habitat}</em>
             </article>
+            {activeModel.concepts?.length ? (
+              <article className="learning-card specimen-concept-card" data-testid="specimen-concept-card">
+                <div className="concept-card-heading">
+                  <span>概念速读</span>
+                  <small>初高中</small>
+                </div>
+                <div className="specimen-concept-list">
+                  {activeModel.concepts.slice(0, 2).map((concept) => (
+                    <section key={concept.term} className="specimen-concept-item">
+                      <header>
+                        <strong>{concept.term}</strong>
+                        <i>{concept.level}</i>
+                      </header>
+                      <p>{concept.explanation}</p>
+                      <em>{concept.visualHint}</em>
+                    </section>
+                  ))}
+                </div>
+              </article>
+            ) : null}
           </section>
         )}
       </div>
