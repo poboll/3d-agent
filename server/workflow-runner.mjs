@@ -112,6 +112,18 @@ async function runFullTextTo3dWorkflow(job) {
     prompt: job.prompt,
     template: job.template,
     provider: job.imageProvider || 'openai',
+    onProgress: async ({ progress, stage, eventName, patch = {} }) => {
+      await updateWorkflowJob(
+        job.id,
+        {
+          status: 'processing',
+          progress: Math.max(job.progress || 0, progress),
+          stage,
+          ...patch,
+        },
+        `full-workflow-${eventName}`
+      )
+    },
   })
 
   const nextJob = await updateWorkflowJob(

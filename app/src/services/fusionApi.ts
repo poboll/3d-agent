@@ -90,6 +90,7 @@ export interface ProviderStatusPayload {
       imageModel?: string;
       imageSize?: string;
       imageQuality?: string;
+      timeoutMs?: number;
       health?: {
         ok: boolean;
         status: number;

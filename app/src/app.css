@@ -83,8 +83,8 @@ body {
 
 .guide-overlay .guide-panel {
   z-index: 3;
-  width: min(300px, 100%);
-  padding: 16px 18px 15px;
+  width: min(270px, 100%);
+  padding: 13px 15px 13px;
   background:
     repeating-linear-gradient(101deg, rgba(76, 91, 72, 0.02) 0 1px, transparent 1px 18px),
     rgba(251, 250, 244, 0.96);
@@ -93,12 +93,14 @@ body {
 .guide-spotlight {
   position: fixed;
   z-index: 2;
-  border: 1px solid rgba(139, 58, 46, 0.46);
+  border: 1px solid rgba(89, 111, 85, 0.58);
   border-radius: 7px;
-  background: rgba(255, 250, 240, 0.04);
+  background:
+    linear-gradient(180deg, rgba(251, 250, 244, 0.18), rgba(223, 233, 220, 0.12));
   box-shadow:
-    0 0 0 9999px rgba(30, 32, 28, 0.34),
-    0 0 0 8px rgba(251, 250, 244, 0.18),
+    0 0 0 9999px rgba(30, 32, 28, 0.38),
+    0 0 0 6px rgba(251, 250, 244, 0.22),
+    0 0 34px rgba(223, 233, 220, 0.42),
     0 20px 58px -38px rgba(28, 31, 27, 0.62);
   pointer-events: none;
   transition: left 0.24s ease, top 0.24s ease, width 0.24s ease, height 0.24s ease;
@@ -116,16 +118,16 @@ body {
   margin-top: 9px;
   color: var(--sumi);
   font-family: var(--font-serif);
-  font-size: clamp(16px, 1.55vw, 20px);
+  font-size: clamp(14px, 1.3vw, 18px);
   font-weight: 500;
 }
 
 .guide-panel p {
-  max-width: 258px;
+  max-width: 236px;
   margin-top: 7px;
   color: var(--sumi-soft);
-  font-size: 11.2px;
-  line-height: 1.58;
+  font-size: 10.2px;
+  line-height: 1.52;
 }
 
 .guide-target-label {
@@ -397,7 +399,7 @@ body {
 .layout {
   display: grid;
   grid-template-columns: minmax(292px, 330px) minmax(0, 1fr);
-  grid-template-rows: minmax(0, 1fr) clamp(216px, 23vh, 258px);
+  grid-template-rows: minmax(0, 1fr) clamp(206px, 22vh, 246px);
   grid-template-areas:
     "controls stage"
     "specimens specimens";
@@ -682,7 +684,7 @@ body {
   overflow: hidden;
   color: var(--sumi-soft);
   font-family: var(--font-sans);
-  font-size: 10px;
+  font-size: 9.2px;
   font-weight: 700;
   letter-spacing: 0.02em;
   text-overflow: ellipsis;
@@ -749,7 +751,7 @@ body {
 .job-detail-body,
 .specimen-summary-copy p,
 .cell-list {
-  scrollbar-color: var(--scroll-line) transparent;
+  scrollbar-color: rgba(139, 58, 46, 0.5) transparent;
   scrollbar-width: thin;
 }
 
@@ -757,8 +759,8 @@ body {
 .job-detail-body::-webkit-scrollbar,
 .specimen-summary-copy p::-webkit-scrollbar,
 .cell-list::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 4px;
+  height: 4px;
 }
 
 .prompt-preview-card::-webkit-scrollbar-track,
@@ -772,8 +774,8 @@ body {
 .job-detail-body::-webkit-scrollbar-thumb,
 .specimen-summary-copy p::-webkit-scrollbar-thumb,
 .cell-list::-webkit-scrollbar-thumb {
-  border-left: 2px solid transparent;
-  border-right: 2px solid transparent;
+  border-left: 1px solid transparent;
+  border-right: 1px solid transparent;
   border-radius: 0;
   background: linear-gradient(180deg, var(--scroll-line), var(--scroll-line-soft));
   background-clip: content-box;
@@ -1277,8 +1279,10 @@ body {
   font-family: var(--font-serif);
   font-size: 11.4px;
   font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.16;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .reference-mini-card:hover,
@@ -1698,7 +1702,7 @@ body {
 .job-history {
   display: grid;
   gap: 5px;
-  max-height: 112px;
+  max-height: 118px;
   overflow: hidden;
 }
 
@@ -1759,10 +1763,21 @@ body {
 .job-row span,
 .job-row strong {
   overflow: hidden;
-  white-space: nowrap;
+  white-space: normal;
   text-overflow: ellipsis;
   font-family: var(--font-mono);
   font-size: 8.8px;
+}
+
+.job-row span {
+  display: -webkit-box;
+  line-height: 1.3;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.job-row strong {
+  white-space: nowrap;
 }
 
 .job-row.completed strong {
@@ -1797,11 +1812,11 @@ body {
 .stage::before {
   content: '';
   position: absolute;
-  width: min(61vw, 830px);
-  aspect-ratio: 1.5;
+  width: min(68vw, 960px);
+  aspect-ratio: 1.46;
   left: 50%;
   top: 50.5%;
-  background-image: url("data:image/svg+xml,%3Csvg width='830' height='552' viewBox='0 0 830 552' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M430 69C590 72 723 152 742 260C761 370 622 472 420 481C239 489 91 414 78 299C64 176 195 87 413 69' fill='none' stroke='%231c1c1a' stroke-opacity='.15' stroke-width='1.18' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg width='960' height='658' viewBox='0 0 960 658' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M520 75C695 79 836 169 840 307C844 459 657 572 426 558C218 546 78 442 101 292C123 151 284 77 503 75' fill='none' stroke='%231c1c1a' stroke-opacity='.16' stroke-width='1.08' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-position: center;
   background-repeat: no-repeat;
   background-size: contain;
@@ -1810,15 +1825,11 @@ body {
   z-index: 0;
 }
 
-.stage::before {
-  filter: drop-shadow(0 16px 42px rgba(28, 28, 26, 0.055));
-}
-
 .stage::after {
   content: '';
   position: absolute;
-  inset: 8px;
-  border: 1px solid rgba(28, 28, 26, 0.075);
+  inset: 12px;
+  border: 1px solid rgba(28, 28, 26, 0.055);
   pointer-events: none;
   z-index: 2;
 }
@@ -1861,7 +1872,7 @@ body {
 
 .viewer-canvas-zone {
   position: absolute;
-  inset: 5px;
+  inset: 18px 22px 42px;
   z-index: 3;
   overflow: visible;
   pointer-events: auto;
@@ -1897,7 +1908,7 @@ body {
 }
 
 .viewer.is-model-focus .viewer-canvas-zone {
-  z-index: 50;
+  z-index: 72;
   filter: drop-shadow(0 22px 38px rgba(28, 28, 26, 0.16));
   pointer-events: auto;
 }
@@ -1906,21 +1917,21 @@ body {
 .viewer.is-model-focus .stage-learning-panel,
 .viewer.is-model-focus .stage-note-panel,
 .viewer.is-model-focus .stage-concept-card {
-  z-index: 1;
+  z-index: 2;
   pointer-events: none;
 }
 
 .viewer.is-model-focus .viewer-interaction-frame {
-  z-index: 50;
+  z-index: 72;
 }
 
 .viewer.is-model-focus .stage-order-card {
-  z-index: 1;
+  z-index: 2;
   pointer-events: none;
 }
 
 .viewer.is-model-focus .stage-question-drawer {
-  z-index: 1;
+  z-index: 2;
   pointer-events: none;
 }
 
@@ -1947,10 +1958,10 @@ body {
 }
 
 .stage-info-main {
-  top: 18px;
-  left: 22px;
-  width: min(176px, 19%);
-  padding: 8px 10px;
+  top: 20px;
+  left: 24px;
+  width: clamp(138px, 15vw, 172px);
+  padding: 7px 9px;
 }
 
 .overlay-title {
@@ -2050,11 +2061,11 @@ body {
 
 .stage-order-card {
   position: absolute;
-  right: 22px;
-  top: 18px;
+  right: 64px;
+  top: 20px;
   z-index: 9;
-  width: clamp(154px, 20vw, 232px);
-  max-width: calc(100% - 44px);
+  width: clamp(146px, 16vw, 204px);
+  max-width: calc(100% - 92px);
   padding: 9px 10px 10px;
   border: 1px solid rgba(28, 31, 27, 0.12);
   border-radius: 4px;
@@ -2108,7 +2119,7 @@ body {
 
 .stage-order-card li {
   display: grid;
-  grid-template-columns: 18px minmax(0, 1fr);
+  grid-template-columns: 16px minmax(0, 1fr);
   gap: 2px 6px;
   padding-left: 6px;
   border-left: 1px solid rgba(139, 58, 46, 0.24);
@@ -2143,6 +2154,7 @@ body {
   line-height: 1.32;
   letter-spacing: 0;
   overflow-wrap: anywhere;
+  word-break: break-word;
   white-space: normal;
 }
 
@@ -2248,15 +2260,16 @@ body {
 }
 
 .stage-question-drawer {
-  width: 40px;
-  right: 12px;
-  bottom: 58px;
+  width: 38px;
+  right: 16px;
+  bottom: 66px;
   z-index: 36;
   max-height: none;
   overflow: hidden;
   display: grid;
-  grid-template-columns: 0 40px;
-  transition: width 0.24s ease, filter 0.2s ease;
+  grid-template-columns: 0 38px;
+  transform: none;
+  transition: width 0.24s ease, filter 0.2s ease, transform 0.24s ease;
 }
 
 .stage-question-drawer::before {
@@ -2272,16 +2285,16 @@ body {
 .stage-question-drawer:hover,
 .stage-question-drawer.open,
 .stage-question-drawer.pinned {
-  width: min(170px, 20%);
-  grid-template-columns: minmax(0, 1fr) 40px;
+  width: min(180px, 20%);
+  grid-template-columns: minmax(0, 1fr) 38px;
   overflow: visible;
 }
 
 .stage-question-drawer button {
   position: relative;
   z-index: 1;
-  width: 40px;
-  min-height: 112px;
+  width: 38px;
+  min-height: 126px;
   align-self: stretch;
   justify-content: center;
   flex-direction: column;
@@ -2320,7 +2333,7 @@ body {
   position: relative;
   z-index: 1;
   margin: 0;
-  min-height: 112px;
+  min-height: 126px;
   padding: 11px 10px 10px;
   border: 1px solid rgba(28, 31, 27, 0.12);
   border-right: 0;
@@ -2330,7 +2343,7 @@ body {
     repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.018) 0 1px, transparent 1px 16px),
     rgba(251, 250, 244, 0.83);
   opacity: 0;
-  transform: translateX(10px);
+  transform: translateX(18px);
   box-shadow: 0 18px 46px -38px rgba(28, 31, 27, 0.46);
   transition: opacity 0.2s ease, transform 0.24s ease;
   grid-column: 1;
@@ -2360,7 +2373,7 @@ body {
   margin-top: 7px;
   color: rgba(43, 42, 38, 0.82);
   font-family: "Klee One", "LXGW WenKai", "STKaiti", "KaiTi", var(--font-serif);
-  font-size: 9px;
+  font-size: 8.8px;
   line-height: 1.54;
   letter-spacing: 0.025em;
   overflow-wrap: anywhere;
@@ -2444,7 +2457,7 @@ body {
   left: 22px;
   bottom: 62px;
   z-index: 4;
-  width: min(140px, 14%);
+  width: clamp(108px, 12vw, 136px);
   max-height: 124px;
   padding: 4px 0 4px 12px;
   overflow-y: auto;
@@ -2487,12 +2500,14 @@ body {
 
 .stage-concept-card {
   position: absolute;
-  right: 22px;
-  bottom: 96px;
+  right: 64px;
+  top: 198px;
+  bottom: auto;
   z-index: 5;
-  width: clamp(174px, 23vw, 264px);
-  max-width: calc(100% - 44px);
-  padding: 9px 10px 10px;
+  width: clamp(146px, 16vw, 204px);
+  max-width: calc(100% - 92px);
+  max-height: 112px;
+  padding: 7px 8px 8px;
   border: 1px solid rgba(28, 31, 27, 0.1);
   border-radius: 4px;
   background:
@@ -2512,7 +2527,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-bottom: 7px;
+  padding-bottom: 5px;
   border-bottom: 1px solid rgba(28, 31, 27, 0.08);
 }
 
@@ -2521,7 +2536,7 @@ body {
   overflow: hidden;
   color: var(--sumi);
   font-family: var(--font-serif);
-  font-size: 12px;
+  font-size: 11px;
   letter-spacing: 0.08em;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2537,13 +2552,14 @@ body {
 }
 
 .concept-list {
-  margin-top: 8px;
+  margin-top: 5px;
   display: grid;
-  gap: 7px;
+  gap: 4px;
 }
 
 .concept-list article {
-  padding-left: 8px;
+  min-width: 0;
+  padding-left: 7px;
   border-left: 1px solid rgba(139, 58, 46, 0.2);
 }
 
@@ -2560,32 +2576,36 @@ body {
   overflow-wrap: anywhere;
   color: var(--sumi);
   font-family: var(--font-serif);
-  font-size: 11.2px;
+  font-size: 10px;
   font-weight: 600;
 }
 
 .concept-list p {
-  display: block;
-  margin-top: 3px;
+  display: -webkit-box;
+  margin-top: 2px;
   overflow: hidden;
   color: var(--ink-mute);
-  font-size: 8.9px;
-  line-height: 1.45;
+  font-size: 7.8px;
+  line-height: 1.32;
   letter-spacing: 0;
   overflow-wrap: anywhere;
-  white-space: normal;
+  word-break: break-word;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
 }
 
 .concept-list em {
-  display: block;
-  margin-top: 4px;
+  display: -webkit-box;
+  margin-top: 2px;
   color: rgba(43, 42, 38, 0.72);
   font-family: var(--font-mono);
-  font-size: 7.4px;
+  font-size: 6.8px;
   font-style: normal;
   letter-spacing: 0.02em;
   overflow-wrap: anywhere;
-  white-space: normal;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .tool-btn {
@@ -2713,7 +2733,7 @@ body {
   min-height: 0;
   padding: 9px 11px 8px;
   display: grid;
-  grid-template-columns: minmax(154px, 0.21fr) minmax(0, 1.79fr);
+  grid-template-columns: minmax(146px, 0.2fr) minmax(0, 1.8fr);
   grid-template-rows: auto minmax(0, 1fr);
   column-gap: 11px;
   border: 1px solid var(--hairline);
@@ -2767,11 +2787,11 @@ body {
   position: relative;
   min-height: 0;
   display: grid;
-  grid-template-columns: 50px minmax(0, 1fr);
-  gap: 8px;
+  grid-template-columns: 46px minmax(0, 1fr);
+  gap: 7px;
   align-items: stretch;
   margin-bottom: 0;
-  padding: 2px 8px 4px 0;
+  padding: 1px 8px 4px 0;
   border-right: 1px solid var(--hairline-2);
   overflow: visible;
 }
@@ -2779,7 +2799,7 @@ body {
 .specimen-summary::after {
   content: 'EUKARYOTA / PLANTAE';
   position: absolute;
-  left: 58px;
+  left: 54px;
   right: 9px;
   bottom: 3px;
   overflow: hidden;
@@ -2802,8 +2822,8 @@ body {
 
 .specimen-summary-image {
   position: relative;
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   min-height: 0;
   align-self: start;
   border: 1px solid rgba(28, 28, 26, 0.16);
@@ -2849,7 +2869,7 @@ body {
   margin-top: 4px;
   overflow: hidden;
   color: var(--sumi-soft);
-  font-size: 9.4px;
+  font-size: 9.8px;
   font-weight: 700;
   line-height: 1.34;
   display: -webkit-box;
@@ -2875,17 +2895,19 @@ body {
 
 .specimen-summary-tag {
   position: absolute;
-  left: 7px;
-  top: 7px;
+  left: 5px;
+  top: 5px;
   z-index: 2;
-  max-width: calc(100% - 18px);
-  padding: 2px 5px 3px;
-  background: rgba(255, 250, 240, 0.78);
+  min-width: 22px;
+  max-width: calc(100% - 10px);
+  padding: 2px 4px 3px;
+  background: rgba(255, 250, 240, 0.82);
   color: var(--vermilion);
   font-family: var(--font-mono);
-  font-size: 6.5px;
+  font-size: 6.2px;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.05em;
+  text-align: center;
   text-transform: uppercase;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2920,7 +2942,7 @@ body {
   margin-top: 2px;
   color: var(--sumi);
   font-family: var(--font-serif);
-  font-size: 13.6px;
+  font-size: 13.2px;
   font-weight: 600;
   letter-spacing: 0.04em;
 }
@@ -2933,17 +2955,17 @@ body {
   max-height: none;
   overflow-y: auto;
   color: rgba(43, 42, 38, 0.76);
-  font-size: 9.7px;
-  line-height: 14px;
-  padding: 0 9px 1px 0;
+  font-size: 9.9px;
+  line-height: 14.5px;
+  padding: 1px 8px 1px 0;
   background-image: repeating-linear-gradient(
     to bottom,
     transparent 0,
-    transparent 14px,
-    rgba(28, 31, 27, 0.05) 14px,
-    rgba(28, 31, 27, 0.05) 15px
+    transparent 14.5px,
+    rgba(28, 31, 27, 0.05) 14.5px,
+    rgba(28, 31, 27, 0.05) 15.5px
   );
-  background-position: 0 14px;
+  background-position: 0 14.5px;
 }
 
 .specimen-learning {
@@ -2993,7 +3015,7 @@ body {
 .index-card {
   display: flex;
   flex-direction: column;
-  flex: 1 1 51%;
+  flex: 1 1 49%;
   min-height: 0;
   overflow: hidden;
 }
@@ -3084,14 +3106,14 @@ body {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   align-content: start;
-  gap: 5px;
+  gap: 4px;
   overflow-x: hidden;
   overflow-y: auto;
 }
 
 .cell-list li {
   min-width: 0;
-  min-height: 36px;
+  min-height: 34px;
 }
 
 .cell-empty {
@@ -3109,7 +3131,7 @@ body {
 .specimen-art-card {
   position: relative;
   display: flex;
-  flex: 0 1 27%;
+  flex: 0 1 29%;
   flex-direction: column;
   gap: 5px;
   overflow: hidden;
@@ -3209,7 +3231,7 @@ body {
 .specimen-habitat-card {
   position: relative;
   flex: 0 1 22%;
-  min-width: 176px;
+  min-width: 170px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -3235,7 +3257,7 @@ body {
   align-items: center;
   color: rgba(43, 42, 38, 0.9);
   font-family: "Klee One", "LXGW WenKai", "Songti SC", var(--font-serif);
-  font-size: clamp(12.8px, 1vw, 15.4px);
+  font-size: clamp(13.6px, 1.08vw, 16.4px);
   font-weight: 500;
   line-height: 1.56;
   letter-spacing: 0.018em;
@@ -3260,7 +3282,7 @@ body {
   position: relative;
   width: 100%;
   min-height: 0;
-  height: 36px;
+  height: 34px;
   display: flex;
   gap: 5px;
   align-items: center;
@@ -3345,8 +3367,8 @@ body {
 
 .cell-thumb {
   position: relative;
-  width: 21px;
-  height: 21px;
+  width: 20px;
+  height: 20px;
   border: 1px solid rgba(28, 28, 26, 0.1);
   border-radius: 3px;
   background: var(--paper-2);

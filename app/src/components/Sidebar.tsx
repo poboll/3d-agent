@@ -92,7 +92,7 @@ export function Sidebar({ models, activeId, onSelect, onOpenIndex, guideOpen = f
           <section className="specimen-summary" aria-label="当前标本介绍">
             <div className="specimen-media-stack">
               <button type="button" className="specimen-summary-image" onClick={openImage} aria-label={`放大查看${activeModel.name}标本图`}>
-                <span className="specimen-summary-tag">{activeModel.category}</span>
+                <span className="specimen-summary-tag">{formatCompactCategory(activeModel.category, activeModel.custom)}</span>
                 <img src={activeModel.imageUrl} alt={`${activeModel.name}标本图`} loading="lazy" />
               </button>
               <div className="specimen-location-note">
@@ -237,6 +237,14 @@ function orderModelsForIndex(models: CellModel[], activeId: string) {
 
 function formatGeneratedModelName(name: string) {
   return name.replace(/^(AI\s*)?生成[:：]\s*/i, '').trim();
+}
+
+function formatCompactCategory(category: string, custom?: boolean) {
+  if (custom) return 'AI';
+  if (category.includes('真核')) return '真核';
+  if (category.includes('原核')) return '原核';
+  if (category.length <= 4) return category;
+  return category.slice(0, 4);
 }
 
 function Check() {

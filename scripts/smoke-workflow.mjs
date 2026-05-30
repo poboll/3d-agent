@@ -3,10 +3,10 @@ import { readFile } from 'node:fs/promises'
 import '../server/env-loader.mjs'
 
 const API_BASE = process.env.SMOKE_API_BASE || `http://${process.env.API_HOST || '127.0.0.1'}:${process.env.API_PORT || 8791}`
-const LIVE_OPENAI = process.env.SMOKE_LIVE_OPENAI === '1'
-const LIVE_IMAGE_GATEWAY = process.env.SMOKE_LIVE_IMAGE_GATEWAY === '1'
-const LIVE_3D = process.env.SMOKE_LIVE_3D === '1'
-const FULL_WORKFLOW = process.env.SMOKE_FULL_WORKFLOW === '1'
+const LIVE_OPENAI = boolEnv('SMOKE_LIVE_OPENAI', 'LIVE_OPENAI')
+const LIVE_IMAGE_GATEWAY = boolEnv('SMOKE_LIVE_IMAGE_GATEWAY', 'LIVE_IMAGE_GATEWAY')
+const LIVE_3D = boolEnv('SMOKE_LIVE_3D', 'LIVE_3D')
+const FULL_WORKFLOW = boolEnv('SMOKE_FULL_WORKFLOW', 'FULL_WORKFLOW')
 const REFERENCE_IMAGE = process.env.SMOKE_REFERENCE_IMAGE || 'app/public/images/plant-cell.jpg'
 const IMAGE_PROVIDER = process.env.SMOKE_IMAGE_PROVIDER || (LIVE_IMAGE_GATEWAY ? 'local-gateway' : 'openai')
 
@@ -80,6 +80,10 @@ async function main() {
     })
   }
 
+  if (reference) {
+    await step('参考图资产检查', async () => inspectReference(reference))
+  }
+
   if (!job) {
     const provider = LIVE_3D ? 'selfhost-triposg' : 'local-demo'
     job = await step(`${provider} 建模任务`, async () => {
@@ -99,6 +103,10 @@ async function main() {
 
   const completed = await step('任务轮询', async () => pollJob(job.id, LIVE_3D || FULL_WORKFLOW ? 7200 : 60))
 
+  if (completed.reference) {
+    await step('完成任务参考图检查', async () => inspectReference(completed.reference))
+  }
+
   await step('GLB 访问检查', async () => {
     const modelUrl = completed.result?.modelUrl
     if (!modelUrl) throw new Error('任务完成但没有 modelUrl')
@@ -110,6 +118,24 @@ async function main() {
       modelUrl,
       fileSize: completed.result.fileSize,
       signature,
+    }
+  })
+
+  await step('任务列表恢复检查', async () => {
+    const payload = await api('/api/jobs?limit=8')
+    const jobs = Array.isArray(payload.jobs) ? payload.jobs : []
+    const latest = jobs.find((item) => item.id === completed.id)
+    if (!latest) throw new Error(`最近任务列表没有找到完成任务：${completed.id}`)
+    if (latest.status !== 'completed') throw new Error(`最近任务状态异常：${latest.status}`)
+    if (!latest.result?.modelUrl) throw new Error('最近任务缺少模型结果。')
+    return {
+      total: jobs.length,
+      id: latest.id,
+      workflowMode: latest.workflowMode,
+      imageProvider: latest.imageProvider,
+      provider: latest.provider,
+      referenceId: latest.referenceId,
+      modelUrl: latest.result.modelUrl,
     }
   })
 
@@ -142,6 +168,27 @@ async function pollJob(jobId, timeoutSeconds) {
   throw new Error(`任务超时：${jobId}`)
 }
 
+async function inspectReference(reference) {
+  if (!reference?.imageUrl) throw new Error('参考图缺少 imageUrl')
+  const response = await fetch(url(reference.imageUrl))
+  if (!response.ok) throw new Error(`参考图访问失败：${response.status}`)
+  const buffer = Buffer.from(await response.arrayBuffer())
+  const head = buffer.subarray(0, 8)
+  const png = head.length >= 8 && head[0] === 0x89 && head.subarray(1, 4).toString('ascii') === 'PNG'
+  const jpg = head.length >= 3 && head[0] === 0xff && head[1] === 0xd8 && head[2] === 0xff
+  if (!png && !jpg) throw new Error(`参考图格式异常：${head.toString('hex')}`)
+  return {
+    id: reference.id,
+    provider: reference.provider,
+    source: reference.source,
+    model: reference.model,
+    promptModel: reference.promptModel,
+    bytes: buffer.byteLength,
+    imageUrl: reference.imageUrl,
+    signature: png ? 'PNG' : 'JPEG',
+  }
+}
+
 async function api(path, { method = 'GET', body, rawBody, headers = {} } = {}) {
   const response = await fetch(url(path), {
     method,
@@ -165,6 +212,15 @@ function url(path) {
 
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function boolEnv(...names) {
+  for (const name of names) {
+    const value = process.env[name]
+    if (value === undefined) continue
+    return ['1', 'true', 'yes', 'on'].includes(String(value).toLowerCase())
+  }
+  return false
 }
 
 main().catch((error) => {

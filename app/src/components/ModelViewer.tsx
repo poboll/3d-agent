@@ -49,11 +49,22 @@ export function ModelViewer({ model }: Props) {
     const target = event.target;
     if (!(target instanceof Element)) return;
 
-    if (target.closest('.stage-control-strip, .stage-question-drawer')) {
+    if (target.closest('.stage-control-strip, .stage-question-drawer, .stage-order-card, .stage-note-panel, .stage-info-main, .stage-concept-card')) {
+      setModelFocus(false);
       return;
     }
 
-    setModelFocus(true);
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    const w = rect.width;
+    const h = rect.height;
+    const isOverlayLane =
+      y < 168 && (x < 210 || x > w - 245) ||
+      y > h - 168 && (x < 190 || x > w - 245) ||
+      y > h - 76;
+
+    setModelFocus(!isOverlayLane);
   }, []);
 
   return (
@@ -64,11 +75,7 @@ export function ModelViewer({ model }: Props) {
       data-testid="model-viewer"
     >
       <div className="viewer-interaction-frame">
-        <div
-          className="viewer-canvas-zone"
-          onPointerMove={() => setModelFocus(true)}
-          onPointerLeave={() => setModelFocus(false)}
-        >
+        <div className="viewer-canvas-zone">
           <Canvas
             frameloop={autoRotate ? 'always' : 'demand'}
             shadows="percentage"
@@ -79,21 +86,22 @@ export function ModelViewer({ model }: Props) {
               preserveDrawingBuffer: true,
             }}
           >
-            <ambientLight intensity={1.02} />
+            <ambientLight intensity={1.18} />
             <directionalLight
               position={[5, 6, 4]}
-              intensity={1.72}
+              intensity={1.92}
               castShadow
               shadow-mapSize-width={1024}
               shadow-mapSize-height={1024}
             />
-            <directionalLight position={[-3, 2, -4]} intensity={0.78} />
-            <hemisphereLight args={['#fff7e6', '#d9e4d2', 0.48]} />
+            <directionalLight position={[-3, 2, -4]} intensity={0.92} />
+            <directionalLight position={[0, 2.4, 5]} intensity={0.54} />
+            <hemisphereLight args={['#fff7e6', '#d9e4d2', 0.6]} />
 
-            <Environment resolution={128} frames={1} environmentIntensity={1.08}>
-              <Lightformer form="rect" intensity={2.6} position={[0, 4, 4]} scale={[5.4, 2.4, 1]} />
-              <Lightformer form="rect" intensity={1.58} position={[-4, 2, -2]} scale={[3.4, 4.4, 1]} />
-              <Lightformer form="ring" intensity={1.02} position={[4, 1.5, -3]} scale={2.6} />
+            <Environment resolution={128} frames={1} environmentIntensity={1.24}>
+              <Lightformer form="rect" intensity={2.9} position={[0, 4, 4]} scale={[5.4, 2.4, 1]} />
+              <Lightformer form="rect" intensity={1.72} position={[-4, 2, -2]} scale={[3.4, 4.4, 1]} />
+              <Lightformer form="ring" intensity={1.12} position={[4, 1.5, -3]} scale={2.6} />
             </Environment>
 
             {isReady && entry?.gltf && (
@@ -109,7 +117,7 @@ export function ModelViewer({ model }: Props) {
 
             <ContactShadows
               position={[0, -1.35, 0]}
-              opacity={0.16}
+              opacity={0.13}
               scale={6}
               blur={3.4}
               far={3.2}

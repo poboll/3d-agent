@@ -695,6 +695,7 @@ export function GenerationPanel({
   const selectedProviderOnline = isImageProviderReady(providerStatus, imageProvider);
   const selectedProviderLabel = getImageProviderName(imageProvider);
   const model3dReady = isModel3dReady(providerStatus);
+  const activeChainSummary = buildActiveChainSummary(providerStatus, imageProvider, modelProvider);
   const stageMonitor = buildStageMonitor({
     activeJob,
     busy,
@@ -1052,7 +1053,7 @@ export function GenerationPanel({
 
       <div className="provider-hint" aria-label="当前生成链路">
         <span>{selectedProviderLabel}</span>
-        <strong>文生图 → 接收图片 → 图生 3D</strong>
+        <strong>{activeChainSummary}</strong>
       </div>
 
       <div className="provider-status-strip" aria-label="本地生成服务状态">
@@ -1332,6 +1333,11 @@ function buildTaskWatch(job: WorkflowJob, now: number): TaskWatch {
   } else if (job.provider === 'selfhost-triposg' && progress >= 80) {
     title = '正在等待贴图与 GLB 输出';
     hint = '80% 后通常是远端三维服务的打包、贴图或文件写入阶段；可保持页面开启，或稍后点击同步状态。';
+  } else if (job.workflowMode === 'full-text-to-3d' && !hasReference) {
+    title = '正在等待参考图';
+    hint = secondsSinceUpdate > 120
+      ? '1536x1536 / high 单图生成有时会超过 3 分钟；任务仍在后台，可稍后点击同步状态。'
+      : job.stage || '系统正在生成单张 3D-ready 参考图，完成后会自动接续图生 3D。';
   } else if (hasReference) {
     title = '参考图已就绪，正在建模';
     hint = job.stage || '图生 3D 队列已接收参考图，完成后会自动加入标本索引。';
@@ -1436,10 +1442,10 @@ function buildStageMonitor({
       primary: activeJob.stage || '正在执行生成任务',
       elapsed,
       chain: `${imageProviderLabel} / ${modelProviderLabel}`,
-      estimate: activeJob.referenceId ? '3D 建模通常数分钟' : '参考图约 1-3 分钟',
+      estimate: activeJob.referenceId ? '3D 建模通常数分钟' : '参考图约 1-7 分钟',
       nextAction: activeJob.referenceId
         ? '保持页面开启，完成后会自动加入标本列表并切换到新模型。'
-        : '系统正在准备单张 3D-ready 参考图，生成后会自动进入建模队列。',
+        : '正在等待本地图片网关返回 3D-ready 单图；生成后会自动进入建模队列。',
     };
   }
 
@@ -1595,12 +1601,20 @@ function buildProviderStatusText(status: ProviderStatusPayload | null, provider:
   if (provider === 'local-gateway') {
     const gateway = status.image.localGateway;
     const imageModel = gateway?.imageModel || 'gpt-image-2';
-    const promptModel = gateway?.promptModel || 'gpt-5.5';
     const size = gateway?.imageSize || '1536x1536';
     const quality = gateway?.imageQuality || 'high';
-    return `${promptModel} / ${imageModel} / ${size} / ${quality}`;
+    const timeout = gateway?.timeoutMs ? `timeout ${Math.round(gateway.timeoutMs / 1000)}s` : 'timeout 420s';
+    return `${imageModel} / ${size} / ${quality} / ${timeout}`;
   }
   const openai = status.image.openai;
   if (openai?.auth?.message && !openai.auth.ok) return openai.auth.message;
   return `${openai?.imageModel || 'OpenAI'} / ${openai?.imageToolModel || 'image tool'} / ${openai?.imageSize || '1536x1536'} / ${openai?.imageQuality || 'high'}`;
+}
+
+function buildActiveChainSummary(status: ProviderStatusPayload | null, imageProvider: string, modelProvider: string) {
+  const imageLabel = imageProvider === 'local-gateway'
+    ? status?.image.localGateway?.imageModel || 'gpt-image-2'
+    : status?.image.openai?.imageToolModel || status?.image.openai?.imageModel || 'OpenAI';
+  const modelLabel = getModelProviderName(modelProvider);
+  return `${imageLabel} 单图 -> ${modelLabel}`;
 }

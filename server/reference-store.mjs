@@ -52,9 +52,29 @@ export async function createReferenceImage(input = {}) {
   const prompt = normalizeReferencePrompt(input.prompt)
   const template = chooseTemplateForPrompt(prompt, input.template)
   const provider = normalizeImageProvider(input.provider)
+  const notify = typeof input.onProgress === 'function' ? input.onProgress : null
 
+  await notifyReferenceProgress(notify, {
+    progress: 10,
+    stage: '正在构建 3D-ready 单图 prompt。',
+    eventName: 'reference-prompt-template-ready',
+  })
   const promptPackage = await buildBioReadyPrompt(prompt, template)
+  await notifyReferenceProgress(notify, {
+    progress: 14,
+    stage: '基础 prompt 已生成，正在进行模型打磨。',
+    eventName: 'reference-prompt-polish-started',
+  })
   const polishedPromptPackage = await polishBioReadyPrompt(promptPackage, prompt, { provider })
+  await notifyReferenceProgress(notify, {
+    progress: 18,
+    stage: `已完成 prompt 打磨，正在调用${provider === 'local-gateway' ? '本地图片网关' : 'OpenAI 图片服务'}生成单张参考图。`,
+    eventName: 'reference-image-request-started',
+    patch: {
+      imagePromptPreview: polishedPromptPackage.imagePrompt.slice(0, 220),
+      imagePromptModel: polishedPromptPackage.promptModel || 'local-template',
+    },
+  })
 
   if (provider === 'openai' && !OPENAI_IMAGE_CONFIGURED) {
     throwProviderConfigError({
@@ -83,6 +103,15 @@ export async function createReferenceImage(input = {}) {
     provider === 'local-gateway'
       ? await requestLocalGatewayImage(polishedPromptPackage.imagePrompt)
       : await requestOpenAiImage(polishedPromptPackage.imagePrompt)
+  await notifyReferenceProgress(notify, {
+    progress: 22,
+    stage: '参考图已返回，正在写入本地参考图缓存。',
+    eventName: 'reference-image-cache-started',
+    patch: {
+      referenceImageModel: imageResult.model,
+      referenceGenerationMode: imageResult.mode,
+    },
+  })
   const imageExt =
     imageResult.ext ||
     detectImageExtension(imageResult.buffer) ||
@@ -104,7 +133,19 @@ export async function createReferenceImage(input = {}) {
     ext: imageExt,
   })
 
+  await notifyReferenceProgress(notify, {
+    progress: 24,
+    stage: '参考图已写入缓存，准备接续图生 3D。',
+    eventName: 'reference-image-cache-ready',
+    patch: { referenceId: saved.id },
+  })
+
   return publicReference(saved)
+}
+
+async function notifyReferenceProgress(callback, { progress, stage, eventName, patch = {} }) {
+  if (!callback) return
+  await callback({ progress, stage, eventName, patch })
 }
 
 function throwProviderConfigError({ providerName, requiredEnv, optionalEnv, imagePrompt }) {
@@ -179,6 +220,7 @@ export async function getLocalImageGatewayStatus({ check = false } = {}) {
     imageModelFallbacks: LOCAL_IMAGE_GATEWAY_IMAGE_MODEL_FALLBACKS,
     imageSize: LOCAL_IMAGE_GATEWAY_IMAGE_SIZE,
     imageQuality: LOCAL_IMAGE_GATEWAY_IMAGE_QUALITY,
+    timeoutMs: LOCAL_IMAGE_GATEWAY_TIMEOUT_MS,
     disableResponseStorage: LOCAL_IMAGE_GATEWAY_DISABLE_RESPONSE_STORAGE,
   }
 
@@ -329,6 +371,7 @@ async function polishBioReadyPrompt(promptPackage, userPrompt, { provider = 'ope
     'You are preparing a prompt for a single-image image-to-3D biology workflow.',
     'Rewrite the prompt in English only.',
     'Keep exactly one centered subject, three-quarter open cutaway, thick visible cut rim, matte opaque material, bright even studio lighting, plain white or very light gray background, soft ground shadow.',
+    'Keep the subject visibly bright: no dark render, no low-key lighting, no black background, no heavy vignette, no dramatic shadow hiding internal structures.',
     'Keep 5-7 major readable structures maximum. Increase spacing between structures. Avoid labels, arrows, text, multi-view grids, transparent jelly, glass, wet plastic, glossy toy material, crowded tiny details, floating parts.',
     'Return only the final image prompt, no markdown, no explanation.',
   ].join(' ')
