@@ -8,6 +8,8 @@ const UI_SOURCE_FILES = [
   'app/src/components/GenerationPanel.tsx',
   'app/src/components/Sidebar.tsx',
   'app/src/components/ModelViewer.tsx',
+  'app/src/components/ProgressOverlay.tsx',
+  'app/src/lib/modelWeight.ts',
   'app/src/data/models.ts',
 ]
 
@@ -49,6 +51,8 @@ async function main() {
       'specimen-index-card',
       'specimen-concept-card',
       'model-viewer',
+      'stage-load-note',
+      'progress-model-weight',
       '生成参考图',
       '完整生成',
       '确认建模',
@@ -58,6 +62,9 @@ async function main() {
       '生成复盘',
       '下载 GLB',
       '复制 Prompt',
+      '模型文件',
+      '加载提示',
+      '重模型',
       'ATP',
       '光合作用',
     ]

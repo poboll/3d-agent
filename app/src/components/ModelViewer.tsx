@@ -5,6 +5,7 @@ import { ContactShadows, Environment, Lightformer, OrbitControls } from '@react-
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import type { CellModel } from '../data/models';
 import { reloadModel, useModel } from '../hooks/useModel';
+import { formatModelBytes, getModelLoadHint, isHeavyModel } from '../lib/modelWeight';
 import { ModelScene } from './ModelScene';
 import { ProgressOverlay } from './ProgressOverlay';
 
@@ -25,6 +26,9 @@ export function ModelViewer({ model }: Props) {
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
 
   const isReady = status === 'done' && !!entry?.gltf;
+  const heavyModel = isHeavyModel(model.fileSize);
+  const modelSizeLabel = formatModelBytes(model.fileSize);
+  const modelLoadHint = getModelLoadHint(model.fileSize);
 
   const bindControls = useCallback((controls: OrbitControlsImpl | null) => {
     if (!controls) {
@@ -69,7 +73,7 @@ export function ModelViewer({ model }: Props) {
 
   return (
     <div
-      className={`viewer${modelFocus ? ' is-model-focus' : ''}${expanded ? ' is-stage-expanded' : ''}`}
+      className={`viewer${modelFocus ? ' is-model-focus' : ''}${expanded ? ' is-stage-expanded' : ''}${heavyModel ? ' has-heavy-model' : ''}`}
       onPointerMove={handleViewerPointerMove}
       onPointerLeave={() => setModelFocus(false)}
       data-testid="model-viewer"
@@ -149,10 +153,18 @@ export function ModelViewer({ model }: Props) {
             <dd>{model.size}</dd>
           </div>
           <div>
+            <dt>模型文件</dt>
+            <dd>{modelSizeLabel}</dd>
+          </div>
+          <div>
             <dt>光镜可见</dt>
             <dd>{model.visibleInLM}</dd>
           </div>
         </dl>
+        <div className="stage-load-note" data-testid="stage-load-note">
+          <span>{heavyModel ? '加载提示' : '加载状态'}</span>
+          <strong>{modelLoadHint}</strong>
+        </div>
       </div>
 
       <article className="stage-annotation stage-note-panel" aria-label="标本笔记">
@@ -256,6 +268,7 @@ export function ModelViewer({ model }: Props) {
           progress={progress}
           status={status}
           modelName={model.name}
+          fileSize={model.fileSize}
           error={entry?.error}
           onRetry={() => reloadModel(model.modelUrl, { fileSize: model.fileSize })}
         />

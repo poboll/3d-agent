@@ -2130,10 +2130,6 @@ body {
   border-top: 1px solid var(--hairline-2);
 }
 
-.stage-meta-grid div:last-child {
-  grid-column: 1 / -1;
-}
-
 .stage-meta-grid dt {
   color: var(--ink-whisper);
   font-family: var(--font-mono);
@@ -2150,6 +2146,45 @@ body {
   overflow-wrap: normal;
   word-break: keep-all;
   white-space: normal;
+}
+
+.stage-load-note {
+  margin-top: 7px;
+  padding-top: 6px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 6px;
+  align-items: baseline;
+  border-top: 1px solid rgba(139, 58, 46, 0.16);
+}
+
+.stage-load-note span {
+  color: var(--vermilion);
+  font-family: var(--font-mono);
+  font-size: 7.2px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.stage-load-note strong {
+  min-width: 0;
+  overflow: hidden;
+  color: rgba(62, 76, 58, 0.92);
+  font-family: var(--font-mono);
+  font-size: 7.2px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.viewer.has-heavy-model .stage-load-note {
+  border-top-color: rgba(139, 58, 46, 0.26);
+}
+
+.viewer.has-heavy-model .stage-load-note strong {
+  color: rgba(139, 58, 46, 0.92);
 }
 
 .stage-control-strip {
@@ -2811,6 +2846,49 @@ body {
 
 .progress-headline strong {
   color: var(--vermilion);
+}
+
+.progress-model-weight {
+  margin: -4px 0 13px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  padding: 5px 7px;
+  border: 1px solid rgba(28, 31, 27, 0.08);
+  background:
+    linear-gradient(180deg, rgba(251, 250, 244, 0.72), rgba(223, 233, 220, 0.16)),
+    repeating-linear-gradient(101deg, rgba(76, 91, 72, 0.014) 0 1px, transparent 1px 14px);
+  text-align: left;
+}
+
+.progress-model-weight span {
+  color: var(--sumi);
+  font-family: var(--font-serif);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.progress-model-weight em {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink-mute);
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.progress-overlay.heavy-model .progress-model-weight {
+  border-left: 2px solid rgba(139, 58, 46, 0.42);
+}
+
+.progress-overlay.heavy-model .progress-model-weight em {
+  color: rgba(139, 58, 46, 0.9);
 }
 
 .progress-bar {

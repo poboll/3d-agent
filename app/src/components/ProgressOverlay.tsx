@@ -1,9 +1,11 @@
 import type { LoadStatus } from '../lib/modelLoader';
+import { formatModelBytes, getModelLoadHint, isHeavyModel } from '../lib/modelWeight';
 
 interface Props {
   progress: number;
   status: LoadStatus;
   modelName: string;
+  fileSize?: number;
   error?: unknown;
   onRetry?: () => void;
 }
@@ -16,16 +18,21 @@ const STATUS_TEXT: Record<LoadStatus, string> = {
   error: '加载失败',
 };
 
-export function ProgressOverlay({ progress, status, modelName, error, onRetry }: Props) {
+export function ProgressOverlay({ progress, status, modelName, fileSize, error, onRetry }: Props) {
   const percent = Math.round(progress * 100);
+  const heavy = isHeavyModel(fileSize);
   return (
-    <div className="progress-overlay" role="status" aria-live="polite">
+    <div className={`progress-overlay${heavy ? ' heavy-model' : ''}`} role="status" aria-live="polite">
       <div className="progress-card">
         <div className="progress-spinner" aria-hidden="true">
           <CellRing />
         </div>
         <div className="progress-headline">
           正在为你准备 <strong>{modelName}</strong>
+        </div>
+        <div className="progress-model-weight" data-testid="progress-model-weight">
+          <span>{formatModelBytes(fileSize)}</span>
+          <em>{getModelLoadHint(fileSize)}</em>
         </div>
         <div className="progress-bar">
           <div

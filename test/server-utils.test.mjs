@@ -5,6 +5,7 @@ import { buildBioReadyPrompt, normalizeReferencePrompt, validateImageBuffer } fr
 import { sanitizeFileName } from '../server/http-utils.mjs'
 import { DEFAULT_IMAGE_PROVIDER } from '../server/config.mjs'
 import { isAnalyticsEventAllowed } from '../server/analytics-store.mjs'
+import { formatModelBytes, getModelLoadHint, isHeavyModel } from '../app/src/lib/modelWeight.ts'
 import {
   chooseTemplateForPrompt,
   createPromptTitle,
@@ -97,6 +98,14 @@ describe('LearningCell fusion API utilities', () => {
     assert.equal(isAnalyticsEventAllowed('workflow_job_manual_sync'), true)
     assert.equal(isAnalyticsEventAllowed('workflow_result_review_action'), true)
     assert.equal(isAnalyticsEventAllowed('unknown_workflow_event'), false)
+  })
+
+  it('labels large generated GLB files for lighter classroom loading', () => {
+    assert.equal(formatModelBytes(60656016), '57.8 MB')
+    assert.equal(isHeavyModel(60656016), true)
+    assert.equal(isHeavyModel(2838504), false)
+    assert.equal(getModelLoadHint(60656016), '重模型 · 建议加载完成后再切换标本')
+    assert.equal(getModelLoadHint(2838504), '轻量模型 · 可快速预览')
   })
 
   it('detects recoverable workflow jobs without reviving stale or completed work', () => {
