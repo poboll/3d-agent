@@ -1639,6 +1639,100 @@ body {
   text-decoration: none;
 }
 
+.job-result-review {
+  display: grid;
+  gap: 5px;
+  padding: 7px 8px;
+  border: 1px solid rgba(139, 58, 46, 0.12);
+  border-left: 2px solid rgba(139, 58, 46, 0.44);
+  background:
+    linear-gradient(180deg, rgba(251, 250, 244, 0.7), rgba(223, 233, 220, 0.16)),
+    repeating-linear-gradient(101deg, rgba(76, 91, 72, 0.014) 0 1px, transparent 1px 14px);
+}
+
+.job-result-review header {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(28, 31, 27, 0.06);
+}
+
+.job-result-review header span,
+.result-review-grid small {
+  color: var(--ink-whisper);
+  font-family: var(--font-mono);
+  font-size: 7.1px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.job-result-review header strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--sumi);
+  font-family: var(--font-serif);
+  font-size: 10.8px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.result-review-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.result-review-grid article {
+  min-width: 0;
+  min-height: 48px;
+  padding: 4px 5px;
+  border-top: 1px solid rgba(89, 111, 85, 0.13);
+  background: rgba(251, 250, 244, 0.34);
+}
+
+.result-review-grid strong {
+  display: block;
+  min-width: 0;
+  margin-top: 3px;
+  overflow: hidden;
+  color: var(--sumi);
+  font-family: var(--font-serif);
+  font-size: 9.4px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.result-review-grid p {
+  display: -webkit-box;
+  margin-top: 3px;
+  overflow: hidden;
+  color: rgba(43, 42, 38, 0.73);
+  font-size: 7.2px;
+  line-height: 1.3;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.result-review-next {
+  display: -webkit-box;
+  overflow: hidden;
+  color: rgba(89, 111, 85, 0.92);
+  font-family: var(--font-mono);
+  font-size: 7.1px;
+  font-weight: 700;
+  line-height: 1.32;
+  letter-spacing: 0.04em;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+}
+
 .job-detail-actions {
   position: sticky;
   z-index: 2;

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { CellModel } from '../data/models';
+import { getModelTemplate } from '../data/models';
 import {
   createFullTextTo3dJob,
   createReferenceImage,
@@ -719,6 +720,9 @@ export function GenerationPanel({
   const detailsRows = activeJob ? buildJobDetailRows(activeJob) : [];
   const resultModelUrl = activeJob?.result?.modelUrl;
   const rawModelUrl = activeJob?.result?.rawModelUrl;
+  const resultReview = activeJob?.status === 'completed' && activeJob.result
+    ? buildResultReview(activeJob)
+    : null;
   const visibleJobHistory = buildVisibleJobHistory(jobHistory, activeJob);
   const hiddenJobCount = Math.max(0, jobHistory.length - visibleJobHistory.length);
   const quickStatusItems = [
@@ -760,6 +764,33 @@ export function GenerationPanel({
           <strong>{latestGeneratedName || `${generatedModels.length} 个模型`}</strong>
           <em>{latestResultLabel || '已进入底部标本索引'}</em>
         </button>
+      )}
+
+      {resultReview && (
+        <section className="job-result-review" data-testid="job-result-review" aria-label="生成结果复盘">
+          <header>
+            <span>生成复盘</span>
+            <strong>{resultReview.title}</strong>
+          </header>
+          <div className="result-review-grid">
+            <article>
+              <small>参考图</small>
+              <strong>{resultReview.referenceLabel}</strong>
+              <p>{resultReview.referenceHint}</p>
+            </article>
+            <article>
+              <small>3D 结果</small>
+              <strong>{resultReview.modelLabel}</strong>
+              <p>{resultReview.modelHint}</p>
+            </article>
+            <article>
+              <small>教学概念</small>
+              <strong>{resultReview.conceptLabel}</strong>
+              <p>{resultReview.conceptHint}</p>
+            </article>
+          </div>
+          <p className="result-review-next">{resultReview.nextStep}</p>
+        </section>
       )}
 
       <div className="workflow-quick-status" aria-label="生成链路实时状态">
@@ -1209,6 +1240,30 @@ function buildJobDetailRows(job: WorkflowJob) {
     { label: '成本', value: job.costEstimateCny ? `约 ${job.costEstimateCny} 元` : '本地链路' },
     { label: '更新', value: formatRelativeTime(job.updatedAt) },
   ];
+}
+
+function buildResultReview(job: WorkflowJob) {
+  const template = getModelTemplate(job.template || job.result?.template || job.result?.imageHint);
+  const concepts = template.concepts || [];
+  const concept = concepts[0];
+  const reference = job.reference;
+  const resultName = job.result?.name || template.name || job.template || '生成模型';
+  const resultProvider = job.result?.provider || getModelProviderName(job.provider);
+
+  return {
+    title: formatGeneratedModelName(resultName),
+    referenceLabel: reference?.model || getImageProviderName(job.imageProvider || 'local-gateway'),
+    referenceHint: reference
+      ? `${reference.source || '参考图'} · ${formatFileSize(reference.fileSize)} · ${reference.template || job.template}`
+      : '可从任务详情继续查看参考图缓存。',
+    modelLabel: resultProvider,
+    modelHint: `${formatFileSize(job.result?.fileSize)} · ${getWorkflowModeLabel(job.workflowMode || 'image-to-3d')} · ${getWorkflowStatusLabel(job.status)}`,
+    conceptLabel: concept ? `${concept.term} · ${concept.level}` : template.category,
+    conceptHint: concept
+      ? concept.explanation
+      : '可结合观察顺序讲解结构、位置和模型上的可见特征。',
+    nextStep: '建议先点击“查看模型”切到 3D 舞台，再用底部“概念速读”和右侧观察顺序完成课堂讲解。',
+  };
 }
 
 function getWorkflowStatusLabel(status: WorkflowJob['status']) {

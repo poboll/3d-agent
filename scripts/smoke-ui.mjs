@@ -39,6 +39,7 @@ async function main() {
       'generation-panel',
       'task-watch-card',
       'sync-active-job',
+      'job-result-review',
       'run-full-workflow',
       'confirm-modeling',
       'specimen-index-card',
@@ -50,6 +51,7 @@ async function main() {
       '上传图片',
       '重试图片',
       '概念速读',
+      '生成复盘',
       'ATP',
       '光合作用',
     ]
