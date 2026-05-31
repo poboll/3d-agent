@@ -619,6 +619,32 @@ export function GenerationPanel({
     setStatus('已切换到该任务生成的 3D 模型。');
   };
 
+  const handleResultReviewAction = async (action: 'view-model' | 'open-reference' | 'download-model' | 'copy-prompt') => {
+    if (!activeJob) return;
+    trackEvent('workflow_result_review_action', {
+      action,
+      jobId: activeJob.id,
+      template: activeJob.template,
+      provider: activeJob.provider,
+      imageProvider: activeJob.imageProvider,
+    });
+
+    if (action === 'view-model') {
+      handleOpenActiveJobModel();
+      return;
+    }
+
+    if (action === 'copy-prompt') {
+      const promptText = activeJob.reference?.imagePrompt || promptPreview?.imagePrompt || activeJob.prompt;
+      try {
+        await window.navigator.clipboard.writeText(promptText);
+        setStatus('已复制 3D-ready prompt，可用于复现实验或交付记录。');
+      } catch {
+        setStatus('浏览器暂不允许复制，请展开任务详情手动查看 Prompt。');
+      }
+    }
+  };
+
   const hydrateJobIntoWorkspace = (
     job: WorkflowJob,
     options: { acceptReference?: boolean; keepPrompt?: boolean } = {}
@@ -772,6 +798,35 @@ export function GenerationPanel({
             <span>生成复盘</span>
             <strong>{resultReview.title}</strong>
           </header>
+          <div className="result-review-actions" aria-label="生成结果快捷操作">
+            <button type="button" onClick={() => void handleResultReviewAction('view-model')} data-testid="review-view-model">
+              查看模型
+            </button>
+            {detailReference?.imageUrl && (
+              <a
+                href={detailReference.imageUrl}
+                target="_blank"
+                rel="noreferrer"
+                onClick={() => void handleResultReviewAction('open-reference')}
+                data-testid="review-open-reference"
+              >
+                参考图
+              </a>
+            )}
+            {resultModelUrl && (
+              <a
+                href={resultModelUrl}
+                download
+                onClick={() => void handleResultReviewAction('download-model')}
+                data-testid="review-download-model"
+              >
+                下载 GLB
+              </a>
+            )}
+            <button type="button" onClick={() => void handleResultReviewAction('copy-prompt')} data-testid="review-copy-prompt">
+              复制 Prompt
+            </button>
+          </div>
           <div className="result-review-grid">
             <article>
               <small>参考图</small>

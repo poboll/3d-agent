@@ -13,6 +13,7 @@ export type AnalyticsEventName =
   | 'workflow_full_reference_ready'
   | 'workflow_job_prompt_reuse'
   | 'workflow_job_manual_sync'
+  | 'workflow_result_review_action'
   | 'workflow_job_created'
   | 'workflow_job_completed'
   | 'workflow_job_failed'

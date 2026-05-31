@@ -95,6 +95,7 @@ describe('LearningCell fusion API utilities', () => {
     assert.equal(isAnalyticsEventAllowed('workflow_full_reference_ready'), true)
     assert.equal(isAnalyticsEventAllowed('workflow_job_prompt_reuse'), true)
     assert.equal(isAnalyticsEventAllowed('workflow_job_manual_sync'), true)
+    assert.equal(isAnalyticsEventAllowed('workflow_result_review_action'), true)
     assert.equal(isAnalyticsEventAllowed('unknown_workflow_event'), false)
   })
 

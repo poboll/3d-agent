@@ -1681,6 +1681,53 @@ body {
   white-space: nowrap;
 }
 
+.result-review-actions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.result-review-actions button,
+.result-review-actions a {
+  min-width: 0;
+  min-height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 5px;
+  border: 1px solid rgba(28, 31, 27, 0.1);
+  border-radius: 3px;
+  background:
+    linear-gradient(180deg, rgba(251, 250, 244, 0.72), rgba(232, 230, 221, 0.2)),
+    repeating-linear-gradient(96deg, rgba(76, 91, 72, 0.012) 0 1px, transparent 1px 10px);
+  color: rgba(62, 76, 58, 0.94);
+  font-family: var(--font-mono);
+  font-size: 7.1px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.result-review-actions button:first-child {
+  border-color: rgba(139, 58, 46, 0.18);
+  color: var(--vermilion);
+}
+
+.result-review-actions button:hover,
+.result-review-actions button:focus-visible,
+.result-review-actions a:hover,
+.result-review-actions a:focus-visible {
+  border-color: rgba(139, 58, 46, 0.24);
+  background:
+    linear-gradient(180deg, rgba(251, 250, 244, 0.86), rgba(223, 233, 220, 0.28)),
+    repeating-linear-gradient(96deg, rgba(76, 91, 72, 0.016) 0 1px, transparent 1px 10px);
+}
+
 .result-review-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
