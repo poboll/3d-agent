@@ -587,9 +587,13 @@ body {
 }
 
 .generation-field select {
+  min-width: 0;
   min-height: 32px;
   padding: 0 9px;
+  overflow: hidden;
   font-size: 11.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .generation-field textarea:focus,
@@ -767,6 +771,51 @@ body {
   font-style: normal;
   letter-spacing: 0.05em;
   text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gateway-route-hint {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 7px;
+  min-height: 28px;
+  padding: 5px 8px;
+  border-left: 2px solid rgba(89, 111, 85, 0.36);
+  background:
+    linear-gradient(90deg, rgba(223, 233, 220, 0.3), rgba(251, 250, 244, 0.26)),
+    repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.016) 0 1px, transparent 1px 14px);
+}
+
+.gateway-route-hint.warn {
+  border-left-color: rgba(139, 58, 46, 0.46);
+  background:
+    linear-gradient(90deg, rgba(139, 58, 46, 0.06), rgba(251, 250, 244, 0.3)),
+    repeating-linear-gradient(103deg, rgba(139, 58, 46, 0.014) 0 1px, transparent 1px 14px);
+}
+
+.gateway-route-hint span {
+  color: var(--vermilion);
+  font-family: var(--font-mono);
+  font-size: 7.2px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.gateway-route-hint.ok span {
+  color: var(--moss);
+}
+
+.gateway-route-hint strong {
+  min-width: 0;
+  overflow: hidden;
+  color: rgba(43, 42, 38, 0.68);
+  font-family: var(--font-mono);
+  font-size: 7.3px;
+  font-weight: 700;
+  letter-spacing: 0.025em;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

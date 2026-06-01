@@ -2,6 +2,7 @@ import { copyFile, mkdir, readdir, stat } from 'node:fs/promises'
 import path from 'node:path'
 import {
   CELLFORGE_MODEL_DIR,
+  DEFAULT_IMAGE_PROVIDER,
   DEMO_MODELS,
   LOCAL_MODEL_DIR,
   MOCK_WORKFLOW_STEP_DELAY,
@@ -111,7 +112,7 @@ async function runFullTextTo3dWorkflow(job) {
   const reference = await createReferenceImage({
     prompt: job.prompt,
     template: job.template,
-    provider: job.imageProvider || 'openai',
+    provider: job.imageProvider || DEFAULT_IMAGE_PROVIDER,
     imageProfile: job.imageProfile,
     imageSize: job.imageSize,
     imageQuality: job.imageQuality,

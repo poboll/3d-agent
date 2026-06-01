@@ -1,6 +1,6 @@
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import { WORKFLOW_EVENTS_FILE, WORKFLOW_JOBS_FILE, WORKFLOW_STORE_DIR } from './config.mjs'
+import { DEFAULT_IMAGE_PROVIDER, WORKFLOW_EVENTS_FILE, WORKFLOW_JOBS_FILE, WORKFLOW_STORE_DIR } from './config.mjs'
 import {
   buildJobId,
   chooseTemplateForPrompt,
@@ -17,7 +17,7 @@ import { getReferenceImageStatus, normalizeImageGenerationOptions } from './refe
 export async function createWorkflowJob(input = {}) {
   const prompt = normalizePrompt(input.prompt)
   const provider = normalizeProvider(input.provider)
-  const imageProvider = normalizeWorkflowImageProvider(input.imageProvider || 'openai')
+  const imageProvider = normalizeWorkflowImageProvider(input.imageProvider || DEFAULT_IMAGE_PROVIDER)
   const template = chooseTemplateForPrompt(prompt, input.template)
   const imageOptions = normalizeImageGenerationOptions({
     imageProfile: normalizeImageProfile(input.imageProfile),

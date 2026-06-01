@@ -741,6 +741,7 @@ export function GenerationPanel({
   const canConfirmModeling = !busy && !!referenceImage && referenceAccepted && activeJob?.status !== 'completed' && activeJob?.status !== 'processing' && activeJob?.status !== 'queued';
   const selectedProviderOnline = isImageProviderReady(providerStatus, imageProvider);
   const selectedProviderLabel = getImageProviderName(imageProvider);
+  const gatewayRouteHint = buildGatewayRouteHint(providerStatus, imageProvider);
   const model3dReady = isModel3dReady(providerStatus);
   const activeChainSummary = buildActiveChainSummary(providerStatus, imageProvider, modelProvider);
   const stageMonitor = buildStageMonitor({
@@ -1213,6 +1214,13 @@ export function GenerationPanel({
         </span>
         <em>{buildProviderStatusText(providerStatus, imageProvider)}</em>
       </div>
+
+      {gatewayRouteHint && (
+        <div className={`gateway-route-hint ${gatewayRouteHint.state}`} aria-label="图片生成链路建议">
+          <span>{gatewayRouteHint.label}</span>
+          <strong>{gatewayRouteHint.text}</strong>
+        </div>
+      )}
 
       <div id="reference-step" className={`reference-card${referenceImage ? ' has-image' : ''}`}>
         <div className="reference-preview">
@@ -1847,6 +1855,38 @@ function buildProviderStatusText(status: ProviderStatusPayload | null, provider:
   const openai = status.image.openai;
   if (openai?.auth?.message && !openai.auth.ok) return openai.auth.message;
   return getImageQualityProfile(status, provider);
+}
+
+function buildGatewayRouteHint(status: ProviderStatusPayload | null, provider: string) {
+  if (!status) return null;
+  const gatewayReady = isImageProviderReady(status, 'local-gateway');
+  const openaiAuth = status.image.openai?.auth;
+
+  if (provider === 'local-gateway' && gatewayReady) {
+    return {
+      state: 'ok',
+      label: '默认链路',
+      text: '完整生成将优先使用 48760 本地图片网关，再接续图生 3D。',
+    };
+  }
+
+  if (provider === 'openai' && openaiAuth && !openaiAuth.ok && gatewayReady) {
+    return {
+      state: 'warn',
+      label: '建议切换',
+      text: `OpenAI 直连不可用：${openaiAuth.message}；当前可切回本地图片网关。`,
+    };
+  }
+
+  if (!gatewayReady) {
+    return {
+      state: 'warn',
+      label: '网关检查',
+      text: '本地图片网关暂未就绪，生成参考图前请检查 48760 服务与 API Key。',
+    };
+  }
+
+  return null;
 }
 
 function getImageQualityProfile(status: ProviderStatusPayload | null, provider: string) {

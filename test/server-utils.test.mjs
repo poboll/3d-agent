@@ -1,5 +1,6 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
+import { readFile, writeFile } from 'node:fs/promises'
 import { getModelExtension, sanitizeModelId, validateModelBuffer } from '../server/model-store.mjs'
 import {
   buildBioReadyPrompt,
@@ -8,10 +9,11 @@ import {
   validateImageBuffer,
 } from '../server/reference-store.mjs'
 import { sanitizeFileName } from '../server/http-utils.mjs'
-import { DEFAULT_IMAGE_PROVIDER } from '../server/config.mjs'
+import { DEFAULT_IMAGE_PROVIDER, WORKFLOW_JOBS_FILE } from '../server/config.mjs'
 import { isAnalyticsEventAllowed } from '../server/analytics-store.mjs'
 import { formatModelBytes, getModelLoadHint, isHeavyModel } from '../app/src/lib/modelWeight.ts'
 import { getWorkflowWaitHint } from '../app/src/lib/workflowWait.ts'
+import { createWorkflowJob } from '../server/job-store.mjs'
 import {
   chooseTemplateForPrompt,
   createPromptTitle,
@@ -129,6 +131,26 @@ describe('LearningCell fusion API utilities', () => {
     assert.equal(estimateGenerationCost('tencent-hunyuan') > 0, true)
   })
 
+  it('defaults workflow jobs to the configured local image gateway', async () => {
+    let job
+    try {
+      job = await createWorkflowJob({
+        prompt: '叶绿体开放剖面 3D 教学模型，突出类囊体和基粒',
+        provider: 'local-demo',
+        template: 'chloroplast',
+        deferReference: true,
+        imageProfile: 'fast',
+      })
+
+      assert.equal(job.imageProvider, DEFAULT_IMAGE_PROVIDER)
+      assert.equal(job.imageProfile, 'fast')
+      assert.equal(job.imageSize, '1024x1024')
+      assert.equal(job.imageQuality, 'medium')
+    } finally {
+      if (job?.id) await removeWorkflowJobFromStore(job.id)
+    }
+  })
+
   it('accepts frontend workflow analytics used by the generation panel', () => {
     assert.equal(isAnalyticsEventAllowed('workflow_full_reference_ready'), true)
     assert.equal(isAnalyticsEventAllowed('workflow_job_prompt_reuse'), true)
@@ -176,3 +198,15 @@ describe('LearningCell fusion API utilities', () => {
     assert.equal(isRecoverableWorkflowJob({ ...baseJob, prompt: '' }, { now }), false)
   })
 })
+
+async function removeWorkflowJobFromStore(jobId) {
+  try {
+    const raw = await readFile(WORKFLOW_JOBS_FILE, 'utf8')
+    const payload = JSON.parse(raw)
+    if (!Array.isArray(payload.jobs)) return
+    payload.jobs = payload.jobs.filter((job) => job.id !== jobId)
+    await writeFile(WORKFLOW_JOBS_FILE, JSON.stringify(payload, null, 2))
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error
+  }
+}
