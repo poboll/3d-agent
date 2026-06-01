@@ -10,6 +10,7 @@ const UI_SOURCE_FILES = [
   'app/src/components/ModelViewer.tsx',
   'app/src/components/ProgressOverlay.tsx',
   'app/src/lib/modelWeight.ts',
+  'app/src/lib/workflowWait.ts',
   'app/src/data/models.ts',
 ]
 
@@ -40,6 +41,7 @@ async function main() {
       'data-testid',
       'generation-panel',
       'task-watch-card',
+      'task-watch-wait',
       'sync-active-job',
       'job-result-review',
       'review-view-model',
@@ -65,6 +67,10 @@ async function main() {
       '模型文件',
       '加载提示',
       '重模型',
+      '后台仍在生成',
+      '可稍后恢复',
+      '建议同步状态',
+      '队列只展示关键 3 条',
       'ATP',
       '光合作用',
     ]

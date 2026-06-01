@@ -16,6 +16,7 @@ import {
 } from '../services/fusionApi';
 import type { PromptPreviewPayload, ProviderStatusPayload, ReferenceImagePayload, WorkflowJob } from '../services/fusionApi';
 import { trackEvent } from '../lib/analytics';
+import { getWorkflowWaitHint } from '../lib/workflowWait';
 
 interface Props {
   id?: string;
@@ -735,7 +736,7 @@ export function GenerationPanel({
     referenceImage,
   });
   const latestGeneratedModel = generatedModels[0];
-  const taskWatch = activeJob ? buildTaskWatch(activeJob, clockNow) : null;
+  const taskWatch = activeJob ? buildTaskWatch(activeJob, clockNow, providerStatus) : null;
   const latestGeneratedName = latestGeneratedModel ? formatGeneratedModelName(latestGeneratedModel.name) : '';
   const latestResultLabel = latestGeneratedModel
     ? [latestGeneratedModel.source || latestGeneratedModel.generationStatus, latestGeneratedModel.subtitle]
@@ -885,6 +886,12 @@ export function GenerationPanel({
             ))}
           </div>
           <p>{taskWatch.hint}</p>
+          {taskWatch.waitLabel && taskWatch.waitHint && (
+            <div className={`task-watch-wait ${taskWatch.waitState}`} data-testid="task-watch-wait">
+              <span>{taskWatch.waitLabel}</span>
+              <strong>{taskWatch.waitHint}</strong>
+            </div>
+          )}
         </section>
       )}
 
@@ -1263,6 +1270,13 @@ function normalizeJobHistoryPrompt(prompt: string) {
     .slice(0, 36);
 }
 
+function getJobWaitStage(job: WorkflowJob, hasReference: boolean) {
+  if (job.status === 'queued') return 'queue';
+  if (job.workflowMode === 'full-text-to-3d' && !hasReference) return 'image';
+  if (hasReference || job.referenceId) return 'modeling';
+  return 'generic';
+}
+
 function referenceImageToPayload(reference: ReferenceImage, prompt: string, template: string): ReferenceImagePayload {
   return {
     id: reference.id,
@@ -1394,6 +1408,9 @@ interface TaskWatch {
   title: string;
   progress: number;
   hint: string;
+  waitLabel?: string;
+  waitHint?: string;
+  waitState?: 'pending' | 'warn';
   items: Array<{
     label: string;
     value: string;
@@ -1421,16 +1438,25 @@ function getTimestamp() {
   return Date.now();
 }
 
-function buildTaskWatch(job: WorkflowJob, now: number): TaskWatch {
+function buildTaskWatch(job: WorkflowJob, now: number, providerStatus: ProviderStatusPayload | null): TaskWatch {
   const progress = Math.max(0, Math.min(100, job.progress || 0));
   const isLive = isLiveWorkflowJob(job);
   const hasReference = Boolean(job.referenceId || job.reference);
   const hasResult = Boolean(job.result?.modelUrl);
   const updatedAt = Date.parse(job.updatedAt || job.createdAt || '');
   const secondsSinceUpdate = Number.isFinite(updatedAt) ? Math.max(0, Math.floor((now - updatedAt) / 1000)) : 0;
+  const createdAt = Date.parse(job.createdAt || job.updatedAt || '');
+  const secondsSinceCreated = Number.isFinite(createdAt) ? Math.max(secondsSinceUpdate, Math.floor((now - createdAt) / 1000)) : secondsSinceUpdate;
   const state: TaskWatch['state'] = job.status === 'failed' ? 'warn' : job.status === 'completed' ? 'ok' : 'pending';
   const providerName = getModelProviderName(job.provider);
   const imageName = getImageProviderName(job.imageProvider || 'local-gateway');
+  const waitStage = getJobWaitStage(job, hasReference);
+  const waitHint = isLive
+    ? getWorkflowWaitHint(secondsSinceCreated, waitStage, {
+        imageProfile: getImageQualityProfile(providerStatus, job.imageProvider || 'local-gateway'),
+        modelProfile: providerName,
+      })
+    : null;
 
   let title = '任务正在运行';
   let hint = job.stage || '系统正在同步生成任务。';
@@ -1459,6 +1485,9 @@ function buildTaskWatch(job: WorkflowJob, now: number): TaskWatch {
     title,
     progress,
     hint,
+    waitLabel: waitHint?.label,
+    waitHint: waitHint?.hint,
+    waitState: waitHint?.state,
     items: [
       {
         label: '参考图',
@@ -1708,16 +1737,22 @@ function getProviderStatusClass(loading: boolean, ready: boolean) {
 
 function buildProviderStatusText(status: ProviderStatusPayload | null, provider: string) {
   if (!status) return '等待状态同步';
+  if (provider === 'local-gateway') return getImageQualityProfile(status, provider);
+  const openai = status.image.openai;
+  if (openai?.auth?.message && !openai.auth.ok) return openai.auth.message;
+  return getImageQualityProfile(status, provider);
+}
+
+function getImageQualityProfile(status: ProviderStatusPayload | null, provider: string) {
   if (provider === 'local-gateway') {
-    const gateway = status.image.localGateway;
+    const gateway = status?.image.localGateway;
     const imageModel = gateway?.imageModel || 'gpt-image-2';
     const size = gateway?.imageSize || '1536x1536';
     const quality = gateway?.imageQuality || 'high';
     const timeout = gateway?.timeoutMs ? `timeout ${Math.round(gateway.timeoutMs / 1000)}s` : 'timeout 420s';
     return `${imageModel} / ${size} / ${quality} / ${timeout}`;
   }
-  const openai = status.image.openai;
-  if (openai?.auth?.message && !openai.auth.ok) return openai.auth.message;
+  const openai = status?.image.openai;
   return `${openai?.imageModel || 'OpenAI'} / ${openai?.imageToolModel || 'image tool'} / ${openai?.imageSize || '1536x1536'} / ${openai?.imageQuality || 'high'}`;
 }
 

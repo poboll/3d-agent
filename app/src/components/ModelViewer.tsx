@@ -54,7 +54,7 @@ export function ModelViewer({ model }: Props) {
     if (!(target instanceof Element)) return;
 
     if (target.closest('.stage-control-strip, .stage-question-drawer, .stage-order-card, .stage-note-panel, .stage-info-main, .stage-concept-card')) {
-      setModelFocus(false);
+      if (!target.closest('.stage-question-drawer')) setModelFocus(false);
       return;
     }
 
@@ -63,13 +63,24 @@ export function ModelViewer({ model }: Props) {
     const y = event.clientY - rect.top;
     const w = rect.width;
     const h = rect.height;
+    const isQuestionHotZone = x > w - 76 && y > 126 && y < h - 48;
+    if (isQuestionHotZone) {
+      setClueOpen(true);
+      setModelFocus(false);
+      return;
+    }
+
+    if (!cluePinned && clueOpen) {
+      setClueOpen(false);
+    }
+
     const isOverlayLane =
       y < 168 && (x < 210 || x > w - 245) ||
       y > h - 168 && (x < 190 || x > w - 245) ||
       y > h - 76;
 
     setModelFocus(!isOverlayLane);
-  }, []);
+  }, [clueOpen, cluePinned]);
 
   return (
     <div
@@ -90,20 +101,20 @@ export function ModelViewer({ model }: Props) {
               preserveDrawingBuffer: true,
             }}
           >
-            <ambientLight intensity={1.18} />
+            <ambientLight intensity={1.28} />
             <directionalLight
               position={[5, 6, 4]}
-              intensity={1.92}
+              intensity={2.06}
               castShadow
               shadow-mapSize-width={1024}
               shadow-mapSize-height={1024}
             />
-            <directionalLight position={[-3, 2, -4]} intensity={0.92} />
-            <directionalLight position={[0, 2.4, 5]} intensity={0.54} />
-            <hemisphereLight args={['#fff7e6', '#d9e4d2', 0.6]} />
+            <directionalLight position={[-3, 2, -4]} intensity={0.98} />
+            <directionalLight position={[0, 2.4, 5]} intensity={0.62} />
+            <hemisphereLight args={['#fff7e6', '#d9e4d2', 0.68]} />
 
-            <Environment resolution={128} frames={1} environmentIntensity={1.24}>
-              <Lightformer form="rect" intensity={2.9} position={[0, 4, 4]} scale={[5.4, 2.4, 1]} />
+            <Environment resolution={128} frames={1} environmentIntensity={1.32}>
+              <Lightformer form="rect" intensity={3.12} position={[0, 4, 4]} scale={[5.4, 2.4, 1]} />
               <Lightformer form="rect" intensity={1.72} position={[-4, 2, -2]} scale={[3.4, 4.4, 1]} />
               <Lightformer form="ring" intensity={1.12} position={[4, 1.5, -3]} scale={2.6} />
             </Environment>
@@ -214,6 +225,18 @@ export function ModelViewer({ model }: Props) {
         className={`stage-drawer stage-question-drawer${clueOpen || cluePinned ? ' open' : ''}${cluePinned ? ' pinned' : ''}`}
         aria-label="提问线索"
         onPointerEnter={() => {
+          setModelFocus(false);
+          setClueOpen(true);
+        }}
+        onPointerMove={() => {
+          setModelFocus(false);
+          setClueOpen(true);
+        }}
+        onMouseEnter={() => {
+          setModelFocus(false);
+          setClueOpen(true);
+        }}
+        onMouseMove={() => {
           setModelFocus(false);
           setClueOpen(true);
         }}

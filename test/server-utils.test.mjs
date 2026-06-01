@@ -6,6 +6,7 @@ import { sanitizeFileName } from '../server/http-utils.mjs'
 import { DEFAULT_IMAGE_PROVIDER } from '../server/config.mjs'
 import { isAnalyticsEventAllowed } from '../server/analytics-store.mjs'
 import { formatModelBytes, getModelLoadHint, isHeavyModel } from '../app/src/lib/modelWeight.ts'
+import { getWorkflowWaitHint } from '../app/src/lib/workflowWait.ts'
 import {
   chooseTemplateForPrompt,
   createPromptTitle,
@@ -106,6 +107,16 @@ describe('LearningCell fusion API utilities', () => {
     assert.equal(isHeavyModel(2838504), false)
     assert.equal(getModelLoadHint(60656016), '重模型 · 建议加载完成后再切换标本')
     assert.equal(getModelLoadHint(2838504), '轻量模型 · 可快速预览')
+  })
+
+  it('describes long-running generation without growing the queue UI', () => {
+    assert.equal(getWorkflowWaitHint(45, 'image'), null)
+    assert.match(getWorkflowWaitHint(90, 'image').label, /后台仍在生成/)
+    assert.match(getWorkflowWaitHint(90, 'image').hint, /1536x1536/)
+    assert.match(getWorkflowWaitHint(220, 'modeling').label, /可稍后恢复/)
+    assert.match(getWorkflowWaitHint(220, 'modeling').hint, /textured\.glb/)
+    assert.match(getWorkflowWaitHint(330, 'queue').label, /建议同步状态/)
+    assert.match(getWorkflowWaitHint(330, 'queue').hint, /队列/)
   })
 
   it('detects recoverable workflow jobs without reviving stale or completed work', () => {
