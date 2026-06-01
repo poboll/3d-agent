@@ -112,6 +112,9 @@ async function runFullTextTo3dWorkflow(job) {
     prompt: job.prompt,
     template: job.template,
     provider: job.imageProvider || 'openai',
+    imageProfile: job.imageProfile,
+    imageSize: job.imageSize,
+    imageQuality: job.imageQuality,
     onProgress: async ({ progress, stage, eventName, patch = {} }) => {
       await updateWorkflowJob(
         job.id,
@@ -135,6 +138,9 @@ async function runFullTextTo3dWorkflow(job) {
       reference,
       referenceId: reference.id,
       referenceImageUrl: reference.imageUrl,
+      imageProfile: reference.imageProfile || job.imageProfile,
+      imageSize: reference.imageSize || job.imageSize,
+      imageQuality: reference.imageQuality || job.imageQuality,
     },
     'full-workflow-reference-ready'
   )

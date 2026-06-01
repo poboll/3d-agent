@@ -42,6 +42,7 @@ export function GenerationPanel({
   const [busy, setBusy] = useState(false);
   const [prompt, setPrompt] = useState('植物细胞 3D 教学模型，突出叶绿体、细胞壁和大型液泡');
   const [imageProvider, setImageProvider] = useState('local-gateway');
+  const [imageProfile, setImageProfile] = useState('standard');
   const [modelProvider, setModelProvider] = useState('selfhost-triposg');
   const [template, setTemplate] = useState('plant-cell');
   const [referenceImage, setReferenceImage] = useState<ReferenceImage | null>(null);
@@ -316,12 +317,14 @@ export function GenerationPanel({
     promptValue?: string;
     templateValue?: string;
     imageProviderValue?: string;
+    imageProfileValue?: string;
     statusPrefix?: string;
     eventSource?: string;
   } = {}) => {
     const nextPrompt = (options.promptValue ?? prompt).trim();
     const nextTemplate = options.templateValue || template;
     const nextImageProvider = normalizeUiImageProvider(options.imageProviderValue || imageProvider);
+    const nextImageProfile = normalizeUiImageProfile(options.imageProfileValue || imageProfile);
 
     if (!nextPrompt) {
       setStatus('请先输入生物结构描述，或上传一张参考图。');
@@ -333,11 +336,14 @@ export function GenerationPanel({
     setPrompt(nextPrompt);
     setTemplate(nextTemplate);
     setImageProvider(nextImageProvider);
+    setImageProfile(nextImageProfile);
     setStatus(options.statusPrefix || `${getImageProviderName(nextImageProvider)} 正在生成 3D-ready 单图参考图...`);
     setPromptPreview(null);
     trackEvent('workflow_reference_generate_start', {
       template: nextTemplate,
       imageProvider: nextImageProvider,
+      imageProfile: nextImageProfile,
+      imageProfileLabel: getImageProfileLabel(nextImageProfile),
       promptLength: nextPrompt.length,
       source: options.eventSource || 'panel',
     });
@@ -346,7 +352,9 @@ export function GenerationPanel({
         prompt: nextPrompt,
         provider: nextImageProvider,
         template: nextTemplate,
+        ...getImageProfileRequest(nextImageProfile),
       });
+      setImageProfile(normalizeUiImageProfile(reference.imageProfile || nextImageProfile));
       setReferenceImage(toReferenceImage(reference, false));
       setReferenceAccepted(false);
       setPromptPreview({
@@ -363,6 +371,8 @@ export function GenerationPanel({
       trackEvent('workflow_reference_generate', {
         template: nextTemplate,
         imageProvider: nextImageProvider,
+        imageProfile: reference.imageProfile || nextImageProfile,
+        imageProfileLabel: getImageProfileLabel(reference.imageProfile || nextImageProfile),
         promptLength: nextPrompt.length,
         referenceId: reference.id,
         model: reference.model,
@@ -423,6 +433,8 @@ export function GenerationPanel({
     trackEvent('workflow_full_run_start', {
       template,
       imageProvider,
+      imageProfile,
+      imageProfileLabel: getImageProfileLabel(imageProfile),
       provider: modelProvider,
       promptLength: prompt.trim().length,
     });
@@ -432,6 +444,7 @@ export function GenerationPanel({
         prompt: prompt.trim(),
         provider: modelProvider,
         imageProvider,
+        ...getImageProfileRequest(imageProfile),
         template,
       });
       if (reference) {
@@ -456,6 +469,7 @@ export function GenerationPanel({
         provider: job.provider,
         costEstimateCny: job.costEstimateCny,
         referenceId: reference?.id ?? job.referenceId,
+        imageProfile: job.imageProfile || imageProfile,
       });
     } catch (error) {
       setStatus(error instanceof Error ? error.message : '完整生成链路启动失败。');
@@ -509,6 +523,7 @@ export function GenerationPanel({
     const nextPrompt = (options.promptValue ?? prompt).trim();
     const nextTemplate = options.templateValue || template;
     const nextImageProvider = normalizeUiImageProvider(options.imageProviderValue || imageProvider);
+    const nextImageProfile = normalizeUiImageProfile(nextReference?.imageProfile || imageProfile);
     const nextModelProvider = options.modelProviderValue || modelProvider;
 
     if (!nextReference) {
@@ -525,6 +540,7 @@ export function GenerationPanel({
     setPrompt(nextPrompt);
     setTemplate(nextTemplate);
     setImageProvider(nextImageProvider);
+    setImageProfile(nextImageProfile);
     setModelProvider(nextModelProvider);
     setReferenceImage(nextReference);
     setReferenceAccepted(true);
@@ -544,6 +560,7 @@ export function GenerationPanel({
         provider: nextModelProvider,
         template: nextTemplate,
         imageProvider: nextImageProvider,
+        ...getImageProfileRequest(nextImageProfile),
         referenceId: nextReference.id,
       });
       setActiveJob(job);
@@ -555,6 +572,7 @@ export function GenerationPanel({
         template: job.template,
         provider: job.provider,
         costEstimateCny: job.costEstimateCny,
+        imageProfile: job.imageProfile || nextImageProfile,
         source: options.eventSource || 'panel',
       });
     } catch (error) {
@@ -653,6 +671,7 @@ export function GenerationPanel({
     if (!options.keepPrompt) setPrompt(job.prompt);
     setTemplate(job.template || 'auto');
     setImageProvider(normalizeUiImageProvider(job.imageProvider || imageProvider));
+    setImageProfile(normalizeUiImageProfile(job.imageProfile || imageProfile));
     setModelProvider(job.provider || modelProvider);
     if (job.reference) {
       setReferenceImage(toReferenceImage(job.reference, false));
@@ -736,7 +755,7 @@ export function GenerationPanel({
     referenceImage,
   });
   const latestGeneratedModel = generatedModels[0];
-  const taskWatch = activeJob ? buildTaskWatch(activeJob, clockNow, providerStatus) : null;
+  const taskWatch = activeJob ? buildTaskWatch(activeJob, clockNow) : null;
   const latestGeneratedName = latestGeneratedModel ? formatGeneratedModelName(latestGeneratedModel.name) : '';
   const latestResultLabel = latestGeneratedModel
     ? [latestGeneratedModel.source || latestGeneratedModel.generationStatus, latestGeneratedModel.subtitle]
@@ -745,6 +764,10 @@ export function GenerationPanel({
     : '';
   const detailReference = activeJob?.reference || (referenceImage ? referenceImageToPayload(referenceImage, prompt, template) : null);
   const detailsRows = activeJob ? buildJobDetailRows(activeJob) : [];
+  const selectedImageProfileOption = getImageProfileOption(imageProfile);
+  const referenceSpecLabel = detailReference
+    ? buildImageSpecLabel(detailReference.imageProfile, detailReference.imageSize, detailReference.imageQuality)
+    : '';
   const resultModelUrl = activeJob?.result?.modelUrl;
   const rawModelUrl = activeJob?.result?.rawModelUrl;
   const resultReview = activeJob?.status === 'completed' && activeJob.result
@@ -895,6 +918,27 @@ export function GenerationPanel({
         </section>
       )}
 
+      {visibleJobHistory.length > 0 && (
+        <div className="job-history">
+          <div className="job-history-title">
+            <span>最近任务</span>
+            <strong>关键 3 条</strong>
+            <em>{hiddenJobCount > 0 ? `已收起 ${hiddenJobCount} 条历史` : '没有更多历史'}</em>
+          </div>
+          {visibleJobHistory.map((job) => (
+            <button
+              type="button"
+              className={`job-row ${job.status}${activeJob?.id === job.id ? ' active' : ''}`}
+              key={job.id}
+              onClick={() => handleSelectJob(job)}
+            >
+              <span>{job.prompt}</span>
+              <strong>{job.status === 'completed' ? '完成' : job.status === 'failed' ? '失败' : `${job.progress}%`}</strong>
+            </button>
+          ))}
+        </div>
+      )}
+
       {referenceImage && (
         <button
           type="button"
@@ -913,7 +957,7 @@ export function GenerationPanel({
           <span className="reference-mini-copy">
             <small>{referenceAccepted ? '参考图已确认' : '参考图待确认'}</small>
             <strong>{referenceImage.title}</strong>
-            <em>{[referenceImage.source, referenceImage.promptModel || referenceImage.model].filter(Boolean).join(' · ')}</em>
+            <em>{[referenceImage.source, buildImageSpecLabel(referenceImage.imageProfile, referenceImage.imageSize, referenceImage.imageQuality), referenceImage.promptModel || referenceImage.model].filter(Boolean).join(' · ')}</em>
           </span>
         </button>
       )}
@@ -1041,7 +1085,7 @@ export function GenerationPanel({
                   <span>
                     <small>REFERENCE</small>
                     <strong>{detailReference.title || '参考图'}</strong>
-                    <em>{[detailReference.provider, detailReference.model].filter(Boolean).join(' · ')}</em>
+                    <em>{[detailReference.provider, referenceSpecLabel, detailReference.model].filter(Boolean).join(' · ')}</em>
                   </span>
                 </a>
               )}
@@ -1124,6 +1168,17 @@ export function GenerationPanel({
             <option value="openai">OpenAI GPT Image</option>
           </select>
         </label>
+        <label className="generation-field compact image-profile-field">
+          <span>生成规格</span>
+          <select value={imageProfile} onChange={(event) => setImageProfile(normalizeUiImageProfile(event.target.value))}>
+            {IMAGE_PROFILE_OPTIONS.map((option) => (
+              <option value={option.id} key={option.id}>
+                {option.label} · {option.size}
+              </option>
+            ))}
+          </select>
+          <em>{selectedImageProfileOption.quality.toUpperCase()} · {selectedImageProfileOption.note}</em>
+        </label>
         <label className="generation-field compact">
           <span>3D PROVIDER</span>
           <select value={modelProvider} onChange={(event) => setModelProvider(event.target.value)}>
@@ -1146,7 +1201,7 @@ export function GenerationPanel({
 
       <div className="provider-hint" aria-label="当前生成链路">
         <span>{selectedProviderLabel}</span>
-        <strong>{activeChainSummary}</strong>
+        <strong>{activeChainSummary} · {selectedImageProfileOption.label} {selectedImageProfileOption.size}</strong>
       </div>
 
       <div className="provider-status-strip" aria-label="本地生成服务状态">
@@ -1173,7 +1228,7 @@ export function GenerationPanel({
         <div className="reference-meta">
           <span>02 REFERENCE IMAGE</span>
           <strong>{referenceImage?.title ?? '先生成或上传初版图片'}</strong>
-          {referenceImage && <em>{[referenceAccepted ? '已确认' : '待确认', referenceImage.source, referenceImage.promptModel, referenceImage.model].filter(Boolean).join(' · ')}</em>}
+          {referenceImage && <em>{[referenceAccepted ? '已确认' : '待确认', referenceImage.source, buildImageSpecLabel(referenceImage.imageProfile, referenceImage.imageSize, referenceImage.imageQuality), referenceImage.promptModel, referenceImage.model].filter(Boolean).join(' · ')}</em>}
           <p>{referenceImage?.note ?? '图片确认通过后，才会进入本地图生 3D 建模与结果缓存。'}</p>
         </div>
       </div>
@@ -1211,26 +1266,6 @@ export function GenerationPanel({
         )}
       </div>
 
-      {visibleJobHistory.length > 0 && (
-        <div className="job-history">
-          <div className="job-history-title">
-            <span>最近任务</span>
-            <strong>关键 3 条</strong>
-            <em>{hiddenJobCount > 0 ? `已收起 ${hiddenJobCount} 条历史` : '没有更多历史'}</em>
-          </div>
-          {visibleJobHistory.map((job) => (
-            <button
-              type="button"
-              className={`job-row ${job.status}${activeJob?.id === job.id ? ' active' : ''}`}
-              key={job.id}
-              onClick={() => handleSelectJob(job)}
-            >
-              <span>{job.prompt}</span>
-              <strong>{job.status === 'completed' ? '完成' : job.status === 'failed' ? '失败' : `${job.progress}%`}</strong>
-            </button>
-          ))}
-        </div>
-      )}
     </section>
   );
 }
@@ -1291,6 +1326,9 @@ function referenceImageToPayload(reference: ReferenceImage, prompt: string, temp
     model: reference.model || '',
     promptModel: reference.promptModel,
     generationMode: reference.generationMode,
+    imageProfile: reference.imageProfile,
+    imageSize: reference.imageSize,
+    imageQuality: reference.imageQuality,
     imagePrompt: reference.imagePrompt,
     negativePrompt: '',
     imageUrl: reference.url,
@@ -1303,6 +1341,7 @@ function buildJobDetailRows(job: WorkflowJob) {
     { label: '状态', value: getWorkflowStatusLabel(job.status) },
     { label: '进度', value: `${Math.max(0, Math.min(100, job.progress || 0))}%` },
     { label: '图片', value: getImageProviderName(job.imageProvider || 'local-gateway') },
+    { label: '规格', value: buildImageSpecLabel(job.imageProfile, job.imageSize, job.imageQuality) },
     { label: '三维', value: getModelProviderName(job.provider) },
     { label: '模式', value: getWorkflowModeLabel(job.workflowMode || 'image-to-3d') },
     { label: '模板', value: job.template || 'auto' },
@@ -1390,6 +1429,9 @@ interface ReferenceImage {
   model?: string;
   promptModel?: string;
   generationMode?: string;
+  imageProfile?: string;
+  imageSize?: string;
+  imageQuality?: string;
 }
 
 interface StageMonitor {
@@ -1431,6 +1473,9 @@ function toReferenceImage(reference: ReferenceImagePayload, uploaded: boolean): 
     model: reference.model,
     promptModel: reference.promptModel,
     generationMode: reference.generationMode,
+    imageProfile: reference.imageProfile,
+    imageSize: reference.imageSize,
+    imageQuality: reference.imageQuality,
   };
 }
 
@@ -1438,7 +1483,7 @@ function getTimestamp() {
   return Date.now();
 }
 
-function buildTaskWatch(job: WorkflowJob, now: number, providerStatus: ProviderStatusPayload | null): TaskWatch {
+function buildTaskWatch(job: WorkflowJob, now: number): TaskWatch {
   const progress = Math.max(0, Math.min(100, job.progress || 0));
   const isLive = isLiveWorkflowJob(job);
   const hasReference = Boolean(job.referenceId || job.reference);
@@ -1453,7 +1498,7 @@ function buildTaskWatch(job: WorkflowJob, now: number, providerStatus: ProviderS
   const waitStage = getJobWaitStage(job, hasReference);
   const waitHint = isLive
     ? getWorkflowWaitHint(secondsSinceCreated, waitStage, {
-        imageProfile: getImageQualityProfile(providerStatus, job.imageProvider || 'local-gateway'),
+        imageProfile: buildImageSpecLabel(job.imageProfile, job.imageSize, job.imageQuality),
         modelProfile: providerName,
       })
     : null;
@@ -1472,7 +1517,7 @@ function buildTaskWatch(job: WorkflowJob, now: number, providerStatus: ProviderS
   } else if (job.workflowMode === 'full-text-to-3d' && !hasReference) {
     title = '正在等待参考图';
     hint = secondsSinceUpdate > 120
-      ? '1536x1536 / high 单图生成有时会超过 3 分钟；任务仍在后台，可稍后点击同步状态。'
+      ? `${buildImageSpecLabel(job.imageProfile, job.imageSize, job.imageQuality)} 单图生成有时会超过 3 分钟；任务仍在后台，可稍后点击同步状态。`
       : job.stage || '系统正在生成单张 3D-ready 参考图，完成后会自动接续图生 3D。';
   } else if (hasReference) {
     title = '参考图已就绪，正在建模';
@@ -1503,6 +1548,11 @@ function buildTaskWatch(job: WorkflowJob, now: number, providerStatus: ProviderS
         label: '图片模型',
         value: imageName,
         state: hasReference ? 'ok' : 'pending',
+      },
+      {
+        label: '生成规格',
+        value: buildImageSpecLabel(job.imageProfile, job.imageSize, job.imageQuality),
+        state: hasReference ? 'ok' : isLive ? 'pending' : 'idle',
       },
       {
         label: '最近更新',
@@ -1678,6 +1728,62 @@ function getImageProviderName(provider: string) {
 function normalizeUiImageProvider(provider: string) {
   if (provider === 'openai') return 'openai';
   return 'local-gateway';
+}
+
+const IMAGE_PROFILE_OPTIONS = [
+  {
+    id: 'fast',
+    label: '快速预览',
+    size: '1024x1024',
+    quality: 'medium',
+    note: '快速验证构图',
+  },
+  {
+    id: 'standard',
+    label: '标准教学',
+    size: '1536x1536',
+    quality: 'high',
+    note: '默认课堂质量',
+  },
+  {
+    id: 'detailed',
+    label: '精细单图',
+    size: '2048x2048',
+    quality: 'high',
+    note: '更适合定稿',
+  },
+] as const;
+
+type ImageProfileId = typeof IMAGE_PROFILE_OPTIONS[number]['id'];
+
+function normalizeUiImageProfile(value?: string): ImageProfileId {
+  const profile = String(value || 'standard').trim();
+  return IMAGE_PROFILE_OPTIONS.some((option) => option.id === profile) ? profile as ImageProfileId : 'standard';
+}
+
+function getImageProfileOption(value?: string) {
+  const profile = normalizeUiImageProfile(value);
+  return IMAGE_PROFILE_OPTIONS.find((option) => option.id === profile) || IMAGE_PROFILE_OPTIONS[1];
+}
+
+function getImageProfileLabel(value?: string) {
+  return getImageProfileOption(value).label;
+}
+
+function getImageProfileRequest(value?: string) {
+  const option = getImageProfileOption(value);
+  return {
+    imageProfile: option.id,
+    imageSize: option.size,
+    imageQuality: option.quality,
+  };
+}
+
+function buildImageSpecLabel(profile?: string, size?: string, quality?: string) {
+  const option = getImageProfileOption(profile);
+  const resolvedSize = size || option.size;
+  const resolvedQuality = quality || option.quality;
+  return `${option.label} · ${resolvedSize} · ${resolvedQuality}`;
 }
 
 function getModelProviderName(provider: string) {

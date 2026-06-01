@@ -42,6 +42,9 @@ export interface ReferenceImagePayload {
   model: string;
   promptModel?: string;
   generationMode?: string;
+  imageProfile?: string;
+  imageSize?: string;
+  imageQuality?: string;
   imagePrompt?: string;
   negativePrompt?: string;
   imageUrl: string;
@@ -60,6 +63,9 @@ export interface WorkflowJob {
   referenceImageUrl?: string;
   reference?: ReferenceImagePayload | null;
   workflowMode?: 'image-to-3d' | 'full-text-to-3d' | string;
+  imageProfile?: string;
+  imageSize?: string;
+  imageQuality?: string;
   providerJobId?: string;
   status: WorkflowStatus;
   stage: string;
@@ -177,6 +183,9 @@ export async function createReferenceImage(input: {
   prompt: string;
   provider?: string;
   template?: string;
+  imageProfile?: string;
+  imageSize?: string;
+  imageQuality?: string;
 }): Promise<ReferenceImagePayload> {
   const response = await fetch(apiUrl('/api/references/text-to-image'), {
     method: 'POST',
@@ -236,6 +245,9 @@ export async function createTextToCellJob(input: {
   provider?: string;
   template?: string;
   imageProvider?: string;
+  imageProfile?: string;
+  imageSize?: string;
+  imageQuality?: string;
   referenceId?: string;
 }): Promise<WorkflowJob> {
   const response = await fetch(apiUrl('/api/workflows/text-to-cell'), {
@@ -254,6 +266,9 @@ export async function createFullTextTo3dJob(input: {
   provider?: string;
   template?: string;
   imageProvider?: string;
+  imageProfile?: string;
+  imageSize?: string;
+  imageQuality?: string;
 }): Promise<{ reference: ReferenceImagePayload | null; job: WorkflowJob }> {
   const response = await fetch(apiUrl('/api/workflows/full-text-to-3d'), {
     method: 'POST',

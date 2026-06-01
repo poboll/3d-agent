@@ -23,7 +23,7 @@ const endpoints = [
     method: 'POST',
     path: '/api/references/text-to-image',
     title: '生成参考图',
-    note: '提交生物结构描述，后端先用 gpt-5.5 打磨 3D-ready prompt，再优先通过本地图片网关生成单张参考图。',
+    note: '提交生物结构描述，后端先用 gpt-5.5 打磨 3D-ready prompt，再按 imageProfile / imageSize / imageQuality 生成单张参考图。',
   },
   {
     method: 'POST',
@@ -129,7 +129,8 @@ export function LocalApiPanel() {
         <p>
           后端读取 <strong>OPENAI_API_KEY</strong>、<strong>OPENAI_IMAGE_MODEL</strong>、<strong>COMFYUI_BASE_URL</strong>、
           <strong>LOCAL_IMAGE_GATEWAY_BASE_URL</strong>、<strong>LOCAL_IMAGE_GATEWAY_API_KEY</strong>、
-          <strong>COMFYUI_WORKFLOW_TEMPLATE</strong> 等配置。生成结果统一写入本地缓存，再交给 3D 舞台加载。
+          <strong>COMFYUI_WORKFLOW_TEMPLATE</strong> 等配置。前端请求可带 <strong>imageProfile</strong>、
+          <strong>imageSize</strong>、<strong>imageQuality</strong> 控制参考图规格；生成结果统一写入本地缓存，再交给 3D 舞台加载。
         </p>
       </div>
 

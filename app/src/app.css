@@ -604,8 +604,32 @@ body {
   gap: 7px;
 }
 
+.generation-controls .image-profile-field,
 .generation-controls .generation-field:last-child {
   grid-column: 1 / -1;
+}
+
+.generation-field.compact em {
+  min-height: 12px;
+  overflow: hidden;
+  color: rgba(43, 42, 38, 0.46);
+  font-family: var(--font-mono);
+  font-size: 7.1px;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.image-profile-field {
+  padding: 6px 7px 7px;
+  border: 1px solid rgba(89, 111, 85, 0.14);
+  border-left: 2px solid rgba(139, 58, 46, 0.34);
+  background:
+    linear-gradient(90deg, rgba(223, 233, 220, 0.22), rgba(251, 250, 244, 0.36)),
+    repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.014) 0 1px, transparent 1px 13px);
 }
 
 .reference-card {
@@ -1890,10 +1914,13 @@ body {
 }
 
 .job-history {
+  flex: 0 0 auto;
   display: grid;
   gap: 5px;
-  max-height: 112px;
-  padding-right: 4px;
+  max-height: 126px;
+  padding: 6px 4px 6px 0;
+  border-top: 1px solid rgba(28, 31, 27, 0.065);
+  border-bottom: 1px solid rgba(28, 31, 27, 0.055);
   overflow-x: hidden;
   overflow-y: auto;
 }
@@ -4807,6 +4834,10 @@ body {
   }
 
   .generation-controls .generation-field:last-child {
+    grid-column: auto;
+  }
+
+  .generation-controls .image-profile-field {
     grid-column: auto;
   }
 

@@ -52,6 +52,7 @@ export async function createReferenceImage(input = {}) {
   const prompt = normalizeReferencePrompt(input.prompt)
   const template = chooseTemplateForPrompt(prompt, input.template)
   const provider = normalizeImageProvider(input.provider)
+  const imageOptions = normalizeImageGenerationOptions(input, provider)
   const notify = typeof input.onProgress === 'function' ? input.onProgress : null
 
   await notifyReferenceProgress(notify, {
@@ -73,6 +74,8 @@ export async function createReferenceImage(input = {}) {
     patch: {
       imagePromptPreview: polishedPromptPackage.imagePrompt.slice(0, 220),
       imagePromptModel: polishedPromptPackage.promptModel || 'local-template',
+      imageSize: imageOptions.size,
+      imageQuality: imageOptions.quality,
     },
   })
 
@@ -101,8 +104,8 @@ export async function createReferenceImage(input = {}) {
 
   const imageResult =
     provider === 'local-gateway'
-      ? await requestLocalGatewayImage(polishedPromptPackage.imagePrompt)
-      : await requestOpenAiImage(polishedPromptPackage.imagePrompt)
+      ? await requestLocalGatewayImage(polishedPromptPackage.imagePrompt, imageOptions)
+      : await requestOpenAiImage(polishedPromptPackage.imagePrompt, imageOptions)
   await notifyReferenceProgress(notify, {
     progress: 22,
     stage: '参考图已返回，正在写入本地参考图缓存。',
@@ -110,6 +113,8 @@ export async function createReferenceImage(input = {}) {
     patch: {
       referenceImageModel: imageResult.model,
       referenceGenerationMode: imageResult.mode,
+      referenceImageSize: imageResult.size,
+      referenceImageQuality: imageResult.quality,
     },
   })
   const imageExt =
@@ -130,6 +135,9 @@ export async function createReferenceImage(input = {}) {
     promptModel: polishedPromptPackage.promptModel,
     model: imageResult.model,
     generationMode: imageResult.mode,
+    imageSize: imageResult.size,
+    imageQuality: imageResult.quality,
+    imageProfile: imageResult.profile,
     ext: imageExt,
   })
 
@@ -431,19 +439,72 @@ function normalizedForCompare(value) {
   return String(value).toLowerCase().replace(/[^a-z0-9]+/g, '')
 }
 
-async function requestOpenAiImage(prompt) {
+export function normalizeImageGenerationOptions(input = {}, provider = 'local-gateway') {
+  const profile = String(input.imageProfile || input.profile || 'standard').trim()
+  const preset = getImageProfilePreset(profile)
+  const fallbackSize = provider === 'openai' ? OPENAI_IMAGE_SIZE : LOCAL_IMAGE_GATEWAY_IMAGE_SIZE
+  const fallbackQuality = provider === 'openai' ? OPENAI_IMAGE_QUALITY : LOCAL_IMAGE_GATEWAY_IMAGE_QUALITY
+  const size = normalizeImageSize(input.imageSize || input.size || preset.size || fallbackSize)
+  const quality = normalizeImageQuality(input.imageQuality || input.quality || preset.quality || fallbackQuality)
+
+  return {
+    profile: preset.id,
+    size,
+    quality,
+    label: preset.label,
+  }
+}
+
+function getImageProfilePreset(profile) {
+  const presets = {
+    fast: {
+      id: 'fast',
+      label: '快速预览',
+      size: '1024x1024',
+      quality: 'medium',
+    },
+    standard: {
+      id: 'standard',
+      label: '标准教学',
+      size: '1536x1536',
+      quality: 'high',
+    },
+    detailed: {
+      id: 'detailed',
+      label: '精细单图',
+      size: '2048x2048',
+      quality: 'high',
+    },
+  }
+  return presets[profile] || presets.standard
+}
+
+function normalizeImageSize(value) {
+  const size = String(value || '').trim().toLowerCase()
+  if (/^\d{3,4}x\d{3,4}$/.test(size)) return size
+  return '1536x1536'
+}
+
+function normalizeImageQuality(value) {
+  const quality = String(value || '').trim().toLowerCase()
+  if (['low', 'medium', 'high', 'auto'].includes(quality)) return quality
+  return 'high'
+}
+
+async function requestOpenAiImage(prompt, options = {}) {
   if (OPENAI_IMAGE_MODE !== 'images-api') {
     try {
-      return await requestOpenAiImageViaResponses(prompt)
+      return await requestOpenAiImageViaResponses(prompt, options)
     } catch (error) {
       if (OPENAI_IMAGE_MODE === 'responses-tool') throw error
     }
   }
 
-  return requestOpenAiImageViaImagesApi(prompt)
+  return requestOpenAiImageViaImagesApi(prompt, options)
 }
 
-async function requestOpenAiImageViaResponses(prompt) {
+async function requestOpenAiImageViaResponses(prompt, options = {}) {
+  const imageOptions = normalizeImageGenerationOptions(options, 'openai')
   const payload = await requestOpenAiResponse({
     model: OPENAI_IMAGE_MODEL,
     input: [
@@ -465,8 +526,8 @@ async function requestOpenAiImageViaResponses(prompt) {
       {
         type: 'image_generation',
         model: OPENAI_IMAGE_TOOL_MODEL,
-        size: OPENAI_IMAGE_SIZE,
-        quality: OPENAI_IMAGE_QUALITY,
+        size: imageOptions.size,
+        quality: imageOptions.quality,
         output_format: OPENAI_IMAGE_FORMAT,
       },
     ],
@@ -481,11 +542,15 @@ async function requestOpenAiImageViaResponses(prompt) {
     buffer: Buffer.from(image, 'base64'),
     model: `${OPENAI_IMAGE_MODEL} / ${OPENAI_IMAGE_TOOL_MODEL}`,
     mode: 'responses-image-generation',
+    size: imageOptions.size,
+    quality: imageOptions.quality,
+    profile: imageOptions.profile,
     ext: normalizeImageExtension(OPENAI_IMAGE_FORMAT),
   }
 }
 
-async function requestOpenAiImageViaImagesApi(prompt) {
+async function requestOpenAiImageViaImagesApi(prompt, options = {}) {
+  const imageOptions = normalizeImageGenerationOptions(options, 'openai')
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), OPENAI_IMAGE_TIMEOUT_MS)
 
@@ -496,8 +561,8 @@ async function requestOpenAiImageViaImagesApi(prompt) {
       body: JSON.stringify({
         model: OPENAI_IMAGE_MODEL,
         prompt,
-        size: OPENAI_IMAGE_SIZE,
-        quality: OPENAI_IMAGE_QUALITY,
+        size: imageOptions.size,
+        quality: imageOptions.quality,
         output_format: OPENAI_IMAGE_FORMAT,
         n: 1,
       }),
@@ -516,6 +581,9 @@ async function requestOpenAiImageViaImagesApi(prompt) {
         buffer: Buffer.from(item.b64_json, 'base64'),
         model: OPENAI_IMAGE_MODEL,
         mode: 'images-api',
+        size: imageOptions.size,
+        quality: imageOptions.quality,
+        profile: imageOptions.profile,
         ext: normalizeImageExtension(OPENAI_IMAGE_FORMAT),
       }
     }
@@ -526,6 +594,9 @@ async function requestOpenAiImageViaImagesApi(prompt) {
         buffer: Buffer.from(await imageResponse.arrayBuffer()),
         model: OPENAI_IMAGE_MODEL,
         mode: 'images-api',
+        size: imageOptions.size,
+        quality: imageOptions.quality,
+        profile: imageOptions.profile,
         ext: extensionFromContentType(imageResponse.headers.get('content-type')) || normalizeImageExtension(OPENAI_IMAGE_FORMAT),
       }
     }
@@ -541,7 +612,8 @@ async function requestOpenAiImageViaImagesApi(prompt) {
   }
 }
 
-async function requestLocalGatewayImage(prompt) {
+async function requestLocalGatewayImage(prompt, options = {}) {
+  const imageOptions = normalizeImageGenerationOptions(options, 'local-gateway')
   const models = uniqueImageModels([
     LOCAL_IMAGE_GATEWAY_IMAGE_MODEL,
     ...LOCAL_IMAGE_GATEWAY_IMAGE_MODEL_FALLBACKS,
@@ -550,7 +622,7 @@ async function requestLocalGatewayImage(prompt) {
 
   for (const model of models) {
     try {
-      return await requestLocalGatewayImageWithModel(prompt, model)
+      return await requestLocalGatewayImageWithModel(prompt, model, imageOptions)
     } catch (error) {
       errors.push(`${model}: ${error.message || '生成失败'}`)
       if (!isRetryableImageModelError(error)) throw error
@@ -563,7 +635,7 @@ async function requestLocalGatewayImage(prompt) {
   })
 }
 
-async function requestLocalGatewayImageWithModel(prompt, model) {
+async function requestLocalGatewayImageWithModel(prompt, model, imageOptions) {
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), LOCAL_IMAGE_GATEWAY_TIMEOUT_MS)
 
@@ -574,8 +646,8 @@ async function requestLocalGatewayImageWithModel(prompt, model) {
       body: JSON.stringify({
         model,
         prompt,
-        size: LOCAL_IMAGE_GATEWAY_IMAGE_SIZE,
-        quality: LOCAL_IMAGE_GATEWAY_IMAGE_QUALITY,
+        size: imageOptions.size,
+        quality: imageOptions.quality,
         output_format: LOCAL_IMAGE_GATEWAY_IMAGE_FORMAT,
         response_format: 'b64_json',
         n: 1,
@@ -599,6 +671,9 @@ async function requestLocalGatewayImageWithModel(prompt, model) {
       ...parsed,
       model,
       mode: 'local-gateway-images-api',
+      size: imageOptions.size,
+      quality: imageOptions.quality,
+      profile: imageOptions.profile,
     }
   } catch (error) {
     if (error.name === 'AbortError') {
@@ -912,6 +987,9 @@ async function saveReferenceBuffer({
   promptModel,
   model,
   generationMode,
+  imageSize,
+  imageQuality,
+  imageProfile,
   ext,
 }) {
   validateImageBuffer(buffer, ext)
@@ -952,6 +1030,9 @@ async function saveReferenceBuffer({
     model,
     promptModel,
     generationMode,
+    imageSize,
+    imageQuality,
+    imageProfile,
     imagePrompt,
     negativePrompt,
     createdAt: new Date().toISOString(),
@@ -1111,6 +1192,9 @@ function publicReference(record) {
     model: record.model,
     promptModel: record.promptModel,
     generationMode: record.generationMode,
+    imageSize: record.imageSize,
+    imageQuality: record.imageQuality,
+    imageProfile: record.imageProfile,
     imagePrompt: record.imagePrompt,
     negativePrompt: record.negativePrompt,
     imageUrl: `/api/references/${encodeURIComponent(record.id)}/image`,

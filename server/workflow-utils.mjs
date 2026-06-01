@@ -42,6 +42,11 @@ export function normalizeWorkflowImageProvider(value) {
   return normalizeImageProvider(provider)
 }
 
+export function normalizeImageProfile(value) {
+  const profile = String(value || 'standard').trim()
+  return ['fast', 'standard', 'detailed'].includes(profile) ? profile : 'standard'
+}
+
 export function estimateGenerationCost(provider) {
   if (provider === 'tencent-hunyuan') return HUNYUAN_3D_MODEL_COST_CNY
   return 0
@@ -109,6 +114,9 @@ export function publicJob(job) {
     referenceImageUrl: job.referenceImageUrl,
     reference: job.reference,
     workflowMode: job.workflowMode,
+    imageProfile: job.imageProfile,
+    imageSize: job.imageSize,
+    imageQuality: job.imageQuality,
     providerJobId: job.providerJobId,
     createdAt: job.createdAt,
     updatedAt: job.updatedAt,

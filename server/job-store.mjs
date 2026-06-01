@@ -6,18 +6,27 @@ import {
   chooseTemplateForPrompt,
   estimateGenerationCost,
   isRecoverableWorkflowJob,
+  normalizeImageProfile,
   normalizePrompt,
   normalizeProvider,
   normalizeWorkflowImageProvider,
   publicJob,
 } from './workflow-utils.mjs'
-import { getReferenceImageStatus } from './reference-store.mjs'
+import { getReferenceImageStatus, normalizeImageGenerationOptions } from './reference-store.mjs'
 
 export async function createWorkflowJob(input = {}) {
   const prompt = normalizePrompt(input.prompt)
   const provider = normalizeProvider(input.provider)
   const imageProvider = normalizeWorkflowImageProvider(input.imageProvider || 'openai')
   const template = chooseTemplateForPrompt(prompt, input.template)
+  const imageOptions = normalizeImageGenerationOptions({
+    imageProfile: normalizeImageProfile(input.imageProfile),
+    imageSize: input.imageSize,
+    imageQuality: input.imageQuality,
+  }, imageProvider === 'openai' ? 'openai' : 'local-gateway')
+  const imageProfile = imageOptions.profile
+  const imageSize = imageOptions.size
+  const imageQuality = imageOptions.quality
   const referenceId = String(input.referenceId || '').trim()
   const deferReference = Boolean(input.deferReference)
   const reference = referenceId ? await getReferenceImageStatus(referenceId) : null
@@ -39,6 +48,9 @@ export async function createWorkflowJob(input = {}) {
     stage: deferReference ? '完整生成任务已创建，正在等待参考图生成。' : '任务已创建，等待工作流处理。',
     progress: deferReference ? 3 : 5,
     workflowMode: input.workflowMode || (deferReference ? 'full-text-to-3d' : 'image-to-3d'),
+    imageProfile,
+    imageSize,
+    imageQuality,
     costEstimateCny: estimateGenerationCost(provider),
     createdAt: now,
     updatedAt: now,
@@ -52,6 +64,9 @@ export async function createWorkflowJob(input = {}) {
     referenceId: job.referenceId,
     workflowMode: job.workflowMode,
     deferReference,
+    imageProfile,
+    imageSize,
+    imageQuality,
     costEstimateCny: job.costEstimateCny,
   })
   return publicJob(job)

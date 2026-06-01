@@ -9,6 +9,9 @@ const LIVE_3D = boolEnv('SMOKE_LIVE_3D', 'LIVE_3D')
 const FULL_WORKFLOW = boolEnv('SMOKE_FULL_WORKFLOW', 'FULL_WORKFLOW')
 const REFERENCE_IMAGE = process.env.SMOKE_REFERENCE_IMAGE || 'app/public/images/plant-cell.jpg'
 const IMAGE_PROVIDER = process.env.SMOKE_IMAGE_PROVIDER || (LIVE_IMAGE_GATEWAY ? 'local-gateway' : 'openai')
+const IMAGE_PROFILE = process.env.SMOKE_IMAGE_PROFILE || (LIVE_IMAGE_GATEWAY ? 'fast' : 'standard')
+const IMAGE_SIZE = process.env.SMOKE_IMAGE_SIZE || ''
+const IMAGE_QUALITY = process.env.SMOKE_IMAGE_QUALITY || ''
 
 const prompt = process.argv.slice(2).join(' ').trim() || '线粒体开放剖面 3D 教学模型，突出外膜、内膜和嵴'
 
@@ -51,6 +54,7 @@ async function main() {
           template: 'auto',
           imageProvider: IMAGE_PROVIDER,
           provider: LIVE_3D ? 'selfhost-triposg' : 'local-demo',
+          ...imageProfileRequest(),
         },
       })
       return payload.job
@@ -59,7 +63,7 @@ async function main() {
     reference = await step(`${IMAGE_PROVIDER} 文生参考图`, async () => {
       const payload = await api('/api/references/text-to-image', {
         method: 'POST',
-        body: { prompt, template: 'auto', provider: IMAGE_PROVIDER },
+        body: { prompt, template: 'auto', provider: IMAGE_PROVIDER, ...imageProfileRequest() },
       })
       return payload.reference
     })
@@ -95,6 +99,7 @@ async function main() {
           imageProvider: LIVE_OPENAI || LIVE_IMAGE_GATEWAY ? IMAGE_PROVIDER : 'upload',
           provider,
           referenceId: reference.id,
+          ...imageProfileRequest(),
         },
       })
       return payload.job
@@ -139,7 +144,11 @@ async function main() {
     }
   })
 
-  console.log(JSON.stringify({ ok: true, mode: { LIVE_OPENAI, LIVE_IMAGE_GATEWAY, LIVE_3D, FULL_WORKFLOW, IMAGE_PROVIDER }, report }, null, 2))
+  console.log(JSON.stringify({
+    ok: true,
+    mode: { LIVE_OPENAI, LIVE_IMAGE_GATEWAY, LIVE_3D, FULL_WORKFLOW, IMAGE_PROVIDER, IMAGE_PROFILE },
+    report,
+  }, null, 2))
 }
 
 async function step(name, fn) {
@@ -185,6 +194,9 @@ async function inspectReference(reference) {
     promptModel: reference.promptModel,
     bytes: buffer.byteLength,
     imageUrl: reference.imageUrl,
+    imageProfile: reference.imageProfile,
+    imageSize: reference.imageSize,
+    imageQuality: reference.imageQuality,
     signature: png ? 'PNG' : 'JPEG',
   }
 }
@@ -221,6 +233,14 @@ function boolEnv(...names) {
     return ['1', 'true', 'yes', 'on'].includes(String(value).toLowerCase())
   }
   return false
+}
+
+function imageProfileRequest() {
+  return {
+    imageProfile: IMAGE_PROFILE,
+    ...(IMAGE_SIZE ? { imageSize: IMAGE_SIZE } : {}),
+    ...(IMAGE_QUALITY ? { imageQuality: IMAGE_QUALITY } : {}),
+  }
 }
 
 main().catch((error) => {

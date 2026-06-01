@@ -1,7 +1,12 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import { getModelExtension, sanitizeModelId, validateModelBuffer } from '../server/model-store.mjs'
-import { buildBioReadyPrompt, normalizeReferencePrompt, validateImageBuffer } from '../server/reference-store.mjs'
+import {
+  buildBioReadyPrompt,
+  normalizeImageGenerationOptions,
+  normalizeReferencePrompt,
+  validateImageBuffer,
+} from '../server/reference-store.mjs'
 import { sanitizeFileName } from '../server/http-utils.mjs'
 import { DEFAULT_IMAGE_PROVIDER } from '../server/config.mjs'
 import { isAnalyticsEventAllowed } from '../server/analytics-store.mjs'
@@ -14,6 +19,7 @@ import {
   getTemplateDisplayName,
   isRecoverableWorkflowJob,
   normalizeImageProvider,
+  normalizeImageProfile,
   normalizePrompt,
   normalizeProvider,
   normalizeWorkflowImageProvider,
@@ -59,6 +65,9 @@ describe('LearningCell fusion API utilities', () => {
     assert.equal(normalizeImageProvider('openai'), 'openai')
     assert.equal(normalizeImageProvider('local-gateway'), 'local-gateway')
     assert.equal(normalizeImageProvider(''), DEFAULT_IMAGE_PROVIDER)
+    assert.equal(normalizeImageProfile('fast'), 'fast')
+    assert.equal(normalizeImageProfile('detailed'), 'detailed')
+    assert.equal(normalizeImageProfile('nope'), 'standard')
     assert.equal(normalizeWorkflowImageProvider('upload'), 'upload')
     assert.throws(() => normalizeProvider('unknown'), /provider/)
     assert.throws(() => normalizeImageProvider('unknown'), /图片生成/)
@@ -82,6 +91,33 @@ describe('LearningCell fusion API utilities', () => {
     assert.match(result.imagePrompt, /bean-shaped mitochondrion/)
     assert.match(result.imagePrompt, /three-quarter open cutaway/)
     assert.match(result.negativePrompt, /transparent jelly/)
+  })
+
+  it('normalizes image generation profiles for the local gateway', () => {
+    assert.deepEqual(normalizeImageGenerationOptions({}), {
+      profile: 'standard',
+      size: '1536x1536',
+      quality: 'high',
+      label: '标准教学',
+    })
+    assert.deepEqual(normalizeImageGenerationOptions({ imageProfile: 'fast' }), {
+      profile: 'fast',
+      size: '1024x1024',
+      quality: 'medium',
+      label: '快速预览',
+    })
+    assert.deepEqual(normalizeImageGenerationOptions({ imageProfile: 'detailed' }), {
+      profile: 'detailed',
+      size: '2048x2048',
+      quality: 'high',
+      label: '精细单图',
+    })
+    assert.deepEqual(normalizeImageGenerationOptions({ imageProfile: 'unknown', imageSize: 'bad', imageQuality: 'ultra' }), {
+      profile: 'standard',
+      size: '1536x1536',
+      quality: 'high',
+      label: '标准教学',
+    })
   })
 
   it('builds customer-facing titles and cost estimates', () => {
