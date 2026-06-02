@@ -822,7 +822,7 @@ body {
 
 .prompt-preview-card,
 .job-detail-body,
-.job-history,
+.concept-list,
 .stage-note-panel,
 .specimen-summary-copy p,
 .cell-list {
@@ -832,7 +832,7 @@ body {
 
 .prompt-preview-card::-webkit-scrollbar,
 .job-detail-body::-webkit-scrollbar,
-.job-history::-webkit-scrollbar,
+.concept-list::-webkit-scrollbar,
 .stage-note-panel::-webkit-scrollbar,
 .specimen-summary-copy p::-webkit-scrollbar,
 .cell-list::-webkit-scrollbar {
@@ -842,7 +842,7 @@ body {
 
 .prompt-preview-card::-webkit-scrollbar-track,
 .job-detail-body::-webkit-scrollbar-track,
-.job-history::-webkit-scrollbar-track,
+.concept-list::-webkit-scrollbar-track,
 .stage-note-panel::-webkit-scrollbar-track,
 .specimen-summary-copy p::-webkit-scrollbar-track,
 .cell-list::-webkit-scrollbar-track {
@@ -851,7 +851,7 @@ body {
 
 .prompt-preview-card::-webkit-scrollbar-thumb,
 .job-detail-body::-webkit-scrollbar-thumb,
-.job-history::-webkit-scrollbar-thumb,
+.concept-list::-webkit-scrollbar-thumb,
 .stage-note-panel::-webkit-scrollbar-thumb,
 .specimen-summary-copy p::-webkit-scrollbar-thumb,
 .cell-list::-webkit-scrollbar-thumb {
@@ -1966,12 +1966,11 @@ body {
   flex: 0 0 auto;
   display: grid;
   gap: 5px;
-  max-height: 126px;
-  padding: 6px 4px 6px 0;
+  max-height: 116px;
+  padding: 6px 0;
   border-top: 1px solid rgba(28, 31, 27, 0.065);
   border-bottom: 1px solid rgba(28, 31, 27, 0.055);
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 .job-history-title {
@@ -2007,12 +2006,12 @@ body {
 
 .job-row {
   width: 100%;
-  min-height: 27px;
+  min-height: 25px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 10px;
-  padding: 5px 7px;
+  gap: 8px;
+  padding: 4px 7px;
   border: 1px solid var(--hairline-2);
   border-radius: 4px;
   background: rgba(252, 250, 244, 0.54);
@@ -2032,21 +2031,41 @@ body {
 .job-row strong {
   min-width: 0;
   overflow: hidden;
-  white-space: normal;
-  text-overflow: ellipsis;
   font-family: var(--font-mono);
-  font-size: 8.8px;
 }
 
 .job-row span {
-  display: -webkit-box;
-  line-height: 1.3;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  display: grid;
+  gap: 2px;
+}
+
+.job-row small,
+.job-row em {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.job-row small {
+  color: rgba(43, 42, 38, 0.42);
+  font-family: var(--font-mono);
+  font-size: 6.8px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.job-row em {
+  color: rgba(46, 48, 43, 0.78);
+  font-family: var(--font-mono);
+  font-size: 8.4px;
+  font-style: normal;
+  line-height: 1.16;
 }
 
 .job-row strong {
   white-space: nowrap;
+  font-size: 8.5px;
 }
 
 .job-row.completed strong {
@@ -2229,7 +2248,7 @@ body {
 .stage-info-main {
   top: 20px;
   left: 24px;
-  width: clamp(138px, 15vw, 172px);
+  width: clamp(132px, 14vw, 164px);
   padding: 7px 9px;
 }
 
@@ -2365,11 +2384,11 @@ body {
 
 .stage-order-card {
   position: absolute;
-  right: 58px;
+  right: 54px;
   top: 20px;
   z-index: 9;
-  width: clamp(132px, 15vw, 188px);
-  max-width: calc(100% - 84px);
+  width: clamp(146px, 19vw, 230px);
+  max-width: calc(100% - 74px);
   max-height: min(232px, calc(100% - 92px));
   padding: 8px 9px 9px;
   border: 1px solid rgba(28, 31, 27, 0.12);
@@ -2455,13 +2474,13 @@ body {
   overflow: hidden;
   color: var(--ink-mute);
   font-family: var(--font-sans);
-  font-size: 8.2px;
+  font-size: 8.4px;
   line-height: 1.32;
   letter-spacing: 0;
   overflow-wrap: anywhere;
   word-break: break-word;
   white-space: normal;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
 }
 
@@ -2592,7 +2611,7 @@ body {
 .stage-question-drawer:hover,
 .stage-question-drawer.open,
 .stage-question-drawer.pinned {
-  width: min(196px, 24%);
+  width: min(226px, 30%);
   grid-template-columns: minmax(0, 1fr) 38px;
   overflow: visible;
 }
@@ -2680,8 +2699,8 @@ body {
   margin-top: 7px;
   color: rgba(43, 42, 38, 0.82);
   font-family: "Klee One", "LXGW WenKai", "STKaiti", "KaiTi", var(--font-serif);
-  font-size: 8.6px;
-  line-height: 1.54;
+  font-size: 9.2px;
+  line-height: 1.48;
   letter-spacing: 0.025em;
   overflow-wrap: anywhere;
 }
@@ -2807,12 +2826,12 @@ body {
 
 .stage-concept-card {
   position: absolute;
-  right: 58px;
+  right: 54px;
   top: 198px;
   bottom: auto;
   z-index: 5;
-  width: clamp(132px, 15vw, 188px);
-  max-width: calc(100% - 84px);
+  width: clamp(148px, 20vw, 238px);
+  max-width: calc(100% - 74px);
   max-height: 112px;
   padding: 7px 8px 8px;
   border: 1px solid rgba(28, 31, 27, 0.1);
@@ -2860,8 +2879,12 @@ body {
 
 .concept-list {
   margin-top: 5px;
+  max-height: 74px;
   display: grid;
   gap: 3px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
 .concept-list article {
@@ -2892,8 +2915,8 @@ body {
   margin-top: 2px;
   overflow: hidden;
   color: var(--ink-mute);
-  font-size: 7.8px;
-  line-height: 1.32;
+  font-size: 8.2px;
+  line-height: 1.34;
   letter-spacing: 0;
   overflow-wrap: anywhere;
   word-break: break-word;
@@ -2906,7 +2929,7 @@ body {
   margin-top: 2px;
   color: rgba(43, 42, 38, 0.72);
   font-family: var(--font-mono);
-  font-size: 6.8px;
+  font-size: 7px;
   font-style: normal;
   letter-spacing: 0.02em;
   overflow-wrap: anywhere;

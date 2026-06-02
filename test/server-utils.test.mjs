@@ -13,6 +13,7 @@ import { DEFAULT_IMAGE_PROVIDER, WORKFLOW_JOBS_FILE } from '../server/config.mjs
 import { isAnalyticsEventAllowed } from '../server/analytics-store.mjs'
 import { formatModelBytes, getModelLoadHint, isHeavyModel } from '../app/src/lib/modelWeight.ts'
 import { getWorkflowWaitHint } from '../app/src/lib/workflowWait.ts'
+import { buildJobHistorySummary } from '../app/src/lib/jobHistory.ts'
 import { createWorkflowJob } from '../server/job-store.mjs'
 import {
   chooseTemplateForPrompt,
@@ -177,6 +178,25 @@ describe('LearningCell fusion API utilities', () => {
     assert.match(getWorkflowWaitHint(330, 'queue').hint, /队列/)
   })
 
+  it('summarizes job history instead of rendering a long queue', () => {
+    const jobs = [
+      makeJob('job-live', 'processing', '线粒体开放剖面教学模型'),
+      makeJob('job-done', 'completed', '叶绿体开放剖面教学模型'),
+      makeJob('job-failed', 'failed', '植物细胞完整教学模型'),
+      makeJob('job-old-1', 'completed', '植物细胞完整教学模型'),
+      makeJob('job-old-2', 'completed', '白细胞吞噬过程教学模型'),
+      makeJob('job-old-3', 'completed', 'DNA 双螺旋教学模型'),
+    ]
+    const active = makeJob('job-active', 'queued', '动物细胞 3D 教学模型')
+    const summary = buildJobHistorySummary(jobs, active)
+
+    assert.equal(summary.visible.length, 3)
+    assert.deepEqual(summary.visible.map((job) => job.id), ['job-active', 'job-live', 'job-done'])
+    assert.equal(summary.hiddenCount, 4)
+    assert.equal(summary.totalCount, 7)
+    assert.equal(summary.liveCount, 2)
+  })
+
   it('detects recoverable workflow jobs without reviving stale or completed work', () => {
     const now = Date.parse('2026-05-23T04:00:00.000Z')
     const baseJob = {
@@ -208,5 +228,21 @@ async function removeWorkflowJobFromStore(jobId) {
     await writeFile(WORKFLOW_JOBS_FILE, JSON.stringify(payload, null, 2))
   } catch (error) {
     if (error.code !== 'ENOENT') throw error
+  }
+}
+
+function makeJob(id, status, prompt) {
+  return {
+    id,
+    prompt,
+    provider: 'local-demo',
+    template: 'plant-cell',
+    status,
+    stage: '测试任务',
+    progress: status === 'completed' ? 100 : status === 'failed' ? 70 : 38,
+    costEstimateCny: 0,
+    createdAt: '2026-05-23T03:50:00.000Z',
+    updatedAt: '2026-05-23T03:58:00.000Z',
+    workflowMode: status === 'queued' ? 'full-text-to-3d' : 'image-to-3d',
   }
 }

@@ -173,7 +173,7 @@ function brightenMeshMaterial(material: THREE.Material | THREE.Material[]) {
     if (!item) continue;
     const standard = item as THREE.MeshStandardMaterial;
     if ('envMapIntensity' in standard) {
-      standard.envMapIntensity = Math.max(standard.envMapIntensity || 0, 0.82);
+      standard.envMapIntensity = Math.max(standard.envMapIntensity || 0, 1.08);
     }
     if ('roughness' in standard && typeof standard.roughness === 'number') {
       standard.roughness = Math.min(Math.max(standard.roughness, 0.48), 0.82);

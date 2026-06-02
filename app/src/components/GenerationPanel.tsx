@@ -16,6 +16,7 @@ import {
 } from '../services/fusionApi';
 import type { PromptPreviewPayload, ProviderStatusPayload, ReferenceImagePayload, WorkflowJob } from '../services/fusionApi';
 import { trackEvent } from '../lib/analytics';
+import { buildJobHistorySummary } from '../lib/jobHistory';
 import { getWorkflowWaitHint } from '../lib/workflowWait';
 
 interface Props {
@@ -774,8 +775,9 @@ export function GenerationPanel({
   const resultReview = activeJob?.status === 'completed' && activeJob.result
     ? buildResultReview(activeJob)
     : null;
-  const visibleJobHistory = buildVisibleJobHistory(jobHistory, activeJob);
-  const hiddenJobCount = Math.max(0, jobHistory.length - visibleJobHistory.length);
+  const jobHistorySummary = buildJobHistorySummary(jobHistory, activeJob);
+  const visibleJobHistory = jobHistorySummary.visible;
+  const hiddenJobCount = jobHistorySummary.hiddenCount;
   const quickStatusItems = [
     {
       label: '图片',
@@ -923,8 +925,8 @@ export function GenerationPanel({
         <div className="job-history">
           <div className="job-history-title">
             <span>最近任务</span>
-            <strong>关键 3 条</strong>
-            <em>{hiddenJobCount > 0 ? `已收起 ${hiddenJobCount} 条历史` : '没有更多历史'}</em>
+            <strong>{jobHistorySummary.liveCount > 0 ? `${jobHistorySummary.liveCount} 个运行中` : '关键 3 条'}</strong>
+            <em>{hiddenJobCount > 0 ? `收起 ${hiddenJobCount} 条` : `共 ${jobHistorySummary.totalCount} 条`}</em>
           </div>
           {visibleJobHistory.map((job) => (
             <button
@@ -933,7 +935,10 @@ export function GenerationPanel({
               key={job.id}
               onClick={() => handleSelectJob(job)}
             >
-              <span>{job.prompt}</span>
+              <span>
+                <small>{getWorkflowModeLabel(job.workflowMode || 'image-to-3d')} · {getShortJobId(job.id)}</small>
+                <em>{job.prompt}</em>
+              </span>
               <strong>{job.status === 'completed' ? '完成' : job.status === 'failed' ? '失败' : `${job.progress}%`}</strong>
             </button>
           ))}
@@ -1280,37 +1285,6 @@ export function GenerationPanel({
 
 function mergeJobs(job: WorkflowJob, jobs: WorkflowJob[]) {
   return [job, ...jobs.filter((item) => item.id !== job.id)].slice(0, 12);
-}
-
-function buildVisibleJobHistory(jobs: WorkflowJob[], activeJob: WorkflowJob | null) {
-  const visible: WorkflowJob[] = [];
-  const seenPrompts = new Set<string>();
-  const addJob = (job?: WorkflowJob | null) => {
-    if (!job || visible.some((item) => item.id === job.id)) return;
-    const promptKey = normalizeJobHistoryPrompt(job.prompt);
-    if (promptKey && seenPrompts.has(promptKey) && visible.length > 0) return;
-    if (promptKey) seenPrompts.add(promptKey);
-    visible.push(job);
-  };
-
-  addJob(activeJob);
-  addJob(jobs.find((job) => isLiveWorkflowJob(job)));
-  addJob(jobs.find((job) => job.status === 'completed'));
-  addJob(jobs.find((job) => job.status === 'failed'));
-
-  for (const job of jobs) {
-    if (visible.length >= 3) break;
-    addJob(job);
-  }
-
-  return visible.slice(0, 3);
-}
-
-function normalizeJobHistoryPrompt(prompt: string) {
-  return String(prompt || '')
-    .replace(/\s+/g, '')
-    .replace(/[，。,.!！?？:：；;]/g, '')
-    .slice(0, 36);
 }
 
 function getJobWaitStage(job: WorkflowJob, hasReference: boolean) {
