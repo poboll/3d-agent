@@ -11,9 +11,11 @@ import {
 import { sanitizeFileName } from '../server/http-utils.mjs'
 import { DEFAULT_IMAGE_PROVIDER, WORKFLOW_JOBS_FILE } from '../server/config.mjs'
 import { isAnalyticsEventAllowed } from '../server/analytics-store.mjs'
+import { isTransientComfyError, normalizeComfyFetchError, scrubComfyEndpoint } from '../server/comfyui-provider.mjs'
 import { formatModelBytes, getModelLoadHint, isHeavyModel } from '../app/src/lib/modelWeight.ts'
 import { getWorkflowWaitHint } from '../app/src/lib/workflowWait.ts'
 import { buildJobHistorySummary } from '../app/src/lib/jobHistory.ts'
+import { buildGenerationTimeline } from '../app/src/lib/workflowTimeline.ts'
 import { createWorkflowJob } from '../server/job-store.mjs'
 import {
   chooseTemplateForPrompt,
@@ -174,8 +176,20 @@ describe('LearningCell fusion API utilities', () => {
     assert.match(getWorkflowWaitHint(90, 'image').hint, /1536x1536/)
     assert.match(getWorkflowWaitHint(220, 'modeling').label, /可稍后恢复/)
     assert.match(getWorkflowWaitHint(220, 'modeling').hint, /textured\.glb/)
+    assert.match(getWorkflowWaitHint(90, 'modeling').hint, /标本列表/)
     assert.match(getWorkflowWaitHint(330, 'queue').label, /建议同步状态/)
     assert.match(getWorkflowWaitHint(330, 'queue').hint, /队列/)
+  })
+
+  it('normalizes transient ComfyUI network failures for recovery', () => {
+    const fetchError = new TypeError('fetch failed')
+    const normalized = normalizeComfyFetchError(fetchError, '查询 ComfyUI 任务历史', 'http://47.242.195.8:8010/history/abc?client=secret')
+
+    assert.equal(isTransientComfyError(fetchError), true)
+    assert.match(normalized.message, /查询 ComfyUI 任务历史失败/)
+    assert.match(normalized.message, /同步状态/)
+    assert.equal(normalized.endpoint, 'http://47.242.195.8:8010/history/abc')
+    assert.equal(scrubComfyEndpoint('http://47.242.195.8:8010/view?filename=model.glb&token=secret'), 'http://47.242.195.8:8010/view')
   })
 
   it('summarizes job history instead of rendering a long queue', () => {
@@ -195,6 +209,54 @@ describe('LearningCell fusion API utilities', () => {
     assert.equal(summary.hiddenCount, 4)
     assert.equal(summary.totalCount, 7)
     assert.equal(summary.liveCount, 2)
+  })
+
+  it('builds a clear full-generation timeline for the workbench', () => {
+    const idle = buildGenerationTimeline({
+      prompt: '植物细胞 3D 教学模型',
+      promptPreviewReady: false,
+      referenceReady: false,
+      referenceAccepted: false,
+      activeJob: null,
+      busy: false,
+      imageProviderLabel: '本地图片网关',
+      imageSpecLabel: '标准教学 1536x1536',
+      modelProviderLabel: '本地 TripoSG + 混元贴图',
+    })
+    assert.equal(idle.currentLabel, '可生成参考图')
+    assert.equal(idle.steps.find((step) => step.id === 'input').state, 'done')
+    assert.equal(idle.steps.find((step) => step.id === 'prompt').state, 'idle')
+    assert.match(idle.nextAction, /预览 Prompt/)
+
+    const live = buildGenerationTimeline({
+      prompt: '叶绿体开放剖面 3D 教学模型',
+      promptPreviewReady: true,
+      referenceReady: true,
+      referenceAccepted: true,
+      activeJob: { ...makeJob('job-modeling', 'processing', '叶绿体开放剖面 3D 教学模型'), referenceId: 'ref-1', workflowMode: 'full-text-to-3d' },
+      busy: true,
+      imageProviderLabel: '本地图片网关',
+      imageSpecLabel: '快速预览 1024x1024',
+      modelProviderLabel: '本地 TripoSG + 混元贴图',
+    })
+    assert.equal(live.currentLabel, '正在图生3D')
+    assert.equal(live.steps.find((step) => step.id === 'modeling').state, 'active')
+    assert.match(live.nextAction, /正在建模与贴图/)
+
+    const done = buildGenerationTimeline({
+      prompt: '线粒体开放剖面 3D 教学模型',
+      promptPreviewReady: true,
+      referenceReady: true,
+      referenceAccepted: true,
+      activeJob: { ...makeJob('job-done-timeline', 'completed', '线粒体开放剖面 3D 教学模型'), result: { modelUrl: '/api/3d/local-model/demo.glb' } },
+      busy: false,
+      imageProviderLabel: '本地图片网关',
+      imageSpecLabel: '标准教学 1536x1536',
+      modelProviderLabel: '本地 TripoSG + 混元贴图',
+    })
+    assert.equal(done.state, 'done')
+    assert.equal(done.currentLabel, '模型已入库')
+    assert.equal(done.steps.find((step) => step.id === 'library').state, 'done')
   })
 
   it('detects recoverable workflow jobs without reviving stale or completed work', () => {

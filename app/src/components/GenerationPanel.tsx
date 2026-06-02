@@ -17,6 +17,7 @@ import {
 import type { PromptPreviewPayload, ProviderStatusPayload, ReferenceImagePayload, WorkflowJob } from '../services/fusionApi';
 import { trackEvent } from '../lib/analytics';
 import { buildJobHistorySummary } from '../lib/jobHistory';
+import { buildGenerationTimeline } from '../lib/workflowTimeline';
 import { getWorkflowWaitHint } from '../lib/workflowWait';
 
 interface Props {
@@ -745,6 +746,7 @@ export function GenerationPanel({
   const gatewayRouteHint = buildGatewayRouteHint(providerStatus, imageProvider);
   const model3dReady = isModel3dReady(providerStatus);
   const activeChainSummary = buildActiveChainSummary(providerStatus, imageProvider, modelProvider);
+  const selectedModelProviderLabel = getModelProviderName(modelProvider);
   const stageMonitor = buildStageMonitor({
     activeJob,
     busy,
@@ -767,6 +769,18 @@ export function GenerationPanel({
   const detailReference = activeJob?.reference || (referenceImage ? referenceImageToPayload(referenceImage, prompt, template) : null);
   const detailsRows = activeJob ? buildJobDetailRows(activeJob) : [];
   const selectedImageProfileOption = getImageProfileOption(imageProfile);
+  const selectedImageSpecLabel = `${selectedImageProfileOption.label} ${selectedImageProfileOption.size}`;
+  const generationTimeline = buildGenerationTimeline({
+    prompt,
+    promptPreviewReady: Boolean(promptPreview),
+    referenceReady: Boolean(referenceImage),
+    referenceAccepted,
+    activeJob,
+    busy,
+    imageProviderLabel: selectedProviderLabel,
+    imageSpecLabel: selectedImageSpecLabel,
+    modelProviderLabel: selectedModelProviderLabel,
+  });
   const referenceSpecLabel = detailReference
     ? buildImageSpecLabel(detailReference.imageProfile, detailReference.imageSize, detailReference.imageQuality)
     : '';
@@ -802,6 +816,69 @@ export function GenerationPanel({
         <span className="generation-eyebrow">§ 01 — WORKFLOW DESK</span>
         <h2>生成工坊</h2>
         <p>文本或图片先形成参考图，确认后再交给图生 3D 服务，适合课堂里逐步讲解。</p>
+      </div>
+
+      <section className={`generation-timeline ${generationTimeline.state}`} aria-label="完整生成路线" data-testid="generation-timeline">
+        <header>
+          <span>生成路线</span>
+          <strong>{generationTimeline.currentLabel}</strong>
+        </header>
+        <ol>
+          {generationTimeline.steps.map((step) => (
+            <li className={step.state} key={step.id}>
+              <i>{step.no}</i>
+              <span>
+                <strong>{step.title}</strong>
+                <small>{step.caption}</small>
+              </span>
+            </li>
+          ))}
+        </ol>
+        <p>{generationTimeline.nextAction}</p>
+      </section>
+
+      <label className="generation-field generation-prompt-field">
+        <span>01 TEXT PROMPT / 生物结构描述</span>
+        <textarea
+          value={prompt}
+          maxLength={600}
+          onFocus={() => trackEvent('workflow_prompt_focus', { template })}
+          onChange={(event) => setPrompt(event.target.value)}
+          placeholder="例如：动物细胞 3D 教学模型，突出线粒体、细胞核和细胞膜"
+        />
+      </label>
+
+      <div className="generation-actions" id="workflow-actions" aria-label="生成操作">
+        <button type="button" className="generation-primary" onClick={handleCreateReference} disabled={!canCreateReference} data-testid="generate-reference">
+          生成参考图
+        </button>
+        <button type="button" className="generation-secondary" onClick={handlePreviewPrompt} disabled={!canCreateReference} data-testid="preview-prompt">
+          预览 Prompt
+        </button>
+        <button type="button" className="generation-primary full-action" onClick={handleRunFullWorkflow} disabled={!canCreateReference || busy} data-testid="run-full-workflow">
+          完整生成
+        </button>
+        <button type="button" className="generation-primary confirm-action" onClick={handleConfirmModeling} disabled={!canConfirmModeling} data-testid="confirm-modeling">
+          确认建模
+        </button>
+        <button type="button" className="generation-secondary" onClick={() => imageInputRef.current?.click()} disabled={busy} data-testid="upload-reference-image">
+          上传图片
+        </button>
+        <button type="button" className="generation-secondary" onClick={handleCreateReference} disabled={!canCreateReference} data-testid="retry-reference-image">
+          重试图片
+        </button>
+        <button type="button" className="generation-secondary" onClick={handleAcceptReference} disabled={!referenceImage || busy} data-testid="accept-reference-image">
+          {referenceAccepted ? '已接收' : '接收图片'}
+        </button>
+        <button type="button" className="generation-secondary" onClick={handleRejectReference} disabled={!referenceImage || busy} data-testid="reject-reference-image">
+          退回图片
+        </button>
+        <button type="button" className="generation-secondary" onClick={handleLoadDemo} disabled={busy}>
+          加载缓存
+        </button>
+        <button type="button" className="generation-secondary" onClick={() => modelInputRef.current?.click()} disabled={busy}>
+          导入 GLB
+        </button>
       </div>
 
       {generatedModels.length > 0 && (
@@ -967,50 +1044,6 @@ export function GenerationPanel({
           </span>
         </button>
       )}
-
-      <label className="generation-field">
-        <span>01 TEXT PROMPT / 生物结构描述</span>
-        <textarea
-          value={prompt}
-          maxLength={600}
-          onFocus={() => trackEvent('workflow_prompt_focus', { template })}
-          onChange={(event) => setPrompt(event.target.value)}
-          placeholder="例如：动物细胞 3D 教学模型，突出线粒体、细胞核和细胞膜"
-        />
-      </label>
-
-      <div className="generation-actions" id="workflow-actions">
-        <button type="button" className="generation-primary" onClick={handleCreateReference} disabled={!canCreateReference} data-testid="generate-reference">
-          生成参考图
-        </button>
-        <button type="button" className="generation-secondary" onClick={handlePreviewPrompt} disabled={!canCreateReference} data-testid="preview-prompt">
-          预览 Prompt
-        </button>
-        <button type="button" className="generation-primary full-action" onClick={handleRunFullWorkflow} disabled={!canCreateReference || busy} data-testid="run-full-workflow">
-          完整生成
-        </button>
-        <button type="button" className="generation-primary confirm-action" onClick={handleConfirmModeling} disabled={!canConfirmModeling} data-testid="confirm-modeling">
-          确认建模
-        </button>
-        <button type="button" className="generation-secondary" onClick={() => imageInputRef.current?.click()} disabled={busy} data-testid="upload-reference-image">
-          上传图片
-        </button>
-        <button type="button" className="generation-secondary" onClick={handleCreateReference} disabled={!canCreateReference} data-testid="retry-reference-image">
-          重试图片
-        </button>
-        <button type="button" className="generation-secondary" onClick={handleAcceptReference} disabled={!referenceImage || busy} data-testid="accept-reference-image">
-          {referenceAccepted ? '已接收' : '接收图片'}
-        </button>
-        <button type="button" className="generation-secondary" onClick={handleRejectReference} disabled={!referenceImage || busy} data-testid="reject-reference-image">
-          退回图片
-        </button>
-        <button type="button" className="generation-secondary" onClick={handleLoadDemo} disabled={busy}>
-          加载缓存
-        </button>
-        <button type="button" className="generation-secondary" onClick={() => modelInputRef.current?.click()} disabled={busy}>
-          导入 GLB
-        </button>
-      </div>
 
       {stageMonitor && (
         <button
@@ -1495,7 +1528,7 @@ function buildTaskWatch(job: WorkflowJob, now: number): TaskWatch {
     hint = job.error || job.stage || '请检查图片网关、3D 服务和参考图缓存。';
   } else if (job.provider === 'selfhost-triposg' && progress >= 80) {
     title = '正在等待贴图与 GLB 输出';
-    hint = '80% 后通常是远端三维服务的打包、贴图或文件写入阶段；可保持页面开启，或稍后点击同步状态。';
+    hint = job.stage || '80% 后通常是远端三维服务的打包、贴图或文件写入阶段；可保持页面开启，或稍后点击同步状态。';
   } else if (job.workflowMode === 'full-text-to-3d' && !hasReference) {
     title = '正在等待参考图';
     hint = secondsSinceUpdate > 120
@@ -1615,7 +1648,7 @@ function buildStageMonitor({
       chain: `${imageProviderLabel} / ${modelProviderLabel}`,
       estimate: activeJob.referenceId ? '3D 建模通常数分钟' : '参考图约 1-7 分钟',
       nextAction: activeJob.referenceId
-        ? '保持页面开启，完成后会自动加入标本列表并切换到新模型。'
+        ? '保持页面开启；远端完成 raw.glb/textured.glb 后会自动下载缓存并加入标本列表。'
         : '正在等待本地图片网关返回 3D-ready 单图；生成后会自动进入建模队列。',
     };
   }

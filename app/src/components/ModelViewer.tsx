@@ -53,16 +53,23 @@ export function ModelViewer({ model }: Props) {
     const target = event.target;
     if (!(target instanceof Element)) return;
 
-    if (target.closest('.stage-control-strip, .stage-question-drawer, .stage-order-card, .stage-note-panel, .stage-info-main, .stage-concept-card')) {
-      if (!target.closest('.stage-question-drawer')) setModelFocus(false);
-      return;
-    }
-
     const rect = event.currentTarget.getBoundingClientRect();
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
     const w = rect.width;
     const h = rect.height;
+    const isCentralModelZone = x > w * 0.18 && x < w * 0.82 && y > h * 0.14 && y < h * 0.86;
+
+    if (target.closest('.stage-control-strip, .stage-question-drawer')) {
+      setModelFocus(false);
+      return;
+    }
+
+    if (target.closest('.stage-order-card, .stage-note-panel, .stage-info-main, .stage-concept-card')) {
+      setModelFocus(isCentralModelZone);
+      return;
+    }
+
     const isQuestionHotZone = x > w - 76 && y > 126 && y < h - 48;
     if (isQuestionHotZone) {
       setClueOpen(true);
@@ -90,7 +97,11 @@ export function ModelViewer({ model }: Props) {
       data-testid="model-viewer"
     >
       <div className="viewer-interaction-frame">
-        <div className="viewer-canvas-zone">
+        <div
+          className="viewer-canvas-zone"
+          onPointerEnter={() => setModelFocus(true)}
+          onPointerMove={() => setModelFocus(true)}
+        >
           <Canvas
             frameloop={autoRotate ? 'always' : 'demand'}
             shadows="percentage"

@@ -11,6 +11,7 @@ const UI_SOURCE_FILES = [
   'app/src/components/ProgressOverlay.tsx',
   'app/src/lib/modelWeight.ts',
   'app/src/lib/workflowWait.ts',
+  'app/src/lib/workflowTimeline.ts',
   'app/src/data/models.ts',
 ]
 
@@ -43,6 +44,7 @@ async function main() {
       'task-watch-card',
       'task-watch-wait',
       'sync-active-job',
+      'generation-timeline',
       'job-result-review',
       'review-view-model',
       'review-open-reference',
@@ -78,6 +80,10 @@ async function main() {
       '可稍后恢复',
       '建议同步状态',
       '队列只展示关键 3 条',
+      '生成路线',
+      '等待接收图片',
+      '正在图生3D',
+      '模型已入库',
       'ATP',
       '光合作用',
     ]

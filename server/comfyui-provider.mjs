@@ -18,6 +18,9 @@ import { sanitizeFileName } from './http-utils.mjs'
 import { sanitizeModelId, validateModelBuffer } from './model-store.mjs'
 import { getTemplateDisplayName } from './workflow-utils.mjs'
 
+const COMFYUI_HISTORY_RETRY_LIMIT = 8
+const COMFYUI_DOWNLOAD_RETRY_LIMIT = 3
+
 export async function getComfyUiStatus() {
   try {
     const stats = await fetchJson(`${COMFYUI_BASE_URL}/system_stats`, { timeoutMs: 12000 })
@@ -233,11 +236,13 @@ async function pollHistory(promptId, onTick) {
     await delay(COMFYUI_POLL_INTERVAL_MS)
     tick += 1
     const progress = Math.min(82, 52 + tick * 3)
-    await onTick(progress, '本地三维服务正在生成模型，请保持服务在线。')
-    const history = await fetchJson(`${COMFYUI_BASE_URL}/history/${encodeURIComponent(promptId)}`, {
+    await onTick(progress, '本地三维服务正在输出几何与贴图，完成后会自动下载 GLB 并写入标本索引。')
+    const historyUrl = `${COMFYUI_BASE_URL}/history/${encodeURIComponent(promptId)}`
+    const history = await fetchJson(historyUrl, {
       timeoutMs: 60000,
+      context: '查询 ComfyUI 任务历史',
     }).catch((error) => {
-      if (error.name === 'AbortError') return null
+      if (isTransientComfyError(error) && tick <= COMFYUI_HISTORY_RETRY_LIMIT) return null
       throw error
     })
     if (!history) continue
@@ -350,8 +355,11 @@ function pickTexturedOutput(outputs) {
 
 async function downloadOutput(output, targetPath) {
   const url = output.serverPath ? outputPathToViewUrl(output.serverPath) : outputObjectToViewUrl(output)
-  const response = await fetch(url)
-  if (!response.ok) throw new Error(`下载 GLB 失败：${response.status}`)
+  const response = await fetchWithRetry(url, {
+    timeoutMs: 120000,
+    retries: COMFYUI_DOWNLOAD_RETRY_LIMIT,
+    context: '下载 ComfyUI GLB 输出',
+  })
   const tmpPath = `${targetPath}.downloading`
   await writeFile(tmpPath, Buffer.from(await response.arrayBuffer()))
   await rename(tmpPath, targetPath)
@@ -382,26 +390,109 @@ async function saveHistory(jobId, promptId, historyItem) {
   await writeFile(path.join(WORKFLOW_STORE_DIR, fileName), JSON.stringify(historyItem, null, 2))
 }
 
-async function fetchJson(url, { method = 'GET', headers = {}, body, timeoutMs = 30000 } = {}) {
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), timeoutMs)
-  try {
-    const response = await fetch(url, {
-      method,
-      headers,
-      body,
-      signal: controller.signal,
+async function fetchJson(url, { method = 'GET', headers = {}, body, timeoutMs = 30000, context = '请求 ComfyUI' } = {}) {
+  const response = await fetchWithRetry(url, {
+    method,
+    headers,
+    body,
+    timeoutMs,
+    context,
+    retries: method === 'GET' ? 2 : 0,
+  })
+  const text = await response.text()
+  const payload = text ? parseJsonPayload(text, context) : {}
+  if (!response.ok) {
+    throw Object.assign(new Error(payload?.error?.message || payload?.error || `${context}失败：HTTP ${response.status}`), {
+      status: response.status,
+      detail: payload,
+      endpoint: scrubComfyEndpoint(url),
     })
-    const payload = await response.json().catch(async () => ({ error: await response.text() }))
-    if (!response.ok) {
-      throw Object.assign(new Error(payload?.error?.message || payload?.error || `HTTP ${response.status}`), {
-        status: response.status,
-        detail: payload,
+  }
+  return payload
+}
+
+async function fetchWithRetry(url, {
+  method = 'GET',
+  headers = {},
+  body,
+  timeoutMs = 30000,
+  retries = 0,
+  context = '请求 ComfyUI',
+} = {}) {
+  let lastError
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), timeoutMs)
+    try {
+      const response = await fetch(url, {
+        method,
+        headers,
+        body,
+        signal: controller.signal,
       })
+      if (response.ok || attempt >= retries || !isRetryableStatus(response.status)) return response
+      lastError = Object.assign(new Error(`${context}失败：HTTP ${response.status}`), {
+        status: response.status,
+        endpoint: scrubComfyEndpoint(url),
+      })
+    } catch (error) {
+      lastError = normalizeComfyFetchError(error, context, url)
+      if (attempt >= retries || !isTransientComfyError(error)) throw lastError
+    } finally {
+      clearTimeout(timeout)
     }
-    return payload
-  } finally {
-    clearTimeout(timeout)
+    await delay(Math.min(6000, 700 * (attempt + 1)))
+  }
+  throw lastError || new Error(`${context}失败。`)
+}
+
+function parseJsonPayload(text, context) {
+  try {
+    return JSON.parse(text)
+  } catch (error) {
+    throw Object.assign(new Error(`${context}返回了无法解析的 JSON。`), {
+      cause: error,
+      detail: text.slice(0, 240),
+    })
+  }
+}
+
+export function normalizeComfyFetchError(error, context = '请求 ComfyUI', url = COMFYUI_BASE_URL) {
+  const endpoint = scrubComfyEndpoint(url)
+  if (error?.name === 'AbortError') {
+    return Object.assign(new Error(`${context}超时，请检查 3D 服务队列或稍后同步状态。`), {
+      cause: error,
+      endpoint,
+    })
+  }
+  const reason = error?.cause?.code || error?.code || error?.message || '网络请求失败'
+  return Object.assign(new Error(`${context}失败：${reason}。请确认 3D 服务仍可访问，稍后可点击“同步状态”续接任务。`), {
+    cause: error,
+    endpoint,
+  })
+}
+
+export function isTransientComfyError(error) {
+  const message = [
+    error?.name,
+    error?.code,
+    error?.message,
+    error?.cause?.code,
+    error?.cause?.message,
+  ].filter(Boolean).join(' ')
+  return /AbortError|fetch failed|ECONNRESET|ECONNREFUSED|ETIMEDOUT|EAI_AGAIN|UND_ERR|network|socket|terminated|other side closed/i.test(message)
+}
+
+function isRetryableStatus(status) {
+  return status === 408 || status === 425 || status === 429 || status >= 500
+}
+
+export function scrubComfyEndpoint(url) {
+  try {
+    const parsed = new URL(url)
+    return `${parsed.origin}${parsed.pathname}`
+  } catch {
+    return String(url).split('?')[0]
   }
 }
 
