@@ -1445,13 +1445,17 @@ body {
 
 .task-watch-head strong {
   min-width: 0;
+  display: -webkit-box;
   overflow: hidden;
   color: var(--sumi);
   font-family: var(--font-serif);
   font-size: 11.4px;
   font-weight: 600;
+  line-height: 1.18;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .task-watch-actions {
@@ -1525,14 +1529,18 @@ body {
 
 .task-watch-grid strong {
   min-width: 0;
+  display: -webkit-box;
   overflow: hidden;
   color: var(--sumi-soft);
   font-family: var(--font-mono);
   font-size: 7.2px;
   font-weight: 700;
+  line-height: 1.25;
   letter-spacing: 0.025em;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .task-watch-grid .ok strong {
@@ -1558,7 +1566,8 @@ body {
 }
 
 .task-watch-wait,
-.task-watch-recovery {
+.task-watch-recovery,
+.task-watch-diagnostics {
   min-width: 0;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -1583,8 +1592,29 @@ body {
     repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.016) 0 1px, transparent 1px 12px);
 }
 
+.task-watch-diagnostics {
+  grid-template-columns: auto minmax(0, 0.72fr) minmax(0, 1.28fr);
+  padding-block: 5px;
+  background:
+    linear-gradient(90deg, rgba(214, 205, 184, 0.22), rgba(251, 250, 244, 0.31)),
+    repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.014) 0 1px, transparent 1px 12px);
+}
+
+.task-watch-diagnostics.ok {
+  background:
+    linear-gradient(90deg, rgba(89, 111, 85, 0.13), rgba(251, 250, 244, 0.32)),
+    repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.015) 0 1px, transparent 1px 12px);
+}
+
+.task-watch-diagnostics.warn {
+  background:
+    linear-gradient(90deg, rgba(139, 58, 46, 0.07), rgba(251, 250, 244, 0.31)),
+    repeating-linear-gradient(103deg, rgba(139, 58, 46, 0.012) 0 1px, transparent 1px 12px);
+}
+
 .task-watch-wait span,
-.task-watch-recovery span {
+.task-watch-recovery span,
+.task-watch-diagnostics span {
   padding-left: 6px;
   border-left: 1px solid rgba(139, 58, 46, 0.36);
   color: var(--vermilion);
@@ -1600,9 +1630,27 @@ body {
   color: var(--moss);
 }
 
+.task-watch-diagnostics span {
+  border-left-color: rgba(120, 102, 73, 0.38);
+  color: rgba(120, 102, 73, 0.92);
+}
+
+.task-watch-diagnostics.ok span {
+  border-left-color: rgba(89, 111, 85, 0.44);
+  color: var(--moss);
+}
+
+.task-watch-diagnostics.warn span {
+  border-left-color: rgba(139, 58, 46, 0.42);
+  color: var(--vermilion);
+}
+
 .task-watch-wait strong,
-.task-watch-recovery strong {
+.task-watch-recovery strong,
+.task-watch-diagnostics strong,
+.task-watch-diagnostics em {
   min-width: 0;
+  display: -webkit-box;
   overflow: hidden;
   color: rgba(43, 42, 38, 0.76);
   font-family: var(--font-mono);
@@ -1611,7 +1659,15 @@ body {
   line-height: 1.35;
   letter-spacing: 0.025em;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.task-watch-diagnostics em {
+  color: rgba(43, 42, 38, 0.66);
+  font-style: normal;
+  font-weight: 600;
 }
 
 .job-detail-drawer {

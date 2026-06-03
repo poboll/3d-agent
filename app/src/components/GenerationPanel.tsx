@@ -7,6 +7,7 @@ import {
   fetchProviderStatus,
   createTextToCellJob,
   fetchDemoGeneratedModels,
+  fetchWorkflowDiagnostics,
   fetchWorkflowJob,
   fetchWorkflowJobs,
   previewReferencePrompt,
@@ -15,7 +16,7 @@ import {
   uploadReferenceImage,
   workflowJobToCellModel,
 } from '../services/fusionApi';
-import type { PromptPreviewPayload, ProviderStatusPayload, ReferenceImagePayload, WorkflowJob } from '../services/fusionApi';
+import type { PromptPreviewPayload, ProviderStatusPayload, ReferenceImagePayload, WorkflowDiagnosticsPayload, WorkflowJob } from '../services/fusionApi';
 import { trackEvent } from '../lib/analytics';
 import { buildJobHistorySummary } from '../lib/jobHistory';
 import { buildGenerationTimeline } from '../lib/workflowTimeline';
@@ -59,6 +60,8 @@ export function GenerationPanel({
   const [operationStartedAt, setOperationStartedAt] = useState<number | null>(null);
   const [clockNow, setClockNow] = useState(getTimestamp);
   const [syncingJobId, setSyncingJobId] = useState<string | null>(null);
+  const [diagnostics, setDiagnostics] = useState<WorkflowDiagnosticsPayload | null>(null);
+  const [diagnosingJobId, setDiagnosingJobId] = useState<string | null>(null);
 
   const phase = getWorkflowPhase({ referenceImage, activeJob, busy });
   const failedPhase = getWorkflowFailedPhase(activeJob);
@@ -656,6 +659,45 @@ export function GenerationPanel({
     }
   };
 
+  const handleDiagnoseActiveJob = async () => {
+    if (!activeJob || diagnosingJobId) return;
+    setDiagnosingJobId(activeJob.id);
+    setStatus('正在诊断远端三维任务...');
+    trackEvent('workflow_job_manual_sync', {
+      jobId: activeJob.id,
+      provider: activeJob.provider,
+      status: activeJob.status,
+      action: 'diagnose-selfhost-output',
+    });
+    try {
+      const nextDiagnostics = await fetchWorkflowDiagnostics(activeJob.id);
+      setDiagnostics(nextDiagnostics);
+      setStatus(nextDiagnostics.recommendation);
+      setDetailsOpen(true);
+      trackEvent('workflow_job_manual_sync', {
+        jobId: activeJob.id,
+        provider: activeJob.provider,
+        status: activeJob.status,
+        action: 'diagnose-selfhost-output-completed',
+        glbCount: nextDiagnostics.outputs.glbCount,
+        queueRunning: nextDiagnostics.queue.running,
+        queuePending: nextDiagnostics.queue.pending,
+        historyFound: nextDiagnostics.history.found,
+      });
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : '远端诊断失败。');
+      trackEvent('workflow_job_failed', {
+        jobId: activeJob.id,
+        template: activeJob.template,
+        provider: activeJob.provider,
+        message: error instanceof Error ? error.message : 'diagnostics failed',
+        action: 'diagnose-selfhost-output',
+      });
+    } finally {
+      setDiagnosingJobId(null);
+    }
+  };
+
   const handleOpenActiveJobModel = () => {
     if (!activeJob) return;
     const model = workflowJobToCellModel(activeJob);
@@ -816,6 +858,7 @@ export function GenerationPanel({
   const resultModelUrl = activeJob?.result?.modelUrl;
   const rawModelUrl = activeJob?.result?.rawModelUrl;
   const canResumeActiveJob = isSelfhostJobResumable(activeJob);
+  const canDiagnoseActiveJob = isSelfhostJobDiagnosable(activeJob);
   const resultReview = activeJob?.status === 'completed' && activeJob.result
     ? buildResultReview(activeJob)
     : null;
@@ -1005,6 +1048,11 @@ export function GenerationPanel({
                   续接输出
                 </button>
               )}
+              {canDiagnoseActiveJob && (
+                <button type="button" onClick={handleDiagnoseActiveJob} disabled={Boolean(diagnosingJobId)} data-testid="diagnose-active-job">
+                  {diagnosingJobId ? '诊断中' : '诊断远端'}
+                </button>
+              )}
               {activeJob?.result && (
                 <button type="button" onClick={handleOpenActiveJobModel} data-testid="open-active-job-model">
                   查看模型
@@ -1028,6 +1076,15 @@ export function GenerationPanel({
             <div className="task-watch-recovery" data-testid="task-watch-recovery">
               <span>{taskWatch.recoveryLabel}</span>
               <strong>{taskWatch.recoveryHint}</strong>
+            </div>
+          )}
+          {diagnostics && activeJob?.providerJobId === diagnostics.promptId && (
+            <div className={`task-watch-diagnostics ${diagnostics.outputs.glbCount > 0 ? 'ok' : diagnostics.history.found ? 'warn' : 'pending'}`} data-testid="task-watch-diagnostics">
+              <span>远端诊断</span>
+              <strong>
+                队列 {diagnostics.queue.running}/{diagnostics.queue.pending} · history {diagnostics.history.found ? diagnostics.history.status : '未返回'} · GLB {diagnostics.outputs.glbCount}
+              </strong>
+              <em>{diagnostics.recommendation}</em>
             </div>
           )}
           {taskWatch.waitLabel && taskWatch.waitHint && (
@@ -1144,6 +1201,11 @@ export function GenerationPanel({
                   {canResumeActiveJob && (
                     <button type="button" onClick={handleResumeActiveJob} disabled={Boolean(syncingJobId)}>
                       续接输出
+                    </button>
+                  )}
+                  {canDiagnoseActiveJob && (
+                    <button type="button" onClick={handleDiagnoseActiveJob} disabled={Boolean(diagnosingJobId)}>
+                      诊断远端
                     </button>
                   )}
                   {activeJob.result && (
@@ -1800,6 +1862,14 @@ function isSelfhostJobResumable(job: WorkflowJob | null) {
   return job.provider === 'selfhost-triposg'
     && Boolean(job.providerJobId)
     && job.status === 'failed'
+    && !job.result;
+}
+
+function isSelfhostJobDiagnosable(job: WorkflowJob | null) {
+  if (!job) return false;
+  return job.provider === 'selfhost-triposg'
+    && Boolean(job.providerJobId)
+    && job.status !== 'completed'
     && !job.result;
 }
 

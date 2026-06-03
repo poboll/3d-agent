@@ -52,6 +52,54 @@ export async function getComfyUiStatus() {
   }
 }
 
+export async function diagnoseComfyUiJob(job) {
+  if (!job?.providerJobId) {
+    throw Object.assign(new Error('缺少 ComfyUI prompt_id，无法诊断远端三维任务。'), { status: 400 })
+  }
+
+  const [queue, historyPayload] = await Promise.all([
+    fetchJson(`${COMFYUI_BASE_URL}/queue`, {
+      timeoutMs: 15000,
+      context: '查询 ComfyUI 队列',
+    }).catch((error) => ({
+      error: error.message || '队列查询失败。',
+    })),
+    fetchJson(`${COMFYUI_BASE_URL}/history/${encodeURIComponent(job.providerJobId)}`, {
+      timeoutMs: 30000,
+      context: '查询 ComfyUI 任务历史',
+    }).catch((error) => ({
+      error: error.message || '历史查询失败。',
+    })),
+  ])
+
+  const historyItem = historyPayload?.[job.providerJobId] || (historyPayload && !historyPayload.error ? Object.values(historyPayload)[0] : null)
+  const outputs = historyItem ? findGlbOutputs(historyItem) : []
+  const queueSummary = summarizeComfyQueue(queue, job.providerJobId)
+  const historyStatus = summarizeHistoryStatus(historyItem, historyPayload?.error)
+  if (historyItem) await saveHistory(job.id, job.providerJobId, historyItem)
+
+  return {
+    promptId: job.providerJobId,
+    shortPromptId: shortPromptId(job.providerJobId),
+    baseUrl: COMFYUI_BASE_URL,
+    queue: queueSummary,
+    history: historyStatus,
+    outputs: {
+      glbCount: outputs.length,
+      textured: outputs.some((item) => /painted|hy3dpaint|textured/i.test(item.label || item.fileName || item.serverPath || '')),
+      raw: outputs.some((item) => /raw/i.test(item.label || item.fileName || item.serverPath || '')),
+      candidates: outputs.slice(0, 4).map((item) => ({
+        fileName: item.fileName,
+        label: item.label,
+        type: item.type || 'output',
+        subfolder: item.subfolder || '',
+      })),
+    },
+    recommendation: buildComfyDiagnosisRecommendation({ queueSummary, historyStatus, outputs }),
+    checkedAt: new Date().toISOString(),
+  }
+}
+
 export async function generateComfyUiModel(job, onProgress) {
   if (!job.referenceId) {
     throw Object.assign(new Error('缺少参考图，请先确认图片。'), { status: 400 })
@@ -322,6 +370,81 @@ function findGlbOutputs(historyItem) {
   })
 
   return dedupeOutputs(outputs)
+}
+
+function summarizeComfyQueue(queue, promptId) {
+  if (queue?.error) {
+    return {
+      ok: false,
+      running: 0,
+      pending: 0,
+      containsPrompt: false,
+      message: queue.error,
+    }
+  }
+
+  const runningItems = Array.isArray(queue?.queue_running) ? queue.queue_running : []
+  const pendingItems = Array.isArray(queue?.queue_pending) ? queue.queue_pending : []
+  const containsPrompt = [...runningItems, ...pendingItems].some((item) => JSON.stringify(item).includes(promptId))
+  return {
+    ok: true,
+    running: runningItems.length,
+    pending: pendingItems.length,
+    containsPrompt,
+    message: containsPrompt
+      ? '远端队列仍包含该任务。'
+      : runningItems.length || pendingItems.length
+        ? '远端队列有其他任务，该任务暂未出现在队列摘要中。'
+        : '远端队列为空，该任务可能已离队，需检查 history 输出。',
+  }
+}
+
+function summarizeHistoryStatus(historyItem, historyError) {
+  if (historyError) {
+    return {
+      ok: false,
+      found: false,
+      status: 'error',
+      message: historyError,
+    }
+  }
+  if (!historyItem) {
+    return {
+      ok: true,
+      found: false,
+      status: 'missing',
+      message: 'history 暂未返回该 prompt_id，可能仍在远端写入或已被清理。',
+    }
+  }
+
+  const status = historyItem.status || {}
+  const statusText = status.status_str || 'unknown'
+  const hasExecutionError = (status.messages || []).some((message) => {
+    const [event] = Array.isArray(message) ? message : []
+    return event === 'execution_error'
+  })
+  return {
+    ok: !hasExecutionError && statusText !== 'error',
+    found: true,
+    status: hasExecutionError ? 'execution_error' : statusText,
+    message: hasExecutionError
+      ? 'history 已返回执行错误，请展开任务详情查看服务端错误。'
+      : statusText === 'success'
+        ? 'history 已返回成功状态，正在检查 GLB 输出。'
+        : `history 已返回状态：${statusText}。`,
+  }
+}
+
+function buildComfyDiagnosisRecommendation({ queueSummary, historyStatus, outputs }) {
+  if (outputs.length) return 'history 已发现 GLB 输出，可点击“续接输出”下载并写入模型缓存。'
+  if (historyStatus.found && historyStatus.status === 'success') return 'history 成功但未发现 GLB，建议检查 ComfyUI 工作流输出节点或 output_prefix。'
+  if (!queueSummary.running && !queueSummary.pending && !historyStatus.found) return '远端队列为空且 history 暂缺，建议稍后再次诊断；若持续如此，可能需要检查远端 history 保留策略。'
+  if (queueSummary.containsPrompt) return '远端队列仍包含该任务，请等待或稍后同步状态。'
+  return '请保持任务记录，可稍后点击“诊断远端”或“续接输出”。'
+}
+
+function shortPromptId(promptId) {
+  return String(promptId || '').slice(-8).toUpperCase() || 'COMFYUI'
 }
 
 function walk(value, visit, key = '') {

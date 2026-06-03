@@ -112,22 +112,22 @@ export function ModelViewer({ model }: Props) {
               preserveDrawingBuffer: true,
             }}
           >
-            <ambientLight intensity={1.38} />
+            <ambientLight intensity={1.5} />
             <directionalLight
               position={[5, 6, 4]}
-              intensity={2.18}
+              intensity={2.32}
               castShadow
               shadow-mapSize-width={1024}
               shadow-mapSize-height={1024}
             />
-            <directionalLight position={[-3, 2, -4]} intensity={1.08} />
-            <directionalLight position={[0, 2.4, 5]} intensity={0.72} />
-            <hemisphereLight args={['#fff7e6', '#d9e4d2', 0.76]} />
+            <directionalLight position={[-3, 2, -4]} intensity={1.14} />
+            <directionalLight position={[0, 2.4, 5]} intensity={0.82} />
+            <hemisphereLight args={['#fff7e6', '#d9e4d2', 0.82]} />
 
-            <Environment resolution={128} frames={1} environmentIntensity={1.48}>
-              <Lightformer form="rect" intensity={3.36} position={[0, 4, 4]} scale={[5.4, 2.4, 1]} />
-              <Lightformer form="rect" intensity={1.92} position={[-4, 2, -2]} scale={[3.4, 4.4, 1]} />
-              <Lightformer form="ring" intensity={1.24} position={[4, 1.5, -3]} scale={2.6} />
+            <Environment resolution={128} frames={1} environmentIntensity={1.58}>
+              <Lightformer form="rect" intensity={3.52} position={[0, 4, 4]} scale={[5.4, 2.4, 1]} />
+              <Lightformer form="rect" intensity={2.04} position={[-4, 2, -2]} scale={[3.4, 4.4, 1]} />
+              <Lightformer form="ring" intensity={1.34} position={[4, 1.5, -3]} scale={2.6} />
             </Environment>
 
             {isReady && entry?.gltf && (

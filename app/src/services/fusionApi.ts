@@ -77,6 +77,38 @@ export interface WorkflowJob {
   result?: DemoModelPayload;
 }
 
+export interface WorkflowDiagnosticsPayload {
+  promptId: string;
+  shortPromptId: string;
+  baseUrl: string;
+  queue: {
+    ok: boolean;
+    running: number;
+    pending: number;
+    containsPrompt: boolean;
+    message: string;
+  };
+  history: {
+    ok: boolean;
+    found: boolean;
+    status: string;
+    message: string;
+  };
+  outputs: {
+    glbCount: number;
+    textured: boolean;
+    raw: boolean;
+    candidates: Array<{
+      fileName?: string;
+      label?: string;
+      type?: string;
+      subfolder?: string;
+    }>;
+  };
+  recommendation: string;
+  checkedAt: string;
+}
+
 export interface PromptPreviewPayload {
   template: string;
   sourcePrompt: string;
@@ -300,6 +332,12 @@ export async function resumeWorkflowJob(jobId: string): Promise<WorkflowJob> {
   });
   const payload = await readApiResponse<{ job: WorkflowJob }>(response);
   return normalizeWorkflowJob(payload.job);
+}
+
+export async function fetchWorkflowDiagnostics(jobId: string): Promise<WorkflowDiagnosticsPayload> {
+  const response = await fetch(apiUrl(`/api/jobs/${encodeURIComponent(jobId)}/diagnostics`));
+  const payload = await readApiResponse<{ diagnostics: WorkflowDiagnosticsPayload }>(response);
+  return payload.diagnostics;
 }
 
 export async function fetchWorkflowJobs(limit = 12): Promise<WorkflowJob[]> {

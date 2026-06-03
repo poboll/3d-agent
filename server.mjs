@@ -28,7 +28,7 @@ import {
   startWorkflowJob,
 } from './server/workflow-runner.mjs'
 import { appendAnalyticsEvents } from './server/analytics-store.mjs'
-import { getComfyUiStatus } from './server/comfyui-provider.mjs'
+import { diagnoseComfyUiJob, getComfyUiStatus } from './server/comfyui-provider.mjs'
 import {
   createReferenceImage,
   getLocalImageGatewayStatus,
@@ -199,6 +199,17 @@ const server = http.createServer(async (request, response) => {
           ? '已开始续接本地三维输出。'
           : '该任务当前不能续接，请重新生成参考图或重新建模。',
       })
+      return
+    }
+
+    if (request.method === 'GET' && /^\/api\/jobs\/[^/]+\/diagnostics$/.test(url.pathname)) {
+      const jobId = decodeURIComponent(url.pathname.replace(/^\/api\/jobs\//, '').replace(/\/diagnostics$/, ''))
+      const job = await getWorkflowJob(jobId)
+      if (job.provider !== 'selfhost-triposg') {
+        sendJson(response, 409, { error: '只有本地 TripoSG + Hunyuan3D-Paint 任务支持远端诊断。' })
+        return
+      }
+      sendJson(response, 200, { diagnostics: await diagnoseComfyUiJob(job) })
       return
     }
 
