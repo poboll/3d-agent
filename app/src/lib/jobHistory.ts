@@ -29,6 +29,7 @@ export function buildJobHistorySummary(
 
   addJob(activeJob);
   addJob(jobs.find(isLiveHistoryJob));
+  addJob(jobs.find(isResumableSelfhostHistoryJob));
   addJob(jobs.find((job) => job.status === 'completed'));
   addJob(jobs.find((job) => job.status === 'failed'));
 
@@ -46,6 +47,10 @@ export function buildJobHistorySummary(
 
 export function isLiveHistoryJob(job: WorkflowJob) {
   return job.status === 'queued' || job.status === 'processing';
+}
+
+export function isResumableSelfhostHistoryJob(job: WorkflowJob) {
+  return job.status === 'failed' && job.provider === 'selfhost-triposg' && Boolean(job.providerJobId);
 }
 
 function dedupeJobs(jobs: WorkflowJob[]) {

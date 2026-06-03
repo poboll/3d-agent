@@ -212,6 +212,26 @@ describe('LearningCell fusion API utilities', () => {
     assert.equal(summary.liveCount, 2)
   })
 
+  it('summarizes resumable self-hosted failures before old completed jobs', () => {
+    const failedSelfhost = {
+      ...makeJob('job-selfhost-failed', 'failed', '线粒体远端三维任务'),
+      provider: 'selfhost-triposg',
+      providerJobId: 'comfy-prompt-123',
+      updatedAt: '2026-05-23T03:59:00.000Z',
+    }
+    const jobs = [
+      makeJob('job-done-a', 'completed', '叶绿体教学模型'),
+      makeJob('job-done-b', 'completed', '植物细胞教学模型'),
+      makeJob('job-done-c', 'completed', 'DNA 教学模型'),
+      failedSelfhost,
+    ]
+    const summary = buildJobHistorySummary(jobs, null)
+
+    assert.equal(summary.visible.length, 3)
+    assert.equal(summary.visible[0].id, failedSelfhost.id)
+    assert.equal(summary.hiddenCount, 1)
+  })
+
   it('builds a clear full-generation timeline for the workbench', () => {
     const idle = buildGenerationTimeline({
       prompt: '植物细胞 3D 教学模型',

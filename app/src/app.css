@@ -1557,7 +1557,8 @@ body {
   -webkit-box-orient: vertical;
 }
 
-.task-watch-wait {
+.task-watch-wait,
+.task-watch-recovery {
   min-width: 0;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -1576,7 +1577,14 @@ body {
     repeating-linear-gradient(103deg, rgba(139, 58, 46, 0.014) 0 1px, transparent 1px 12px);
 }
 
-.task-watch-wait span {
+.task-watch-recovery {
+  background:
+    linear-gradient(90deg, rgba(89, 111, 85, 0.1), rgba(251, 250, 244, 0.3)),
+    repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.016) 0 1px, transparent 1px 12px);
+}
+
+.task-watch-wait span,
+.task-watch-recovery span {
   padding-left: 6px;
   border-left: 1px solid rgba(139, 58, 46, 0.36);
   color: var(--vermilion);
@@ -1587,7 +1595,13 @@ body {
   white-space: nowrap;
 }
 
-.task-watch-wait strong {
+.task-watch-recovery span {
+  border-left-color: rgba(89, 111, 85, 0.42);
+  color: var(--moss);
+}
+
+.task-watch-wait strong,
+.task-watch-recovery strong {
   min-width: 0;
   overflow: hidden;
   color: rgba(43, 42, 38, 0.76);

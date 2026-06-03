@@ -1024,6 +1024,12 @@ export function GenerationPanel({
             ))}
           </div>
           <p>{taskWatch.hint}</p>
+          {taskWatch.recoveryLabel && taskWatch.recoveryHint && (
+            <div className="task-watch-recovery" data-testid="task-watch-recovery">
+              <span>{taskWatch.recoveryLabel}</span>
+              <strong>{taskWatch.recoveryHint}</strong>
+            </div>
+          )}
           {taskWatch.waitLabel && taskWatch.waitHint && (
             <div className={`task-watch-wait ${taskWatch.waitState}`} data-testid="task-watch-wait">
               <span>{taskWatch.waitLabel}</span>
@@ -1392,7 +1398,7 @@ function referenceImageToPayload(reference: ReferenceImage, prompt: string, temp
 }
 
 function buildJobDetailRows(job: WorkflowJob) {
-  return [
+  const rows = [
     { label: '状态', value: getWorkflowStatusLabel(job.status) },
     { label: '进度', value: `${Math.max(0, Math.min(100, job.progress || 0))}%` },
     { label: '图片', value: getImageProviderName(job.imageProvider || 'local-gateway') },
@@ -1403,6 +1409,12 @@ function buildJobDetailRows(job: WorkflowJob) {
     { label: '成本', value: job.costEstimateCny ? `约 ${job.costEstimateCny} 元` : '本地链路' },
     { label: '更新', value: formatRelativeTime(job.updatedAt) },
   ];
+
+  if (job.provider === 'selfhost-triposg' && job.providerJobId) {
+    rows.splice(6, 0, { label: '续接ID', value: getShortJobId(job.providerJobId) });
+  }
+
+  return rows;
 }
 
 function buildResultReview(job: WorkflowJob) {
@@ -1505,6 +1517,8 @@ interface TaskWatch {
   title: string;
   progress: number;
   hint: string;
+  recoveryLabel?: string;
+  recoveryHint?: string;
   waitLabel?: string;
   waitHint?: string;
   waitState?: 'pending' | 'warn';
@@ -1560,15 +1574,28 @@ function buildTaskWatch(job: WorkflowJob, now: number): TaskWatch {
 
   let title = '任务正在运行';
   let hint = job.stage || '系统正在同步生成任务。';
+  let recoveryLabel: string | undefined;
+  let recoveryHint: string | undefined;
   if (job.status === 'completed') {
     title = '模型已缓存';
     hint = '结果已写入标本索引，可点击查看模型或复用参考图继续迭代。';
   } else if (job.status === 'failed') {
-    title = '任务需要复查';
-    hint = job.error || job.stage || '请检查图片网关、3D 服务和参考图缓存。';
+    if (job.provider === 'selfhost-triposg' && job.providerJobId) {
+      title = '远端输出可续接';
+      hint = '该任务已经拿到 ComfyUI prompt_id，可直接续接三维输出，不需要重新生成参考图。';
+      recoveryLabel = '可续接';
+      recoveryHint = `点击“续接输出”按 ${getShortJobId(job.providerJobId)} 拉取 history / GLB。`;
+    } else {
+      title = '任务需要复查';
+      hint = job.error || job.stage || '请检查图片网关、3D 服务和参考图缓存。';
+    }
   } else if (job.provider === 'selfhost-triposg' && progress >= 80) {
-    title = '正在等待贴图与 GLB 输出';
+    title = progress >= 98 ? '正在续接三维输出' : '正在等待贴图与 GLB 输出';
     hint = job.stage || '80% 后通常是远端三维服务的打包、贴图或文件写入阶段；可保持页面开启，或稍后点击同步状态。';
+    if (job.providerJobId) {
+      recoveryLabel = '远端任务';
+      recoveryHint = `${getShortJobId(job.providerJobId)} · 已提交到 ComfyUI，正在拉取 textured.glb。`;
+    }
   } else if (job.workflowMode === 'full-text-to-3d' && !hasReference) {
     title = '正在等待参考图';
     hint = secondsSinceUpdate > 120
@@ -1585,6 +1612,8 @@ function buildTaskWatch(job: WorkflowJob, now: number): TaskWatch {
     title,
     progress,
     hint,
+    recoveryLabel,
+    recoveryHint,
     waitLabel: waitHint?.label,
     waitHint: waitHint?.hint,
     waitState: waitHint?.state,
