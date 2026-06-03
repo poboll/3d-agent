@@ -10,6 +10,7 @@ import {
   fetchWorkflowJob,
   fetchWorkflowJobs,
   previewReferencePrompt,
+  resumeWorkflowJob,
   uploadLocalModel,
   uploadReferenceImage,
   workflowJobToCellModel,
@@ -627,6 +628,34 @@ export function GenerationPanel({
     }
   };
 
+  const handleResumeActiveJob = async () => {
+    if (!activeJob || syncingJobId) return;
+    setSyncingJobId(activeJob.id);
+    setBusy(true);
+    setOperationStartedAt(getTimestamp());
+    setStatus('正在续接本地三维输出，不会重新生成参考图...');
+    trackEvent('workflow_job_manual_sync', {
+      jobId: activeJob.id,
+      provider: activeJob.provider,
+      status: activeJob.status,
+      action: 'resume-selfhost-output',
+    });
+    try {
+      const job = await resumeWorkflowJob(activeJob.id);
+      applyWorkflowJobUpdate(job, {
+        statusOverride: job.stage || '已开始续接本地三维输出。',
+        trackCompletion: false,
+      });
+      setDetailsOpen(true);
+    } catch (error) {
+      setBusy(false);
+      setOperationStartedAt(null);
+      setStatus(error instanceof Error ? error.message : '三维任务续接失败。');
+    } finally {
+      setSyncingJobId(null);
+    }
+  };
+
   const handleOpenActiveJobModel = () => {
     if (!activeJob) return;
     const model = workflowJobToCellModel(activeJob);
@@ -786,6 +815,7 @@ export function GenerationPanel({
     : '';
   const resultModelUrl = activeJob?.result?.modelUrl;
   const rawModelUrl = activeJob?.result?.rawModelUrl;
+  const canResumeActiveJob = isSelfhostJobResumable(activeJob);
   const resultReview = activeJob?.status === 'completed' && activeJob.result
     ? buildResultReview(activeJob)
     : null;
@@ -970,6 +1000,11 @@ export function GenerationPanel({
               <button type="button" onClick={handleSyncActiveJob} disabled={Boolean(syncingJobId)} data-testid="sync-active-job">
                 {syncingJobId ? '同步中' : '同步状态'}
               </button>
+              {canResumeActiveJob && (
+                <button type="button" onClick={handleResumeActiveJob} disabled={Boolean(syncingJobId)} data-testid="resume-active-job">
+                  续接输出
+                </button>
+              )}
               {activeJob?.result && (
                 <button type="button" onClick={handleOpenActiveJobModel} data-testid="open-active-job-model">
                   查看模型
@@ -1100,6 +1135,11 @@ export function GenerationPanel({
                   <button type="button" onClick={() => void handleRemodelJobReference(activeJob)} disabled={busy || !activeJob.reference}>
                     重新建模
                   </button>
+                  {canResumeActiveJob && (
+                    <button type="button" onClick={handleResumeActiveJob} disabled={Boolean(syncingJobId)}>
+                      续接输出
+                    </button>
+                  )}
                   {activeJob.result && (
                     <button
                       type="button"
@@ -1724,6 +1764,14 @@ function getStepClass(
   if (stepIndex < phaseIndex) return 'done';
   if (stepIndex === phaseIndex) return phase === 'failed' ? 'failed' : 'active';
   return '';
+}
+
+function isSelfhostJobResumable(job: WorkflowJob | null) {
+  if (!job) return false;
+  return job.provider === 'selfhost-triposg'
+    && Boolean(job.providerJobId)
+    && job.status === 'failed'
+    && !job.result;
 }
 
 function getWorkflowFailedPhase(activeJob: WorkflowJob | null): Exclude<WorkflowPhase, 'failed'> | null {

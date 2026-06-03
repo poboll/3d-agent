@@ -294,6 +294,14 @@ export async function fetchWorkflowJob(jobId: string): Promise<WorkflowJob> {
   return normalizeWorkflowJob(payload.job);
 }
 
+export async function resumeWorkflowJob(jobId: string): Promise<WorkflowJob> {
+  const response = await fetch(apiUrl(`/api/jobs/${encodeURIComponent(jobId)}/resume`), {
+    method: 'POST',
+  });
+  const payload = await readApiResponse<{ job: WorkflowJob }>(response);
+  return normalizeWorkflowJob(payload.job);
+}
+
 export async function fetchWorkflowJobs(limit = 12): Promise<WorkflowJob[]> {
   const response = await fetch(apiUrl(`/api/jobs?limit=${limit}`));
   const payload = await readApiResponse<{ jobs: WorkflowJob[] }>(response);

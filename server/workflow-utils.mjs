@@ -8,6 +8,7 @@ import {
 
 export const WORKFLOW_STATUSES = ['queued', 'processing', 'completed', 'failed']
 export const RECOVERABLE_WORKFLOW_STATUSES = ['queued', 'processing']
+export const RESUMABLE_SELFHOST_WORKFLOW_STATUSES = ['queued', 'processing', 'failed']
 
 export function buildJobId(now = Date.now()) {
   return `job-${now}-${randomUUID().slice(0, 8)}`
@@ -94,6 +95,15 @@ export function getTemplateDisplayName(template) {
 export function isRecoverableWorkflowJob(job, { now = Date.now(), maxAgeMs = 3 * 60 * 60 * 1000 } = {}) {
   if (!job || !RECOVERABLE_WORKFLOW_STATUSES.includes(job.status)) return false
   if (!job.id || !job.prompt || !job.provider) return false
+  const updatedAt = Date.parse(job.updatedAt || job.createdAt || '')
+  if (!Number.isFinite(updatedAt)) return true
+  return now - updatedAt <= maxAgeMs
+}
+
+export function isResumableSelfhostWorkflowJob(job, { now = Date.now(), maxAgeMs = 24 * 60 * 60 * 1000 } = {}) {
+  if (!job || !RESUMABLE_SELFHOST_WORKFLOW_STATUSES.includes(job.status)) return false
+  if (job.provider !== 'selfhost-triposg' || !job.providerJobId) return false
+  if (!job.id || !job.prompt || !job.template) return false
   const updatedAt = Date.parse(job.updatedAt || job.createdAt || '')
   if (!Number.isFinite(updatedAt)) return true
   return now - updatedAt <= maxAgeMs

@@ -1459,6 +1459,8 @@ body {
   align-items: center;
   justify-content: flex-end;
   gap: 4px;
+  flex-wrap: wrap;
+  max-width: 134px;
 }
 
 .task-watch-head button,
@@ -1934,7 +1936,7 @@ body {
   z-index: 2;
   top: 0;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(58px, 1fr));
   gap: 4px;
   padding: 6px 0 2px;
   background:
@@ -1993,7 +1995,7 @@ body {
   flex: 0 0 auto;
   display: grid;
   gap: 4px;
-  max-height: 92px;
+  max-height: 102px;
   padding: 5px 0;
   border-top: 1px solid rgba(28, 31, 27, 0.065);
   border-bottom: 1px solid rgba(28, 31, 27, 0.055);
@@ -2033,7 +2035,7 @@ body {
 
 .job-row {
   width: 100%;
-  min-height: 21px;
+  min-height: 23px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
@@ -2292,15 +2294,11 @@ body {
 .stage::before {
   content: '';
   position: absolute;
-  width: min(72vw, 1010px);
-  aspect-ratio: 1.46;
-  left: 50%;
-  top: 50.5%;
+  inset: 18px 42px 30px 44px;
   background-image: url("data:image/svg+xml,%3Csvg width='1010' height='690' viewBox='0 0 1010 690' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M561 82C724 91 858 169 879 301C907 476 704 606 453 589C246 575 98 464 116 314C132 179 300 92 535 82' fill='none' stroke='%231c1c1a' stroke-opacity='.145' stroke-width='1.02' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-position: center;
   background-repeat: no-repeat;
-  background-size: contain;
-  transform: translate(-50%, -50%);
+  background-size: 100% 100%;
   pointer-events: none;
   z-index: 0;
 }
@@ -2583,12 +2581,13 @@ body {
 
 .stage-order-card {
   position: absolute;
-  right: 48px;
+  right: clamp(42px, 5.5vw, 76px);
   top: 20px;
   z-index: 9;
-  width: clamp(154px, 21vw, 282px);
-  max-width: calc(100% - 66px);
-  max-height: min(232px, calc(100% - 92px));
+  width: max-content;
+  min-width: 148px;
+  max-width: min(298px, calc(100% - 92px));
+  max-height: min(232px, calc(100% - 98px));
   padding: 8px 9px 9px;
   border: 1px solid rgba(28, 31, 27, 0.12);
   border-radius: 4px;
@@ -2659,6 +2658,7 @@ body {
 
 .stage-order-card strong {
   min-width: 0;
+  max-width: 100%;
   overflow-wrap: anywhere;
   color: var(--sumi);
   font-family: var(--font-serif);
@@ -2681,6 +2681,10 @@ body {
   white-space: normal;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+}
+
+.stage-order-card {
+  transform: translateX(calc(-1 * min(42px, 4vw)));
 }
 
 .stage-drawer button {
@@ -2786,7 +2790,7 @@ body {
 
 .stage-question-drawer {
   width: 38px;
-  right: 16px;
+  right: 14px;
   bottom: 66px;
   z-index: 36;
   max-height: none;
@@ -2810,9 +2814,10 @@ body {
 .stage-question-drawer:hover,
 .stage-question-drawer.open,
 .stage-question-drawer.pinned {
-  width: min(226px, 30%);
+  width: min(242px, 32%);
   grid-template-columns: minmax(0, 1fr) 38px;
   overflow: visible;
+  transform: translateX(-6px);
 }
 
 .stage-question-drawer button {
@@ -2898,10 +2903,11 @@ body {
   margin-top: 7px;
   color: rgba(43, 42, 38, 0.82);
   font-family: "Klee One", "LXGW WenKai", "STKaiti", "KaiTi", var(--font-serif);
-  font-size: 9.2px;
-  line-height: 1.48;
+  font-size: 9px;
+  line-height: 1.45;
   letter-spacing: 0.025em;
   overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .stage-side-card,

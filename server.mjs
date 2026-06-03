@@ -21,7 +21,12 @@ import {
 import { readJsonBody, sendJson, setCorsHeaders } from './server/http-utils.mjs'
 import { createWorkflowJob, getWorkflowJob, listRecoverableWorkflowJobs, listWorkflowJobs } from './server/job-store.mjs'
 import { getDemoModels, importLocalModel, serveDemoModel, serveLocalModel } from './server/model-store.mjs'
-import { resumeWorkflowJob, startFullTextTo3dWorkflow, startWorkflowJob } from './server/workflow-runner.mjs'
+import {
+  resumeSelfhostWorkflowJob,
+  resumeWorkflowJob,
+  startFullTextTo3dWorkflow,
+  startWorkflowJob,
+} from './server/workflow-runner.mjs'
 import { appendAnalyticsEvents } from './server/analytics-store.mjs'
 import { getComfyUiStatus } from './server/comfyui-provider.mjs'
 import {
@@ -180,6 +185,20 @@ const server = http.createServer(async (request, response) => {
 
     if (request.method === 'GET' && url.pathname === '/api/jobs') {
       sendJson(response, 200, { jobs: await listWorkflowJobs(url.searchParams.get('limit') || 20) })
+      return
+    }
+
+    if (request.method === 'POST' && /^\/api\/jobs\/[^/]+\/resume$/.test(url.pathname)) {
+      const jobId = decodeURIComponent(url.pathname.replace(/^\/api\/jobs\//, '').replace(/\/resume$/, ''))
+      const job = await getWorkflowJob(jobId)
+      const result = await resumeSelfhostWorkflowJob(job)
+      sendJson(response, result.resumed ? 202 : 409, {
+        ...result,
+        job: result.job || job,
+        message: result.resumed
+          ? '已开始续接本地三维输出。'
+          : '该任务当前不能续接，请重新生成参考图或重新建模。',
+      })
       return
     }
 

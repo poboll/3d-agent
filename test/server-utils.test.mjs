@@ -23,6 +23,7 @@ import {
   estimateGenerationCost,
   getTemplateDisplayName,
   isRecoverableWorkflowJob,
+  isResumableSelfhostWorkflowJob,
   normalizeImageProvider,
   normalizeImageProfile,
   normalizePrompt,
@@ -278,6 +279,29 @@ describe('LearningCell fusion API utilities', () => {
       false
     )
     assert.equal(isRecoverableWorkflowJob({ ...baseJob, prompt: '' }, { now }), false)
+  })
+
+  it('allows only recent self-hosted ComfyUI jobs to be manually resumed', () => {
+    const now = Date.parse('2026-05-23T04:00:00.000Z')
+    const baseJob = {
+      id: 'job-resume-1',
+      prompt: '线粒体开放剖面模型',
+      provider: 'selfhost-triposg',
+      providerJobId: 'comfy-prompt-123',
+      template: 'mitochondrion',
+      status: 'failed',
+      updatedAt: '2026-05-23T03:58:00.000Z',
+    }
+
+    assert.equal(isResumableSelfhostWorkflowJob(baseJob, { now }), true)
+    assert.equal(isResumableSelfhostWorkflowJob({ ...baseJob, status: 'processing' }, { now }), true)
+    assert.equal(isResumableSelfhostWorkflowJob({ ...baseJob, providerJobId: '' }, { now }), false)
+    assert.equal(isResumableSelfhostWorkflowJob({ ...baseJob, provider: 'local-demo' }, { now }), false)
+    assert.equal(isResumableSelfhostWorkflowJob({ ...baseJob, status: 'completed' }, { now }), false)
+    assert.equal(
+      isResumableSelfhostWorkflowJob({ ...baseJob, updatedAt: '2026-05-21T03:58:00.000Z' }, { now }),
+      false
+    )
   })
 })
 

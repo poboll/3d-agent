@@ -9,7 +9,7 @@ import {
   TENCENT_HUNYUAN_CONFIGURED,
 } from './config.mjs'
 import { sanitizeModelId } from './model-store.mjs'
-import { getTemplateDisplayName } from './workflow-utils.mjs'
+import { getTemplateDisplayName, isResumableSelfhostWorkflowJob } from './workflow-utils.mjs'
 import { updateWorkflowJob } from './job-store.mjs'
 import { generateComfyUiModel, resumeComfyUiModel } from './comfyui-provider.mjs'
 import { createReferenceImage } from './reference-store.mjs'
@@ -96,6 +96,40 @@ export async function resumeWorkflowJob(job) {
     'resume-missing-reference'
   )
   return { resumed: false, reason: 'missing-reference' }
+}
+
+export async function resumeSelfhostWorkflowJob(job) {
+  if (!isResumableSelfhostWorkflowJob(job)) return { resumed: false, reason: 'not-selfhost-resumable' }
+  if (inMemoryJobs.has(job.id)) return { resumed: false, reason: 'already-running' }
+
+  const nextJob = await updateWorkflowJob(
+    job.id,
+    {
+      status: 'processing',
+      progress: Math.max(job.progress || 0, 58),
+      stage: '正在续接本地三维输出：按 ComfyUI prompt_id 拉取 history 与 GLB，不重新生成参考图。',
+      error: undefined,
+    },
+    'manual-resume-selfhost-started'
+  )
+
+  inMemoryJobs.add(nextJob.id)
+  void runResumedSelfHostedWorkflow(nextJob)
+    .catch((error) => {
+      return updateWorkflowJob(
+        nextJob.id,
+        {
+          status: 'failed',
+          progress: 100,
+          stage: '手动续接本地三维任务失败。',
+          error: error.message || '无法根据 ComfyUI prompt_id 续接任务。',
+        },
+        'manual-resume-selfhost-failed'
+      )
+    })
+    .finally(() => inMemoryJobs.delete(nextJob.id))
+
+  return { resumed: true, reason: 'selfhost-prompt-id', job: nextJob }
 }
 
 async function runFullTextTo3dWorkflow(job) {
