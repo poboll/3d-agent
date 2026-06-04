@@ -22,6 +22,7 @@ import { buildJobHistorySummary } from '../lib/jobHistory';
 import { buildGenerationTimeline } from '../lib/workflowTimeline';
 import { getWorkflowWaitHint } from '../lib/workflowWait';
 import { buildWorkflowPhaseBoard } from '../lib/workflowPhaseBoard';
+import { buildWorkflowNextAction } from '../lib/workflowNextAction';
 
 interface Props {
   id?: string;
@@ -738,6 +739,51 @@ export function GenerationPanel({
     }
   };
 
+  const handleRecommendedNextAction = (actionId: ReturnType<typeof buildWorkflowNextAction>['id']) => {
+    if (actionId === 'generate-reference') {
+      void handleCreateReference();
+      return;
+    }
+    if (actionId === 'accept-reference') {
+      handleAcceptReference();
+      return;
+    }
+    if (actionId === 'confirm-modeling') {
+      void handleConfirmModeling();
+      return;
+    }
+    if (actionId === 'sync-job') {
+      void handleSyncActiveJob();
+      return;
+    }
+    if (actionId === 'resume-job') {
+      void handleResumeActiveJob();
+      return;
+    }
+    if (actionId === 'view-model') {
+      handleOpenActiveJobModel();
+      return;
+    }
+    if (actionId === 'review-error') {
+      setDetailsOpen(true);
+      setStatus(activeJob?.error || activeJob?.stage || '请展开任务详情复查链路状态。');
+      return;
+    }
+    document.querySelector<HTMLTextAreaElement>('.generation-prompt-field textarea')?.focus();
+    setStatus('请先输入生物结构描述，或上传一张参考图。');
+  };
+
+  const isRecommendedNextActionEnabled = (actionId: ReturnType<typeof buildWorkflowNextAction>['id']) => {
+    if (actionId === 'write-prompt') return true;
+    if (actionId === 'generate-reference') return canCreateReference;
+    if (actionId === 'accept-reference') return Boolean(referenceImage && !busy);
+    if (actionId === 'confirm-modeling') return canConfirmModeling;
+    if (actionId === 'sync-job') return Boolean(activeJob && !syncingJobId);
+    if (actionId === 'resume-job') return Boolean(canResumeActiveJob && !syncingJobId);
+    if (actionId === 'view-model') return Boolean(activeJob?.result);
+    return Boolean(activeJob);
+  };
+
   const hydrateJobIntoWorkspace = (
     job: WorkflowJob,
     options: { acceptReference?: boolean; keepPrompt?: boolean } = {}
@@ -873,6 +919,15 @@ export function GenerationPanel({
   const texturedModelUrl = activeJob?.result?.texturedModelUrl;
   const canResumeActiveJob = isSelfhostJobResumable(activeJob);
   const canDiagnoseActiveJob = isSelfhostJobDiagnosable(activeJob);
+  const nextAction = buildWorkflowNextAction({
+    prompt,
+    busy,
+    referenceImage,
+    referenceAccepted,
+    activeJob,
+    canResumeActiveJob,
+    syncing: Boolean(syncingJobId),
+  });
   const resultReview = activeJob?.status === 'completed' && activeJob.result
     ? buildResultReview(activeJob)
     : null;
@@ -945,6 +1000,20 @@ export function GenerationPanel({
           <strong>{phaseBoard.summary}</strong>
           <em>{phaseBoard.queueNote}</em>
         </footer>
+      </section>
+
+      <section className={`workflow-next-action ${nextAction.state}`} aria-label="推荐下一步" data-testid="workflow-next-action">
+        <small>推荐下一步</small>
+        <span>{nextAction.title}</span>
+        <p>{nextAction.hint}</p>
+        <button
+          type="button"
+          onClick={() => handleRecommendedNextAction(nextAction.id)}
+          disabled={!isRecommendedNextActionEnabled(nextAction.id)}
+          data-testid="workflow-next-action-button"
+        >
+          {nextAction.label}
+        </button>
       </section>
 
       <label className="generation-field generation-prompt-field">

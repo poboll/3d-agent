@@ -18,6 +18,7 @@ import { getWorkflowWaitHint } from '../app/src/lib/workflowWait.ts'
 import { buildJobHistorySummary } from '../app/src/lib/jobHistory.ts'
 import { buildGenerationTimeline } from '../app/src/lib/workflowTimeline.ts'
 import { buildWorkflowPhaseBoard } from '../app/src/lib/workflowPhaseBoard.ts'
+import { buildWorkflowNextAction } from '../app/src/lib/workflowNextAction.ts'
 import { createWorkflowJob } from '../server/job-store.mjs'
 import {
   chooseTemplateForPrompt,
@@ -339,6 +340,52 @@ describe('LearningCell fusion API utilities', () => {
     assert.equal(modelingBoard.title, '正在图生 3D')
     assert.equal(modelingBoard.phases.find((phase) => phase.id === 'modeling').state, 'active')
     assert.match(modelingBoard.phases.find((phase) => phase.id === 'modeling').hint, /final\.glb/)
+  })
+
+  it('recommends the next workflow action from the current state', () => {
+    const base = {
+      prompt: '植物细胞 3D 教学模型',
+      busy: false,
+      referenceImage: null,
+      referenceAccepted: false,
+      activeJob: null,
+      canResumeActiveJob: false,
+      syncing: false,
+    }
+
+    assert.equal(buildWorkflowNextAction({ ...base, prompt: '' }).id, 'write-prompt')
+    assert.equal(buildWorkflowNextAction(base).id, 'generate-reference')
+    assert.equal(buildWorkflowNextAction({ ...base, referenceImage: { id: 'ref-1' } }).id, 'accept-reference')
+    assert.equal(buildWorkflowNextAction({ ...base, referenceImage: { id: 'ref-1' }, referenceAccepted: true }).id, 'confirm-modeling')
+
+    assert.equal(
+      buildWorkflowNextAction({
+        ...base,
+        busy: true,
+        activeJob: { ...makeJob('job-live-next', 'processing', '线粒体开放剖面'), referenceId: 'ref-1' },
+      }).id,
+      'sync-job'
+    )
+
+    assert.equal(
+      buildWorkflowNextAction({
+        ...base,
+        activeJob: {
+          ...makeJob('job-done-next', 'completed', '线粒体开放剖面'),
+          result: { modelUrl: '/api/3d/local-model/mitochondrion.glb' },
+        },
+      }).id,
+      'view-model'
+    )
+
+    assert.equal(
+      buildWorkflowNextAction({
+        ...base,
+        canResumeActiveJob: true,
+        activeJob: { ...makeJob('job-resume-next', 'failed', '线粒体开放剖面'), providerJobId: 'prompt-1', provider: 'selfhost-triposg' },
+      }).id,
+      'resume-job'
+    )
   })
 
   it('detects recoverable workflow jobs without reviving stale or completed work', () => {

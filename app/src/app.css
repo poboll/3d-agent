@@ -825,6 +825,105 @@ body {
   white-space: nowrap;
 }
 
+.workflow-next-action {
+  flex: 0 0 auto;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 5px 6px 5px 8px;
+  border: 1px solid rgba(28, 31, 27, 0.075);
+  border-left: 2px solid rgba(139, 58, 46, 0.4);
+  border-radius: 4px;
+  background:
+    linear-gradient(90deg, rgba(251, 250, 244, 0.76), rgba(232, 230, 221, 0.18)),
+    repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.014) 0 1px, transparent 1px 13px);
+  box-shadow: inset 0 1px 0 rgba(255, 250, 240, 0.42);
+  overflow: hidden;
+}
+
+.workflow-next-action.done {
+  border-left-color: rgba(89, 111, 85, 0.48);
+}
+
+.workflow-next-action.pending {
+  border-left-color: rgba(120, 102, 73, 0.42);
+}
+
+.workflow-next-action.warn {
+  border-left-color: rgba(157, 55, 43, 0.6);
+  background:
+    linear-gradient(90deg, rgba(139, 58, 46, 0.06), rgba(251, 250, 244, 0.48)),
+    repeating-linear-gradient(103deg, rgba(139, 58, 46, 0.012) 0 1px, transparent 1px 13px);
+}
+
+.workflow-next-action small {
+  color: var(--ink-whisper);
+  font-family: var(--font-mono);
+  font-size: 6.8px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.workflow-next-action span {
+  color: var(--vermilion);
+  font-family: var(--font-serif);
+  font-size: 10.6px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.workflow-next-action.done span {
+  color: var(--moss);
+}
+
+.workflow-next-action.warn span {
+  color: var(--danger);
+}
+
+.workflow-next-action p {
+  min-width: 0;
+  overflow: hidden;
+  color: rgba(43, 42, 38, 0.64);
+  font-size: 8.3px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workflow-next-action button {
+  min-height: 24px;
+  padding: 3px 8px;
+  border: 1px solid rgba(139, 58, 46, 0.28);
+  border-radius: 3px;
+  background: var(--sumi);
+  color: var(--paper-warm);
+  font-family: var(--font-mono);
+  font-size: 7.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.workflow-next-action.done button {
+  border-color: rgba(89, 111, 85, 0.32);
+  background: rgba(62, 76, 58, 0.96);
+}
+
+.workflow-next-action.warn button {
+  border-color: rgba(157, 55, 43, 0.38);
+  background: rgba(139, 58, 46, 0.96);
+}
+
+.workflow-next-action button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
 .generation-panel,
 .prompt-preview-card,
 .job-detail-body,
