@@ -13,6 +13,7 @@ artifacts/
 .reference-cache/
 .reference-trash/
 .workflow-store/
+.run-logs/
 .qa-screenshots/
 .qa-screenshots-*/
 .idea/

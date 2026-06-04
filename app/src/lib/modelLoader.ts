@@ -173,7 +173,14 @@ function brightenMeshMaterial(material: THREE.Material | THREE.Material[]) {
     if (!item) continue;
     const standard = item as THREE.MeshStandardMaterial;
     if ('envMapIntensity' in standard) {
-      standard.envMapIntensity = Math.max(standard.envMapIntensity || 0, 1.28);
+      standard.envMapIntensity = Math.max(standard.envMapIntensity || 0, 1.48);
+    }
+    if ('color' in standard && standard.color instanceof THREE.Color) {
+      const hsl = { h: 0, s: 0, l: 0 };
+      standard.color.getHSL(hsl);
+      if (hsl.l < 0.34) {
+        standard.color.offsetHSL(0, -0.02, Math.min(0.18, 0.34 - hsl.l + 0.06));
+      }
     }
     if ('roughness' in standard && typeof standard.roughness === 'number') {
       standard.roughness = Math.min(Math.max(standard.roughness, 0.42), 0.78);

@@ -1179,6 +1179,188 @@ body {
   color: rgba(139, 58, 46, 0.78);
 }
 
+.workflow-phase-board {
+  flex: 0 0 auto;
+  display: grid;
+  gap: 4px;
+  padding: 5px 7px;
+  border: 1px solid rgba(28, 31, 27, 0.075);
+  border-left: 2px solid rgba(89, 111, 85, 0.36);
+  border-radius: 4px;
+  background:
+    linear-gradient(180deg, rgba(251, 250, 244, 0.64), rgba(232, 230, 221, 0.18)),
+    repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.014) 0 1px, transparent 1px 13px);
+  box-shadow: inset 0 1px 0 rgba(255, 250, 240, 0.4);
+  overflow: hidden;
+}
+
+.workflow-phase-board.active {
+  border-left-color: rgba(139, 58, 46, 0.42);
+}
+
+.workflow-phase-board.warn {
+  border-left-color: rgba(157, 55, 43, 0.58);
+  background:
+    linear-gradient(180deg, rgba(139, 58, 46, 0.052), rgba(251, 250, 244, 0.42)),
+    repeating-linear-gradient(103deg, rgba(139, 58, 46, 0.012) 0 1px, transparent 1px 13px);
+}
+
+.workflow-phase-board.done {
+  border-left-color: rgba(89, 111, 85, 0.5);
+}
+
+.workflow-phase-board header,
+.workflow-phase-board footer {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 8px;
+}
+
+.workflow-phase-board header span {
+  color: var(--ink-whisper);
+  font-family: var(--font-mono);
+  font-size: 6.9px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+}
+
+.workflow-phase-board header strong,
+.workflow-phase-board footer strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--sumi);
+  font-family: var(--font-serif);
+  font-size: 10.4px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workflow-phase-grid {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 2px;
+}
+
+.workflow-phase-grid article {
+  min-width: 0;
+  min-height: 34px;
+  display: grid;
+  grid-template-columns: 13px minmax(0, 1fr);
+  gap: 2px 4px;
+  align-content: start;
+  padding: 4px 4px 4px 0;
+  border-top: 1px solid rgba(28, 31, 27, 0.07);
+  color: rgba(43, 42, 38, 0.62);
+  overflow: hidden;
+}
+
+.workflow-phase-grid article + article {
+  padding-left: 4px;
+  border-left: 1px solid rgba(28, 31, 27, 0.055);
+}
+
+.workflow-phase-grid i {
+  grid-row: 1 / span 2;
+  color: inherit;
+  font-family: var(--font-serif);
+  font-size: 9px;
+  font-style: italic;
+  line-height: 1.1;
+}
+
+.workflow-phase-grid span {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.workflow-phase-grid strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--sumi-soft);
+  font-family: var(--font-serif);
+  font-size: 8.4px;
+  font-weight: 700;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workflow-phase-grid small {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink-whisper);
+  font-family: var(--font-mono);
+  font-size: 6.3px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workflow-phase-grid p {
+  display: none;
+}
+
+.workflow-phase-grid article.done {
+  color: rgba(89, 111, 85, 0.86);
+}
+
+.workflow-phase-grid article.done strong {
+  color: var(--moss);
+}
+
+.workflow-phase-grid article.active {
+  color: rgba(139, 58, 46, 0.9);
+  background: linear-gradient(180deg, rgba(139, 58, 46, 0.052), transparent);
+}
+
+.workflow-phase-grid article.active strong {
+  color: var(--vermilion);
+}
+
+.workflow-phase-grid article.warn {
+  color: var(--danger);
+  background: linear-gradient(180deg, rgba(157, 51, 47, 0.066), transparent);
+}
+
+.workflow-phase-grid article.warn strong {
+  color: var(--danger);
+}
+
+.workflow-phase-board footer {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(28, 31, 27, 0.06);
+}
+
+.workflow-phase-board footer strong {
+  color: rgba(43, 42, 38, 0.72);
+  font-family: var(--font-mono);
+  font-size: 7.2px;
+  letter-spacing: 0.03em;
+}
+
+.workflow-phase-board footer em {
+  display: block;
+  overflow: hidden;
+  color: rgba(43, 42, 38, 0.46);
+  font-family: var(--font-mono);
+  font-size: 6.8px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: 0.025em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .workflow-stage-monitor {
   position: relative;
   flex: 0 0 auto;
@@ -2651,12 +2833,12 @@ body {
 
 .stage-order-card {
   position: absolute;
-  right: clamp(42px, 5.5vw, 76px);
+  right: clamp(30px, 4.2vw, 58px);
   top: 20px;
   z-index: 9;
-  width: max-content;
-  min-width: 148px;
-  max-width: min(298px, calc(100% - 92px));
+  width: fit-content;
+  min-width: 132px;
+  max-width: min(336px, calc(100% - 84px));
   max-height: min(232px, calc(100% - 98px));
   padding: 8px 9px 9px;
   border: 1px solid rgba(28, 31, 27, 0.12);
@@ -2729,7 +2911,7 @@ body {
 .stage-order-card strong {
   min-width: 0;
   max-width: 100%;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
   color: var(--sumi);
   font-family: var(--font-serif);
   font-size: 10px;
@@ -2746,7 +2928,7 @@ body {
   font-size: 8.4px;
   line-height: 1.32;
   letter-spacing: 0;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
   word-break: break-word;
   white-space: normal;
   -webkit-line-clamp: 2;
@@ -2754,7 +2936,7 @@ body {
 }
 
 .stage-order-card {
-  transform: translateX(calc(-1 * min(42px, 4vw)));
+  transform: none;
 }
 
 .stage-drawer button {
@@ -2859,14 +3041,14 @@ body {
 }
 
 .stage-question-drawer {
-  width: 38px;
+  width: 35px;
   right: 14px;
   bottom: 66px;
   z-index: 36;
   max-height: none;
   overflow: hidden;
   display: grid;
-  grid-template-columns: 0 38px;
+  grid-template-columns: 0 35px;
   transform: none;
   transition: width 0.24s ease, filter 0.2s ease, transform 0.24s ease;
 }
@@ -2884,8 +3066,8 @@ body {
 .stage-question-drawer:hover,
 .stage-question-drawer.open,
 .stage-question-drawer.pinned {
-  width: min(242px, 32%);
-  grid-template-columns: minmax(0, 1fr) 38px;
+  width: min(218px, 30%);
+  grid-template-columns: minmax(0, 1fr) 35px;
   overflow: visible;
   transform: translateX(-6px);
 }
@@ -2893,8 +3075,8 @@ body {
 .stage-question-drawer button {
   position: relative;
   z-index: 1;
-  width: 38px;
-  min-height: 126px;
+  width: 35px;
+  min-height: 116px;
   align-self: stretch;
   justify-content: center;
   flex-direction: column;
@@ -2933,8 +3115,8 @@ body {
   position: relative;
   z-index: 1;
   margin: 0;
-  min-height: 126px;
-  padding: 11px 10px 10px;
+  min-height: 116px;
+  padding: 10px 9px 9px;
   border: 1px solid rgba(28, 31, 27, 0.12);
   border-right: 0;
   border-radius: 4px 0 0 4px;
@@ -2973,10 +3155,10 @@ body {
   margin-top: 7px;
   color: rgba(43, 42, 38, 0.82);
   font-family: "Klee One", "LXGW WenKai", "STKaiti", "KaiTi", var(--font-serif);
-  font-size: 9px;
-  line-height: 1.45;
+  font-size: 8.6px;
+  line-height: 1.42;
   letter-spacing: 0.025em;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
   word-break: break-word;
 }
 

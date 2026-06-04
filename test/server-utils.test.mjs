@@ -17,6 +17,7 @@ import { formatModelBytes, getModelLoadHint, isHeavyModel } from '../app/src/lib
 import { getWorkflowWaitHint } from '../app/src/lib/workflowWait.ts'
 import { buildJobHistorySummary } from '../app/src/lib/jobHistory.ts'
 import { buildGenerationTimeline } from '../app/src/lib/workflowTimeline.ts'
+import { buildWorkflowPhaseBoard } from '../app/src/lib/workflowPhaseBoard.ts'
 import { createWorkflowJob } from '../server/job-store.mjs'
 import {
   chooseTemplateForPrompt,
@@ -291,6 +292,53 @@ describe('LearningCell fusion API utilities', () => {
     assert.equal(done.state, 'done')
     assert.equal(done.currentLabel, '模型已入库')
     assert.equal(done.steps.find((step) => step.id === 'library').state, 'done')
+  })
+
+  it('builds a compact phase board for long text-to-3d tasks', () => {
+    const imageJob = {
+      ...makeJob('job-image-phase', 'processing', '线粒体 3D-ready 单图'),
+      workflowMode: 'full-text-to-3d',
+      imageProvider: 'local-gateway',
+      imageProfile: 'standard',
+      imageSize: '1536x1536',
+      imageQuality: 'high',
+      createdAt: '2026-05-23T04:00:00.000Z',
+      updatedAt: '2026-05-23T04:01:00.000Z',
+    }
+    const imageBoard = buildWorkflowPhaseBoard({
+      prompt: imageJob.prompt,
+      activeJob: imageJob,
+      referenceImage: null,
+      referenceAccepted: false,
+      busy: true,
+      now: Date.parse('2026-05-23T04:03:10.000Z'),
+      operationStartedAt: null,
+      imageProviderLabel: '本地图片网关',
+      imageSpecLabel: '标准教学 1536x1536',
+      modelProviderLabel: 'TripoSG + 混元贴图',
+    })
+
+    assert.equal(imageBoard.title, '正在生成参考图')
+    assert.equal(imageBoard.phases.find((phase) => phase.id === 'reference').state, 'active')
+    assert.match(imageBoard.summary, /1536x1536/)
+    assert.match(imageBoard.queueNote, /避免队列面板一直向下增长/)
+
+    const modelingBoard = buildWorkflowPhaseBoard({
+      prompt: '线粒体开放剖面 3D 教学模型',
+      activeJob: { ...makeJob('job-modeling-phase', 'processing', '线粒体开放剖面 3D 教学模型'), referenceId: 'ref-1', workflowMode: 'full-text-to-3d' },
+      referenceImage: { id: 'ref-1' },
+      referenceAccepted: true,
+      busy: true,
+      now: Date.parse('2026-05-23T04:08:00.000Z'),
+      operationStartedAt: Date.parse('2026-05-23T04:00:00.000Z'),
+      imageProviderLabel: '本地图片网关',
+      imageSpecLabel: '标准教学 1536x1536',
+      modelProviderLabel: 'TripoSG + 混元贴图',
+    })
+
+    assert.equal(modelingBoard.title, '正在图生 3D')
+    assert.equal(modelingBoard.phases.find((phase) => phase.id === 'modeling').state, 'active')
+    assert.match(modelingBoard.phases.find((phase) => phase.id === 'modeling').hint, /final\.glb/)
   })
 
   it('detects recoverable workflow jobs without reviving stale or completed work', () => {

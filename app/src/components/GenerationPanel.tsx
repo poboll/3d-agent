@@ -21,6 +21,7 @@ import { trackEvent } from '../lib/analytics';
 import { buildJobHistorySummary } from '../lib/jobHistory';
 import { buildGenerationTimeline } from '../lib/workflowTimeline';
 import { getWorkflowWaitHint } from '../lib/workflowWait';
+import { buildWorkflowPhaseBoard } from '../lib/workflowPhaseBoard';
 
 interface Props {
   id?: string;
@@ -852,6 +853,18 @@ export function GenerationPanel({
     imageSpecLabel: selectedImageSpecLabel,
     modelProviderLabel: selectedModelProviderLabel,
   });
+  const phaseBoard = buildWorkflowPhaseBoard({
+    prompt,
+    activeJob,
+    referenceImage,
+    referenceAccepted,
+    busy,
+    now: clockNow,
+    operationStartedAt,
+    imageProviderLabel: selectedProviderLabel,
+    imageSpecLabel: selectedImageSpecLabel,
+    modelProviderLabel: selectedModelProviderLabel,
+  });
   const referenceSpecLabel = detailReference
     ? buildImageSpecLabel(detailReference.imageProfile, detailReference.imageSize, detailReference.imageQuality)
     : '';
@@ -909,6 +922,29 @@ export function GenerationPanel({
           ))}
         </ol>
         <p>{generationTimeline.nextAction}</p>
+      </section>
+
+      <section className={`workflow-phase-board ${phaseBoard.state}`} aria-label="生成阶段看板" data-testid="workflow-phase-board">
+        <header>
+          <span>阶段看板</span>
+          <strong>{phaseBoard.title}</strong>
+        </header>
+        <div className="workflow-phase-grid">
+          {phaseBoard.phases.map((item) => (
+            <article className={item.state} key={item.id}>
+              <i>{item.no}</i>
+              <span>
+                <strong>{item.title}</strong>
+                <small>{item.meta}</small>
+              </span>
+              <p>{item.hint}</p>
+            </article>
+          ))}
+        </div>
+        <footer>
+          <strong>{phaseBoard.summary}</strong>
+          <em>{phaseBoard.queueNote}</em>
+        </footer>
       </section>
 
       <label className="generation-field generation-prompt-field">

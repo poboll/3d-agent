@@ -70,7 +70,7 @@ export function ModelViewer({ model }: Props) {
       return;
     }
 
-    const isQuestionHotZone = x > w - 76 && y > 126 && y < h - 48;
+    const isQuestionHotZone = x > w - 96 && y > 104 && y < h - 42;
     if (isQuestionHotZone) {
       setClueOpen(true);
       setModelFocus(false);
