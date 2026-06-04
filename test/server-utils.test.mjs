@@ -1,6 +1,7 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFile, writeFile } from 'node:fs/promises'
+import { COMFYUI_WORKFLOW_TEMPLATE } from '../server/config.mjs'
 import { getModelExtension, sanitizeModelId, validateModelBuffer } from '../server/model-store.mjs'
 import {
   buildBioReadyPrompt,
@@ -176,10 +177,22 @@ describe('LearningCell fusion API utilities', () => {
     assert.match(getWorkflowWaitHint(90, 'image').label, /后台仍在生成/)
     assert.match(getWorkflowWaitHint(90, 'image').hint, /1536x1536/)
     assert.match(getWorkflowWaitHint(220, 'modeling').label, /可稍后恢复/)
-    assert.match(getWorkflowWaitHint(220, 'modeling').hint, /textured\.glb/)
+    assert.match(getWorkflowWaitHint(220, 'modeling').hint, /final\.glb/)
     assert.match(getWorkflowWaitHint(90, 'modeling').hint, /标本列表/)
     assert.match(getWorkflowWaitHint(330, 'queue').label, /建议同步状态/)
     assert.match(getWorkflowWaitHint(330, 'queue').hint, /队列/)
+  })
+
+  it('uses the finalized single-image ComfyUI workflow with Bio3D postprocess', async () => {
+    const workflow = JSON.parse(await readFile(COMFYUI_WORKFLOW_TEMPLATE, 'utf8'))
+
+    assert.equal(workflow['2']?.class_type, 'TripoSGImageTo3D')
+    assert.equal(workflow['3']?.class_type, 'Hunyuan3DPaintExistingMesh')
+    assert.equal(workflow['4']?.class_type, 'Bio3DPostProcessGLB')
+    assert.equal(workflow['5']?.class_type, 'Preview3D')
+    assert.deepEqual(workflow['4']?.inputs?.model_3d, ['3', 1])
+    assert.deepEqual(workflow['5']?.inputs?.model_file, ['4', 1])
+    assert.equal(workflow['4']?.inputs?.output_prefix, 'bio_single_final')
   })
 
   it('normalizes transient ComfyUI network failures for recovery', () => {

@@ -29,7 +29,7 @@ const endpoints = [
     method: 'POST',
     path: '/api/workflows/full-text-to-3d',
     title: '完整默认链路',
-    note: '按「术语 -> prompt -> 单图 -> TripoSG raw.glb -> Hunyuan3D-Paint textured.glb」创建完整任务。',
+    note: '按「术语 -> prompt -> 单图 -> TripoSG raw.glb -> Hunyuan3D-Paint textured.glb -> Bio3D final.glb」创建完整任务。',
   },
   {
     method: 'POST',
@@ -81,7 +81,7 @@ export function LocalApiPanel() {
         <i />
         <span>本地网关参考图生成与确认</span>
         <i />
-        <span>TripoSG + 混元贴图</span>
+        <span>TripoSG + 混元贴图 + Bio3D</span>
         <i />
         <span>下载缓存并展示</span>
       </div>

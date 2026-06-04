@@ -63,7 +63,7 @@ npm run test:api
 - 加载 `../3DCellForge/public/generated-models/` 下的缓存 GLB。
 - 上传本地 `.glb/.gltf` 并加入左侧“生成模型”列表。
 - 输入文本后先生成单张 3D-ready 参考图，用户确认图片后再提交图生 3D 建模。
-- gpt-5.5 负责打磨 3D-ready prompt，Responses 图像工具负责生成单张参考图，本地 ComfyUI 工作流负责 TripoSG 几何重建与 Hunyuan3D-Paint 贴图。
+- gpt-5.5 负责打磨 3D-ready prompt，本地图片网关的 GPT Image 负责生成单张参考图，本地 ComfyUI 工作流负责 TripoSG 几何重建、Hunyuan3D-Paint 贴图与 Bio3D 后处理。
 - 后端记录参考图、任务状态、埋点事件与生成模型缓存，方便恢复和排查。
 - 本地缓存链路可在没有 GPU 服务时快速验证“参考图 -> 任务记录 -> 模型缓存 -> 前端查看”的闭环。
 - 页面刷新后会从浏览器本地存储恢复最近加入的生成模型。
@@ -78,7 +78,8 @@ npm run test:api
   -> ComfyUI 单图 workflow
   -> TripoSG raw GLB
   -> Hunyuan3D-Paint textured GLB
-  -> 前端 3D 舞台加载 textured GLB
+  -> Bio3D final GLB
+  -> 前端 3D 舞台优先加载 final GLB
 ```
 
 运行后可用接口：
@@ -123,11 +124,16 @@ OPENAI_IMAGE_TOOL_MODEL=gpt-image-2
 OPENAI_IMAGE_SIZE=1536x1536
 OPENAI_IMAGE_QUALITY=high
 OPENAI_IMAGE_FORMAT=png
+PROMPT_POLISH_TIMEOUT_MS=60000
+PROMPT_PREVIEW_TIMEOUT_MS=15000
+LOCAL_IMAGE_GATEWAY_IMAGE_RETRIES=2
 ```
 
 默认实现使用 Responses API：先由 `gpt-5.5` 把术语打磨为 3D-ready 单图 prompt，再通过 Responses 的 `image_generation` 工具生成参考图。`OPENAI_IMAGE_MODE=images-api` 时可切换到 `/v1/images/generations` 备用路径。
 
 默认参考图配置为 `1536x1536 / high`，用于兼顾图生 3D 的结构清晰度和本地生成耗时；这不是 2K/4K。若网关支持并且预算允许，可把 `OPENAI_IMAGE_SIZE` 或 `LOCAL_IMAGE_GATEWAY_IMAGE_SIZE` 调高。
+
+为保证课堂演示时不长时间停在 prompt 打磨阶段，`PROMPT_POLISH_TIMEOUT_MS` 默认 60 秒，超时后会使用本地 3D-ready 模板继续文生图；`PROMPT_PREVIEW_TIMEOUT_MS` 默认 15 秒，仅影响预览接口。图片生成保留网关级长超时，并对临时上游错误按 `LOCAL_IMAGE_GATEWAY_IMAGE_RETRIES` 重试。
 
 本地 ComfyUI / TripoSG / Hunyuan3D-Paint：
 

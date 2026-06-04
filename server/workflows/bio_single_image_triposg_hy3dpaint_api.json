@@ -35,11 +35,25 @@
     }
   },
   "4": {
+    "class_type": "Bio3DPostProcessGLB",
+    "inputs": {
+      "model_3d": [
+        "3",
+        1
+      ],
+      "output_prefix": "bio_single_final",
+      "polish_materials": true,
+      "roughness": 0.86,
+      "metallic": 0.0,
+      "write_stable_alias": true
+    }
+  },
+  "5": {
     "class_type": "Preview3D",
     "inputs": {
       "model_file": [
-        "3",
-        0
+        "4",
+        1
       ]
     }
   }

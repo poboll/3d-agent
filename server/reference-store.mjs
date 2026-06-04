@@ -13,6 +13,7 @@ import {
   LOCAL_IMAGE_GATEWAY_IMAGE_MODEL,
   LOCAL_IMAGE_GATEWAY_IMAGE_MODEL_FALLBACKS,
   LOCAL_IMAGE_GATEWAY_IMAGE_QUALITY,
+  LOCAL_IMAGE_GATEWAY_IMAGE_RETRIES,
   LOCAL_IMAGE_GATEWAY_IMAGE_SIZE,
   LOCAL_IMAGE_GATEWAY_MODELS_ENDPOINT,
   LOCAL_IMAGE_GATEWAY_PROMPT_MODEL,
@@ -35,6 +36,8 @@ import {
   OPENAI_PROJECT,
   OPENAI_REASONING_EFFORT,
   OPENAI_RESPONSES_ENDPOINT,
+  PROMPT_POLISH_TIMEOUT_MS,
+  PROMPT_PREVIEW_TIMEOUT_MS,
   REFERENCE_CACHE_DIR,
   REFERENCE_IMAGE_LIMIT,
   REFERENCE_STORE_FILE,
@@ -66,7 +69,10 @@ export async function createReferenceImage(input = {}) {
     stage: '基础 prompt 已生成，正在进行模型打磨。',
     eventName: 'reference-prompt-polish-started',
   })
-  const polishedPromptPackage = await polishBioReadyPrompt(promptPackage, prompt, { provider })
+  const polishedPromptPackage = await polishBioReadyPrompt(promptPackage, prompt, {
+    provider,
+    timeoutMs: PROMPT_POLISH_TIMEOUT_MS,
+  })
   await notifyReferenceProgress(notify, {
     progress: 18,
     stage: `已完成 prompt 打磨，正在调用${provider === 'local-gateway' ? '本地图片网关' : 'OpenAI 图片服务'}生成单张参考图。`,
@@ -259,7 +265,10 @@ export async function previewReferencePrompt(input = {}) {
   const template = chooseTemplateForPrompt(prompt, input.template)
   const provider = normalizeImageProvider(input.provider)
   const promptPackage = await buildBioReadyPrompt(prompt, template)
-  const polishedPromptPackage = await polishBioReadyPrompt(promptPackage, prompt, { provider })
+  const polishedPromptPackage = await polishBioReadyPrompt(promptPackage, prompt, {
+    provider,
+    timeoutMs: PROMPT_PREVIEW_TIMEOUT_MS,
+  })
 
   return {
     template,
@@ -366,7 +375,7 @@ export async function buildBioReadyPrompt(prompt, template = 'auto') {
   }
 }
 
-async function polishBioReadyPrompt(promptPackage, userPrompt, { provider = 'openai' } = {}) {
+async function polishBioReadyPrompt(promptPackage, userPrompt, { provider = 'openai', timeoutMs } = {}) {
   const useLocalGateway = provider === 'local-gateway'
   const configured = useLocalGateway ? LOCAL_IMAGE_GATEWAY_CONFIGURED : OPENAI_IMAGE_CONFIGURED
   const promptModel = useLocalGateway ? LOCAL_IMAGE_GATEWAY_PROMPT_MODEL : OPENAI_PROMPT_MODEL
@@ -389,11 +398,11 @@ async function polishBioReadyPrompt(promptPackage, userPrompt, { provider = 'ope
       ? await requestLocalGatewayResponse({
           model: promptModel,
           input: `${instruction}\n\nUser term/request: ${userPrompt}\n\nBase prompt:\n${promptPackage.imagePrompt}\n\nNegative constraints:\n${promptPackage.negativePrompt}`,
-        })
+        }, { timeoutMs })
       : await requestOpenAiResponse({
           model: promptModel,
           input: `${instruction}\n\nUser term/request: ${userPrompt}\n\nBase prompt:\n${promptPackage.imagePrompt}\n\nNegative constraints:\n${promptPackage.negativePrompt}`,
-        })
+        }, { timeoutMs })
     const text = normalizeGeneratedPrompt(extractResponseText(payload))
     if (text.length < 80) return promptPackage
     return {
@@ -619,13 +628,20 @@ async function requestLocalGatewayImage(prompt, options = {}) {
     ...LOCAL_IMAGE_GATEWAY_IMAGE_MODEL_FALLBACKS,
   ])
   const errors = []
+  const attemptsPerModel = Math.max(1, LOCAL_IMAGE_GATEWAY_IMAGE_RETRIES)
 
   for (const model of models) {
-    try {
-      return await requestLocalGatewayImageWithModel(prompt, model, imageOptions)
-    } catch (error) {
-      errors.push(`${model}: ${error.message || '生成失败'}`)
-      if (!isRetryableImageModelError(error)) throw error
+    for (let attempt = 1; attempt <= attemptsPerModel; attempt += 1) {
+      try {
+        return await requestLocalGatewayImageWithModel(prompt, model, imageOptions)
+      } catch (error) {
+        const reason = `${model}#${attempt}: ${error.message || '生成失败'}`
+        errors.push(reason)
+        if (!isRetryableImageGatewayError(error)) throw error
+        if (attempt < attemptsPerModel) {
+          await delay(Math.min(1500 * attempt, 4000))
+        }
+      }
     }
   }
 
@@ -685,9 +701,9 @@ async function requestLocalGatewayImageWithModel(prompt, model, imageOptions) {
   }
 }
 
-async function requestLocalGatewayResponse(body) {
+async function requestLocalGatewayResponse(body, { timeoutMs = LOCAL_IMAGE_GATEWAY_TIMEOUT_MS } = {}) {
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), LOCAL_IMAGE_GATEWAY_TIMEOUT_MS)
+  const timeout = setTimeout(() => controller.abort(), timeoutMs)
   try {
     const response = await fetch(LOCAL_IMAGE_GATEWAY_RESPONSES_ENDPOINT, {
       method: 'POST',
@@ -760,14 +776,20 @@ function uniqueImageModels(models) {
   return [...new Set(models.map((item) => String(item || '').trim()).filter(Boolean))]
 }
 
-function isRetryableImageModelError(error) {
+function isRetryableImageGatewayError(error) {
+  if (['AbortError', 'TypeError'].includes(error?.name)) return true
+  if ([408, 409, 425, 429, 500, 502, 503, 504].includes(Number(error?.status))) return true
   const message = String(error?.message || '')
-  return /image model|model|not found|invalid_request|unsupported|requires/i.test(message)
+  return /image model|model|not found|invalid_request|unsupported|requires|upstream|gateway|timeout|timed? out|fetch failed|api\.[\w.-]+\/v1\/images\/generations/i.test(message)
 }
 
-async function requestOpenAiResponse(body) {
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+async function requestOpenAiResponse(body, { timeoutMs = OPENAI_IMAGE_TIMEOUT_MS } = {}) {
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), OPENAI_IMAGE_TIMEOUT_MS)
+  const timeout = setTimeout(() => controller.abort(), timeoutMs)
   try {
     const response = await fetch(OPENAI_RESPONSES_ENDPOINT, {
       method: 'POST',

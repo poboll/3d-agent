@@ -18,6 +18,7 @@ interface DemoModelPayload {
   template?: string;
   referenceImageUrl?: string;
   rawModelUrl?: string;
+  texturedModelUrl?: string;
 }
 
 interface LocalModelPayload {
@@ -96,6 +97,7 @@ export interface WorkflowDiagnosticsPayload {
   };
   outputs: {
     glbCount: number;
+    final?: boolean;
     textured: boolean;
     raw: boolean;
     candidates: Array<{
@@ -408,6 +410,7 @@ function normalizeWorkflowJob(job: WorkflowJob): WorkflowJob {
           modelUrl: apiUrl(job.result.modelUrl),
           referenceImageUrl: job.result.referenceImageUrl ? apiUrl(job.result.referenceImageUrl) : job.result.referenceImageUrl,
           rawModelUrl: job.result.rawModelUrl ? apiUrl(job.result.rawModelUrl) : job.result.rawModelUrl,
+          texturedModelUrl: job.result.texturedModelUrl ? apiUrl(job.result.texturedModelUrl) : job.result.texturedModelUrl,
         }
       : job.result,
   };

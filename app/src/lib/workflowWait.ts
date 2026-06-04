@@ -12,7 +12,7 @@ interface WorkflowWaitOptions {
 }
 
 const DEFAULT_IMAGE_PROFILE = 'gpt-image-2 / 1536x1536 / high / timeout 420s';
-const DEFAULT_MODEL_PROFILE = 'TripoSG + Hunyuan3D-Paint';
+const DEFAULT_MODEL_PROFILE = 'TripoSG + Hunyuan3D-Paint + Bio3D';
 
 export function getWorkflowWaitHint(
   elapsedSeconds: number,
@@ -66,7 +66,7 @@ function buildRecoverableHint(stage: WorkflowWaitStage, imageProfile: string, mo
     return `${imageProfile} 仍在处理；可保持页面开启，也可稍后回到页面恢复最近任务。`;
   }
   if (stage === 'modeling') {
-    return `${modelProfile} 可能正在生成 raw.glb 或 textured.glb；稍后点击同步状态即可恢复。`;
+    return `${modelProfile} 可能正在生成 raw.glb、textured.glb 或 final.glb；稍后点击同步状态即可恢复。`;
   }
   if (stage === 'queue') {
     return '历史队列已折叠为关键任务，稍后可通过任务详情继续查看或复用描述。';

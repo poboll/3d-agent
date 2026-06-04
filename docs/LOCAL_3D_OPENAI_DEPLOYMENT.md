@@ -10,15 +10,16 @@
   -> ComfyUI 单图工作流
   -> TripoSG 输出 raw.glb
   -> Hunyuan3D-Paint 输出 textured.glb
+  -> Bio3D 后处理输出 final.glb
   -> 后端下载并缓存 GLB
-  -> 前端 3D 舞台展示 textured.glb
+  -> 前端 3D 舞台优先展示 final.glb
 ```
 
 当前实现按 `/Users/Apple/Downloads/苏增烨申请/deploy_3d/BIO_3D_FINAL_HANDOFF.md` 收敛后的路线接入：
 
 - gpt-5.5 使用 Responses API 打磨 3D-ready prompt，并优先通过本地图片网关生成单张参考图。
-- ComfyUI 使用单图 workflow：`LoadImage -> TripoSGImageTo3D -> Hunyuan3DPaintExistingMesh -> Preview3D`。
-- 前端默认展示 `textured.glb`，必要时可保留 `raw.glb` 做几何诊断。
+- ComfyUI 使用单图 workflow：`LoadImage -> TripoSGImageTo3D -> Hunyuan3DPaintExistingMesh -> Bio3DPostProcessGLB -> Preview3D`。
+- 前端默认展示 `final.glb`，必要时可保留 `textured.glb` 与 `raw.glb` 做贴图和几何诊断。
 - 不默认使用四宫格、多视角拼图；当前固定结论是“只用单张 3D-ready 剖面图”。
 
 ## 当前接口配置口径
@@ -51,10 +52,15 @@ LOCAL_IMAGE_GATEWAY_DISABLE_RESPONSE_STORAGE=true
 LOCAL_IMAGE_GATEWAY_IMAGE_SIZE=1536x1536
 LOCAL_IMAGE_GATEWAY_IMAGE_QUALITY=high
 LOCAL_IMAGE_GATEWAY_IMAGE_FORMAT=png
+PROMPT_POLISH_TIMEOUT_MS=60000
+PROMPT_PREVIEW_TIMEOUT_MS=15000
+LOCAL_IMAGE_GATEWAY_IMAGE_RETRIES=2
 DEFAULT_IMAGE_PROVIDER=local-gateway
 ```
 
 当前默认是质量优先的 `1536x1536 / high` 单图参考图，并不是 2K 或 4K。若演示需要更高分辨率，可通过 `OPENAI_IMAGE_SIZE` 或 `LOCAL_IMAGE_GATEWAY_IMAGE_SIZE` 调整到网关支持的尺寸；尺寸越大，等待时间、显存压力和失败重试成本也会相应上升。
+
+完整生成会先尝试使用 `gpt-5.5` 打磨 3D-ready prompt。为了避免演示时长时间停留在“模型打磨”，`PROMPT_POLISH_TIMEOUT_MS` 默认 60 秒，超时后自动回退到本地模板 prompt 并继续生成图片；`PROMPT_PREVIEW_TIMEOUT_MS` 默认 15 秒，仅用于 prompt 预览。图片生成阶段仍使用 `LOCAL_IMAGE_GATEWAY_TIMEOUT_MS` 的长超时，并通过 `LOCAL_IMAGE_GATEWAY_IMAGE_RETRIES` 处理偶发上游失败。
 
 三维生成服务使用本地/自托管 ComfyUI：
 
@@ -204,7 +210,7 @@ SMOKE_LIVE_IMAGE_GATEWAY=1 SMOKE_LIVE_3D=1 SMOKE_FULL_WORKFLOW=1 SMOKE_IMAGE_PRO
   npm run smoke:workflow -- 线粒体开放剖面 3D 教学模型
 ```
 
-`SMOKE_LIVE_IMAGE_GATEWAY=1` 会调用本地图片网关生成参考图，`SMOKE_LIVE_3D=1` 会提交 ComfyUI/TripoSG/Hunyuan3D-Paint 任务，可能产生模型服务成本与排队时间。默认不打开这两个开关，避免开发期间反复扣费。
+`SMOKE_LIVE_IMAGE_GATEWAY=1` 会调用本地图片网关生成参考图，`SMOKE_LIVE_3D=1` 会提交 ComfyUI/TripoSG/Hunyuan3D-Paint/Bio3D 任务，可能产生模型服务成本与排队时间。默认不打开这两个开关，避免开发期间反复扣费。
 
 ## 运行目录
 

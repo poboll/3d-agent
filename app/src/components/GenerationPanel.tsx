@@ -435,7 +435,7 @@ export function GenerationPanel({
     setReferenceAccepted(false);
     setPromptPreview(null);
     setActiveJob(null);
-    setStatus('正在按默认链路执行：术语 → GPT prompt → 单图 → TripoSG → textured GLB。');
+    setStatus('正在按默认链路执行：术语 → GPT prompt → 单图 → TripoSG → Hunyuan3D-Paint → Bio3D final GLB。');
     trackEvent('workflow_full_run_start', {
       template,
       imageProvider,
@@ -857,6 +857,7 @@ export function GenerationPanel({
     : '';
   const resultModelUrl = activeJob?.result?.modelUrl;
   const rawModelUrl = activeJob?.result?.rawModelUrl;
+  const texturedModelUrl = activeJob?.result?.texturedModelUrl;
   const canResumeActiveJob = isSelfhostJobResumable(activeJob);
   const canDiagnoseActiveJob = isSelfhostJobDiagnosable(activeJob);
   const resultReview = activeJob?.status === 'completed' && activeJob.result
@@ -1266,6 +1267,9 @@ export function GenerationPanel({
                     {rawModelUrl && (
                       <a href={rawModelUrl} target="_blank" rel="noreferrer">Raw GLB</a>
                     )}
+                    {texturedModelUrl && (
+                      <a href={texturedModelUrl} target="_blank" rel="noreferrer">Textured GLB</a>
+                    )}
                   </div>
                 </div>
               )}
@@ -1656,7 +1660,7 @@ function buildTaskWatch(job: WorkflowJob, now: number): TaskWatch {
     hint = job.stage || '80% 后通常是远端三维服务的打包、贴图或文件写入阶段；可保持页面开启，或稍后点击同步状态。';
     if (job.providerJobId) {
       recoveryLabel = '远端任务';
-      recoveryHint = `${getShortJobId(job.providerJobId)} · 已提交到 ComfyUI，正在拉取 textured.glb。`;
+      recoveryHint = `${getShortJobId(job.providerJobId)} · 已提交到 ComfyUI，正在拉取 final.glb。`;
     }
   } else if (job.workflowMode === 'full-text-to-3d' && !hasReference) {
     title = '正在等待参考图';
@@ -1779,7 +1783,7 @@ function buildStageMonitor({
       chain: `${imageProviderLabel} / ${modelProviderLabel}`,
       estimate: activeJob.referenceId ? '3D 建模通常数分钟' : '参考图约 1-7 分钟',
       nextAction: activeJob.referenceId
-        ? '保持页面开启；远端完成 raw.glb/textured.glb 后会自动下载缓存并加入标本列表。'
+        ? '保持页面开启；远端完成 raw.glb/textured.glb/final.glb 后会自动下载缓存并加入标本列表。'
         : '正在等待本地图片网关返回 3D-ready 单图；生成后会自动进入建模队列。',
     };
   }
@@ -1822,8 +1826,8 @@ const WORKFLOW_STEPS: Array<{
   { id: 'input', no: '01', title: '术语 / 图片输入', caption: '写描述或上传初图' },
   { id: 'prompt', no: '02', title: 'GPT prompt 打磨', caption: 'gpt-5.5 生成 3D-ready' },
   { id: 'image', no: '03', title: '单图生成与确认', caption: 'image tool 输出参考图' },
-  { id: 'modeling', no: '04', title: '图生 3D 建模', caption: 'TripoSG / 混元贴图' },
-  { id: 'done', no: '05', title: '下载缓存展示', caption: '加载 textured GLB' },
+  { id: 'modeling', no: '04', title: '图生 3D 建模', caption: 'TripoSG / 混元贴图 / Bio3D' },
+  { id: 'done', no: '05', title: '下载缓存展示', caption: '加载 final GLB' },
 ];
 
 function getWorkflowPhase({

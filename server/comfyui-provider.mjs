@@ -20,6 +20,7 @@ import { getTemplateDisplayName } from './workflow-utils.mjs'
 
 const COMFYUI_HISTORY_RETRY_LIMIT = 8
 const COMFYUI_DOWNLOAD_RETRY_LIMIT = 3
+const COMFYUI_STALE_HISTORY_LIMIT = Number(process.env.COMFYUI_STALE_HISTORY_LIMIT || 8)
 
 export async function getComfyUiStatus() {
   try {
@@ -86,7 +87,8 @@ export async function diagnoseComfyUiJob(job) {
     history: historyStatus,
     outputs: {
       glbCount: outputs.length,
-      textured: outputs.some((item) => /painted|hy3dpaint|textured/i.test(item.label || item.fileName || item.serverPath || '')),
+      final: outputs.some((item) => isFinalOutput(item)),
+      textured: outputs.some((item) => isTexturedOutput(item)),
       raw: outputs.some((item) => /raw/i.test(item.label || item.fileName || item.serverPath || '')),
       candidates: outputs.slice(0, 4).map((item) => ({
         fileName: item.fileName,
@@ -164,8 +166,9 @@ async function persistComfyUiOutputs(job, promptId, historyItem, onProgress) {
     throw new Error('本地三维工作流已结束，但没有找到 GLB 输出。')
   }
 
-  const selected = pickTexturedOutput(outputs)
+  const selected = pickBestOutput(outputs)
   const raw = outputs.find((item) => /raw/i.test(item.label || item.fileName || item.serverPath || ''))
+  const textured = outputs.find((item) => isTexturedOutput(item))
 
   await onProgress({
     progress: 86,
@@ -188,13 +191,26 @@ async function persistComfyUiOutputs(job, promptId, historyItem, onProgress) {
     rawModelUrl = `/api/3d/local-model/${encodeURIComponent(rawName)}`
   }
 
+  let texturedModelUrl
+  if (textured && textured !== selected && textured !== raw) {
+    const texturedName = `${sanitizeModelId(`textured-${job.id}-${job.template}`)}.glb`
+    const texturedPath = path.join(LOCAL_MODEL_DIR, texturedName)
+    await downloadOutput(textured, texturedPath)
+    texturedModelUrl = `/api/3d/local-model/${encodeURIComponent(texturedName)}`
+  }
+
   await saveHistory(job.id, promptId, historyItem)
   const info = await stat(targetPath)
+  const resultStage = isFinalOutput(selected)
+    ? '本地 TripoSG + Hunyuan3D-Paint + Bio3D Final'
+    : isTexturedOutput(selected)
+      ? '本地 TripoSG + Hunyuan3D-Paint'
+      : '本地 TripoSG raw 几何'
 
   return {
     id: `generated-${job.id}`,
     name: `AI 生成：${getTemplateDisplayName(job.template)}`,
-    subtitle: '本地图生 3D 建模结果',
+    subtitle: isFinalOutput(selected) ? 'Bio3D 后处理最终模型' : '本地图生 3D 建模结果',
     category: 'AI 生成示意模型',
     accent: accentForTemplate(job.template),
     description: `根据「${job.prompt}」确认参考图后生成的本地三维模型。链路包含 GPT 参考图、TripoSG 几何重建与 Hunyuan3D-Paint 贴图处理。`,
@@ -202,9 +218,10 @@ async function persistComfyUiOutputs(job, promptId, historyItem, onProgress) {
     fileSize: info.size,
     imageHint: job.template,
     template: job.template,
-    provider: '本地 TripoSG + Hunyuan3D-Paint',
+    provider: resultStage,
     referenceImageUrl: job.referenceImageUrl,
     rawModelUrl,
+    texturedModelUrl,
     modelUrl: `/api/3d/local-model/${encodeURIComponent(targetName)}`,
   }
 }
@@ -260,6 +277,9 @@ async function submitWorkflow(job, remoteImage) {
   workflow['2'].inputs.guidance_scale = COMFYUI_GUIDANCE_SCALE
   workflow['2'].inputs.faces = COMFYUI_FACES
   workflow['3'].inputs.output_prefix = `${prefix}_painted`
+  if (workflow['4']?.class_type === 'Bio3DPostProcessGLB') {
+    workflow['4'].inputs.output_prefix = `${prefix}_final`
+  }
 
   const payload = {
     client_id: randomUUID(),
@@ -279,6 +299,7 @@ async function submitWorkflow(job, remoteImage) {
 async function pollHistory(promptId, onTick) {
   const deadline = Date.now() + COMFYUI_TIMEOUT_MS
   let tick = 0
+  let consecutiveQueueEmptyMisses = 0
 
   while (Date.now() < deadline) {
     await delay(COMFYUI_POLL_INTERVAL_MS)
@@ -296,7 +317,25 @@ async function pollHistory(promptId, onTick) {
     if (!history) continue
 
     const item = history[promptId] || Object.values(history)[0]
-    if (!item) continue
+    if (!item) {
+      const queue = await fetchJson(`${COMFYUI_BASE_URL}/queue`, {
+        timeoutMs: 15000,
+        context: '查询 ComfyUI 队列',
+      }).catch(() => null)
+      const queueSummary = summarizeComfyQueue(queue, promptId)
+      if (queueSummary.ok && !queueSummary.running && !queueSummary.pending && !queueSummary.containsPrompt) {
+        consecutiveQueueEmptyMisses += 1
+        if (consecutiveQueueEmptyMisses >= COMFYUI_STALE_HISTORY_LIMIT) {
+          throw Object.assign(new Error('ComfyUI 队列已为空，但 history 没有返回该 prompt_id。请检查远端 history 保留策略或输出节点。'), {
+            status: 504,
+            detail: { promptId, queue: queueSummary, misses: consecutiveQueueEmptyMisses },
+          })
+        }
+      } else {
+        consecutiveQueueEmptyMisses = 0
+      }
+      continue
+    }
 
     const status = item.status || {}
     for (const message of status.messages || []) {
@@ -331,6 +370,14 @@ function findGlbOutputs(historyItem) {
         outputs.push({
           fileName: value,
           subfolder: '',
+          type: 'output',
+          label: `${key || ''} ${value}`,
+        })
+      }
+      if (/^[A-Za-z0-9_.-][A-Za-z0-9_./-]*\.glb$/i.test(value) && value.includes('/')) {
+        outputs.push({
+          fileName: path.basename(value),
+          subfolder: path.dirname(value) === '.' ? '' : path.dirname(value),
           type: 'output',
           label: `${key || ''} ${value}`,
         })
@@ -436,8 +483,13 @@ function summarizeHistoryStatus(historyItem, historyError) {
 }
 
 function buildComfyDiagnosisRecommendation({ queueSummary, historyStatus, outputs }) {
-  if (outputs.length) return 'history 已发现 GLB 输出，可点击“续接输出”下载并写入模型缓存。'
-  if (historyStatus.found && historyStatus.status === 'success') return 'history 成功但未发现 GLB，建议检查 ComfyUI 工作流输出节点或 output_prefix。'
+  if (outputs.length) {
+    const picked = pickBestOutput(outputs)
+    if (isFinalOutput(picked)) return 'history 已发现 Bio3D final GLB，可点击“续接输出”下载最终模型并写入标本索引。'
+    if (isTexturedOutput(picked)) return 'history 已发现 textured GLB，可点击“续接输出”下载贴图模型；建议后续检查 Bio3D final 节点。'
+    return 'history 已发现 raw GLB，可点击“续接输出”下载几何模型；贴图/后处理节点可能还需检查。'
+  }
+  if (historyStatus.found && historyStatus.status === 'success') return 'history 成功但未发现 GLB，建议检查 Preview3D / Bio3DPostProcessGLB 输出节点或 output_prefix。'
   if (!queueSummary.running && !queueSummary.pending && !historyStatus.found) return '远端队列为空且 history 暂缺，建议稍后再次诊断；若持续如此，可能需要检查远端 history 保留策略。'
   if (queueSummary.containsPrompt) return '远端队列仍包含该任务，请等待或稍后同步状态。'
   return '请保持任务记录，可稍后点击“诊断远端”或“续接输出”。'
@@ -468,12 +520,21 @@ function dedupeOutputs(outputs) {
   })
 }
 
-function pickTexturedOutput(outputs) {
+function pickBestOutput(outputs) {
   return (
-    outputs.find((item) => /painted|hy3dpaint|textured/i.test(item.label || item.fileName || item.serverPath || '')) ||
+    outputs.find((item) => isFinalOutput(item)) ||
+    outputs.find((item) => isTexturedOutput(item)) ||
     outputs.find((item) => !/raw/i.test(item.label || item.fileName || item.serverPath || '')) ||
     outputs[0]
   )
+}
+
+function isFinalOutput(item) {
+  return /bio3d|final|latest/i.test(item?.label || item?.fileName || item?.serverPath || '')
+}
+
+function isTexturedOutput(item) {
+  return /painted|hy3dpaint|textured/i.test(item?.label || item?.fileName || item?.serverPath || '')
 }
 
 async function downloadOutput(output, targetPath) {
