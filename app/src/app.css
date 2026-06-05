@@ -636,6 +636,10 @@ body {
   white-space: nowrap;
 }
 
+.image-profile-field em {
+  white-space: normal;
+}
+
 .image-profile-field {
   padding: 6px 7px 7px;
   border: 1px solid rgba(89, 111, 85, 0.14);
@@ -749,6 +753,8 @@ body {
   color: rgba(43, 42, 38, 0.62);
   font-size: 7.6px;
   letter-spacing: 0.03em;
+  text-overflow: clip;
+  white-space: normal;
 }
 
 .provider-status-strip {
@@ -2376,9 +2382,9 @@ body {
 .job-history {
   flex: 0 0 auto;
   display: grid;
-  gap: 4px;
-  max-height: 92px;
-  padding: 5px 0;
+  gap: 3px;
+  max-height: 108px;
+  padding: 5px 0 4px;
   border-top: 1px solid rgba(28, 31, 27, 0.065);
   border-bottom: 1px solid rgba(28, 31, 27, 0.055);
   overflow: hidden;
@@ -2397,7 +2403,13 @@ body {
   text-transform: uppercase;
 }
 
+.job-history-title span {
+  flex: 0 0 auto;
+}
+
 .job-history-title em {
+  min-width: 0;
+  flex: 1 1 auto;
   overflow: hidden;
   color: rgba(43, 42, 38, 0.48);
   font-style: normal;
@@ -2417,7 +2429,7 @@ body {
 
 .job-row {
   width: 100%;
-  min-height: 21px;
+  min-height: 20px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
@@ -2477,6 +2489,19 @@ body {
 .job-row strong {
   white-space: nowrap;
   font-size: 8.5px;
+}
+
+.job-history-note {
+  margin: 0;
+  overflow: hidden;
+  color: rgba(43, 42, 38, 0.42);
+  font-family: var(--font-mono);
+  font-size: 6.8px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .job-row.completed strong {
@@ -2768,7 +2793,7 @@ body {
 }
 
 .viewer.is-model-focus .viewer-canvas-zone {
-  z-index: 120;
+  z-index: 140;
   filter: drop-shadow(0 22px 38px rgba(28, 28, 26, 0.16));
   pointer-events: auto;
 }
@@ -2782,7 +2807,7 @@ body {
 }
 
 .viewer.is-model-focus .viewer-interaction-frame {
-  z-index: 120;
+  z-index: 140;
 }
 
 .viewer.is-model-focus .stage-order-card {
@@ -2798,7 +2823,7 @@ body {
 .viewer.is-model-focus .stage-question-drawer.open,
 .viewer.is-model-focus .stage-question-drawer.pinned,
 .viewer.is-model-focus .stage-question-drawer:hover {
-  z-index: 130;
+  z-index: 150;
   pointer-events: auto;
 }
 
@@ -2963,12 +2988,12 @@ body {
 
 .stage-order-card {
   position: absolute;
-  right: clamp(18px, 3.2vw, 42px);
+  right: clamp(14px, 2.6vw, 32px);
   top: 20px;
   z-index: 9;
-  width: clamp(136px, 20vw, 248px);
+  width: clamp(132px, 17vw, 220px);
   min-width: 0;
-  max-width: min(248px, calc(100% - 62px));
+  max-width: min(220px, calc(100% - 62px));
   max-height: min(228px, calc(100% - 104px));
   padding: 8px 9px 9px;
   border: 1px solid rgba(28, 31, 27, 0.12);
@@ -3019,7 +3044,7 @@ body {
   display: grid;
   gap: 4px;
   list-style: none;
-  max-height: 168px;
+  max-height: 166px;
   padding-right: 4px;
   overflow-x: hidden;
   overflow-y: auto;
@@ -3048,7 +3073,7 @@ body {
   overflow-wrap: break-word;
   color: var(--sumi);
   font-family: var(--font-serif);
-  font-size: 9.6px;
+  font-size: 9.4px;
   font-weight: 600;
   line-height: 1.15;
 }
@@ -3059,7 +3084,7 @@ body {
   overflow: hidden;
   color: var(--ink-mute);
   font-family: var(--font-sans);
-  font-size: 8.1px;
+  font-size: 8px;
   line-height: 1.32;
   letter-spacing: 0;
   overflow-wrap: break-word;
@@ -3200,7 +3225,7 @@ body {
 .stage-question-drawer:hover,
 .stage-question-drawer.open,
 .stage-question-drawer.pinned {
-  width: min(206px, 27%);
+  width: min(184px, 24%);
   grid-template-columns: minmax(0, 1fr) 34px;
   overflow: visible;
   transform: translateX(-6px);
@@ -3250,7 +3275,7 @@ body {
   z-index: 1;
   margin: 0;
   min-height: 122px;
-  padding: 10px 9px 9px;
+  padding: 9px 8px 8px;
   border: 1px solid rgba(28, 31, 27, 0.12);
   border-right: 0;
   border-radius: 4px 0 0 4px;
@@ -3289,7 +3314,7 @@ body {
   margin-top: 7px;
   color: rgba(43, 42, 38, 0.82);
   font-family: "Klee One", "LXGW WenKai", "STKaiti", "KaiTi", var(--font-serif);
-  font-size: 8.4px;
+  font-size: 8.1px;
   line-height: 1.42;
   letter-spacing: 0.025em;
   overflow-wrap: break-word;
@@ -3417,11 +3442,11 @@ body {
 
 .stage-concept-card {
   position: absolute;
-  right: 42px;
+  right: 32px;
   top: 194px;
   bottom: auto;
   z-index: 7;
-  width: clamp(148px, 18vw, 238px);
+  width: clamp(138px, 16vw, 206px);
   max-width: calc(100% - 66px);
   max-height: 112px;
   padding: 7px 8px 8px;

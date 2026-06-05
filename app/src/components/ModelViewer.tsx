@@ -60,7 +60,13 @@ export function ModelViewer({ model }: Props) {
     const h = rect.height;
     const isCentralModelZone = x > w * 0.18 && x < w * 0.82 && y > h * 0.14 && y < h * 0.86;
 
-    if (target.closest('.stage-control-strip, .stage-question-drawer')) {
+    if (target.closest('.stage-control-strip')) {
+      setModelFocus(false);
+      return;
+    }
+
+    if (target.closest('.stage-question-drawer')) {
+      setClueOpen(true);
       setModelFocus(false);
       return;
     }
@@ -70,7 +76,7 @@ export function ModelViewer({ model }: Props) {
       return;
     }
 
-    const isQuestionHotZone = x > w - 96 && y > 104 && y < h - 42;
+    const isQuestionHotZone = x > w - 84 && y > 116 && y < h - 58;
     if (isQuestionHotZone) {
       setClueOpen(true);
       setModelFocus(false);
@@ -82,8 +88,8 @@ export function ModelViewer({ model }: Props) {
     }
 
     const isOverlayLane =
-      y < 168 && (x < 210 || x > w - 245) ||
-      y > h - 168 && (x < 190 || x > w - 245) ||
+      y < 154 && (x < 198 || x > w - 214) ||
+      y > h - 154 && (x < 178 || x > w - 214) ||
       y > h - 76;
 
     setModelFocus(!isOverlayLane);

@@ -1166,6 +1166,31 @@ export function GenerationPanel({
         ))}
       </div>
 
+      {visibleJobHistory.length > 0 && (
+        <div className="job-history" data-testid="job-history-compact">
+          <div className="job-history-title">
+            <span>任务摘要</span>
+            <strong>{jobHistorySummary.liveCount > 0 ? `${jobHistorySummary.liveCount} 个运行中` : '固定 3 条'}</strong>
+            <em>{hiddenJobCount > 0 ? `已折叠 ${hiddenJobCount} 条` : `共 ${jobHistorySummary.totalCount} 条`}</em>
+          </div>
+          {visibleJobHistory.map((job) => (
+            <button
+              type="button"
+              className={`job-row ${job.status}${activeJob?.id === job.id ? ' active' : ''}`}
+              key={job.id}
+              onClick={() => handleSelectJob(job)}
+            >
+              <span>
+                <small>{getWorkflowModeLabel(job.workflowMode || 'image-to-3d')} · {getShortJobId(job.id)}</small>
+                <em>{job.prompt}</em>
+              </span>
+              <strong>{job.status === 'completed' ? '完成' : job.status === 'failed' ? '失败' : `${job.progress}%`}</strong>
+            </button>
+          ))}
+          <p className="job-history-note">后台队列持续同步，面板只保留当前、运行中和最近结果。</p>
+        </div>
+      )}
+
       {taskWatch && (
         <section className={`task-watch-card ${taskWatch.state}`} aria-label="长任务观察" data-testid="task-watch-card">
           <div className="task-watch-head">
@@ -1226,30 +1251,6 @@ export function GenerationPanel({
             </div>
           )}
         </section>
-      )}
-
-      {visibleJobHistory.length > 0 && (
-        <div className="job-history" data-testid="job-history-compact">
-          <div className="job-history-title">
-            <span>最近任务</span>
-            <strong>{jobHistorySummary.liveCount > 0 ? `${jobHistorySummary.liveCount} 个运行中` : '关键 3 条'}</strong>
-            <em>{hiddenJobCount > 0 ? `收起 ${hiddenJobCount} 条` : `共 ${jobHistorySummary.totalCount} 条`}</em>
-          </div>
-          {visibleJobHistory.map((job) => (
-            <button
-              type="button"
-              className={`job-row ${job.status}${activeJob?.id === job.id ? ' active' : ''}`}
-              key={job.id}
-              onClick={() => handleSelectJob(job)}
-            >
-              <span>
-                <small>{getWorkflowModeLabel(job.workflowMode || 'image-to-3d')} · {getShortJobId(job.id)}</small>
-                <em>{job.prompt}</em>
-              </span>
-              <strong>{job.status === 'completed' ? '完成' : job.status === 'failed' ? '失败' : `${job.progress}%`}</strong>
-            </button>
-          ))}
-        </div>
       )}
 
       {referenceImage && (
@@ -1459,7 +1460,7 @@ export function GenerationPanel({
               </option>
             ))}
           </select>
-          <em>{selectedImageProfileOption.quality.toUpperCase()} · {selectedImageProfileOption.note}</em>
+          <em>{selectedImageProfileOption.quality.toUpperCase()} · {selectedImageProfileOption.note} · 非4K</em>
         </label>
         <label className="generation-field compact">
           <span>3D PROVIDER</span>

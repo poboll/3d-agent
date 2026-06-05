@@ -227,6 +227,16 @@ describe('LearningCell fusion API utilities', () => {
     assert.equal(summary.liveCount, 2)
   })
 
+  it('keeps the job history summary pinned to a compact visible set', () => {
+    const jobs = Array.from({ length: 12 }, (_, index) => makeJob(`job-${index}`, index === 0 ? 'processing' : 'completed', `生物结构 ${index} 教学模型`))
+    const summary = buildJobHistorySummary(jobs, null)
+
+    assert.equal(summary.visible.length, 3)
+    assert.equal(summary.hiddenCount, 9)
+    assert.equal(summary.totalCount, 12)
+    assert.equal(summary.visible[0].id, 'job-0')
+  })
+
   it('summarizes resumable self-hosted failures before old completed jobs', () => {
     const failedSelfhost = {
       ...makeJob('job-selfhost-failed', 'failed', '线粒体远端三维任务'),
