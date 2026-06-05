@@ -59,6 +59,7 @@ export function GenerationPanel({
   const [activeJob, setActiveJob] = useState<WorkflowJob | null>(null);
   const [jobHistory, setJobHistory] = useState<WorkflowJob[]>([]);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [confirmedPrompt, setConfirmedPrompt] = useState<PromptPreviewPayload | null>(null);
   const [operationStartedAt, setOperationStartedAt] = useState<number | null>(null);
   const [clockNow, setClockNow] = useState(getTimestamp);
   const [syncingJobId, setSyncingJobId] = useState<string | null>(null);
@@ -67,6 +68,16 @@ export function GenerationPanel({
 
   const phase = getWorkflowPhase({ referenceImage, activeJob, busy });
   const failedPhase = getWorkflowFailedPhase(activeJob);
+  const promptPreviewMatchesCurrent =
+    Boolean(promptPreview?.imagePrompt) &&
+    promptPreview?.sourcePrompt.trim() === prompt.trim() &&
+    promptPreview?.template === template &&
+    normalizeUiImageProvider(promptPreview?.provider || imageProvider) === imageProvider;
+  const confirmedPromptMatchesCurrent =
+    Boolean(confirmedPrompt?.imagePrompt) &&
+    confirmedPrompt?.sourcePrompt.trim() === prompt.trim() &&
+    confirmedPrompt?.template === template &&
+    normalizeUiImageProvider(confirmedPrompt?.provider || imageProvider) === imageProvider;
 
   const applyWorkflowJobUpdate = useCallback((
     job: WorkflowJob,
@@ -346,13 +357,22 @@ export function GenerationPanel({
     setImageProvider(nextImageProvider);
     setImageProfile(nextImageProfile);
     setStatus(options.statusPrefix || `${getImageProviderName(nextImageProvider)} 正在生成 3D-ready 单图参考图...`);
-    setPromptPreview(null);
+    const shouldUseConfirmedPrompt =
+      Boolean(confirmedPrompt?.imagePrompt) &&
+      confirmedPrompt?.sourcePrompt.trim() === nextPrompt &&
+      confirmedPrompt?.template === nextTemplate &&
+      normalizeUiImageProvider(confirmedPrompt?.provider || nextImageProvider) === nextImageProvider;
+    if (!shouldUseConfirmedPrompt) {
+      setPromptPreview(null);
+      setConfirmedPrompt(null);
+    }
     trackEvent('workflow_reference_generate_start', {
       template: nextTemplate,
       imageProvider: nextImageProvider,
       imageProfile: nextImageProfile,
       imageProfileLabel: getImageProfileLabel(nextImageProfile),
       promptLength: nextPrompt.length,
+      promptConfirmed: shouldUseConfirmedPrompt,
       source: options.eventSource || 'panel',
     });
     try {
@@ -360,6 +380,7 @@ export function GenerationPanel({
         prompt: nextPrompt,
         provider: nextImageProvider,
         template: nextTemplate,
+        ...(shouldUseConfirmedPrompt ? { imagePromptOverride: confirmedPrompt?.imagePrompt } : {}),
         ...getImageProfileRequest(nextImageProfile),
       });
       setImageProfile(normalizeUiImageProfile(reference.imageProfile || nextImageProfile));
@@ -384,6 +405,7 @@ export function GenerationPanel({
         promptLength: nextPrompt.length,
         referenceId: reference.id,
         model: reference.model,
+        promptConfirmed: shouldUseConfirmedPrompt,
         source: options.eventSource || 'panel',
       });
     } catch (error) {
@@ -408,6 +430,7 @@ export function GenerationPanel({
 
     setBusy(true);
     setOperationStartedAt(getTimestamp());
+    setConfirmedPrompt(null);
     setStatus('正在打磨 3D-ready 单图 prompt...');
     try {
       const nextPreview = await previewReferencePrompt({
@@ -425,6 +448,36 @@ export function GenerationPanel({
     }
   };
 
+  const handleRegeneratePrompt = async () => {
+    setConfirmedPrompt(null);
+    trackEvent('workflow_prompt_regenerate', {
+      template,
+      imageProvider,
+      promptLength: prompt.trim().length,
+    });
+    await handlePreviewPrompt();
+  };
+
+  const handleConfirmPrompt = () => {
+    if (!promptPreview?.imagePrompt) {
+      setStatus('请先生成一版 3D-ready prompt，再确认使用。');
+      return;
+    }
+    if (!promptPreviewMatchesCurrent) {
+      setConfirmedPrompt(null);
+      setStatus('当前提示词预览已过期，请点击“重新生成提示词”后再确认。');
+      return;
+    }
+    setConfirmedPrompt(promptPreview);
+    setStatus('已确认提示词，生成参考图时将直接使用这版 3D-ready prompt。');
+    trackEvent('workflow_prompt_confirm', {
+      template: promptPreview.template,
+      provider: promptPreview.provider || imageProvider,
+      model: promptPreview.model,
+      promptLength: promptPreview.imagePrompt.length,
+    });
+  };
+
   const handleRunFullWorkflow = async () => {
     if (!prompt.trim()) {
       setStatus('请先输入生物结构术语或课堂描述。');
@@ -435,7 +488,10 @@ export function GenerationPanel({
     setOperationStartedAt(getTimestamp());
     setReferenceImage(null);
     setReferenceAccepted(false);
-    setPromptPreview(null);
+    if (!confirmedPromptMatchesCurrent) {
+      setPromptPreview(null);
+      setConfirmedPrompt(null);
+    }
     setActiveJob(null);
     setStatus('正在按默认链路执行：术语 → GPT prompt → 单图 → TripoSG → Hunyuan3D-Paint → Bio3D final GLB。');
     trackEvent('workflow_full_run_start', {
@@ -447,6 +503,7 @@ export function GenerationPanel({
       imageQuality: getImageProfileOption(imageProfile).quality,
       provider: modelProvider,
       promptLength: prompt.trim().length,
+      promptConfirmed: confirmedPromptMatchesCurrent,
     });
 
     try {
@@ -456,6 +513,7 @@ export function GenerationPanel({
         imageProvider,
         ...getImageProfileRequest(imageProfile),
         template,
+        ...(confirmedPromptMatchesCurrent ? { imagePromptOverride: confirmedPrompt?.imagePrompt } : {}),
       });
       if (reference) {
         setReferenceImage(toReferenceImage(reference, false));
@@ -1048,10 +1106,30 @@ export function GenerationPanel({
           value={prompt}
           maxLength={600}
           onFocus={() => trackEvent('workflow_prompt_focus', { template })}
-          onChange={(event) => setPrompt(event.target.value)}
+          onChange={(event) => {
+            setPrompt(event.target.value);
+            setPromptPreview(null);
+            setConfirmedPrompt(null);
+          }}
           placeholder="例如：动物细胞 3D 教学模型，突出线粒体、细胞核和细胞膜"
         />
       </label>
+
+      <section className={`prompt-approval-card${confirmedPromptMatchesCurrent ? ' confirmed' : ''}`} aria-label="提示词确认" data-testid="prompt-approval-card">
+        <div>
+          <span>提示词确认</span>
+          <strong>{confirmedPromptMatchesCurrent ? '已确认 3D-ready prompt' : promptPreviewMatchesCurrent ? '待确认提示词' : '先预览或重新生成'}</strong>
+          <p>{confirmedPromptMatchesCurrent ? '生成参考图会直接使用已确认版本，避免重复打磨造成构图漂移。' : '确认后再生成图片，链路会更适合教学演示和客户复现。'}</p>
+        </div>
+        <div className="prompt-approval-actions">
+          <button type="button" onClick={handleRegeneratePrompt} disabled={!canCreateReference || busy} data-testid="regenerate-prompt">
+            重新生成提示词
+          </button>
+          <button type="button" onClick={handleConfirmPrompt} disabled={!promptPreviewMatchesCurrent || busy} data-testid="confirm-prompt">
+            确认提示词
+          </button>
+        </div>
+      </section>
 
       <div className="generation-actions" id="workflow-actions" aria-label="生成操作">
         <button type="button" className="generation-primary" onClick={handleCreateReference} disabled={!canCreateReference} data-testid="generate-reference">
@@ -1170,13 +1248,13 @@ export function GenerationPanel({
         <div className="job-history" data-testid="job-history-compact">
           <div className="job-history-title">
             <span>任务摘要</span>
-            <strong>{jobHistorySummary.liveCount > 0 ? `${jobHistorySummary.liveCount} 个运行中` : '固定 3 条'}</strong>
+            <strong>{jobHistorySummary.liveCount > 0 ? `${jobHistorySummary.liveCount} 个运行中` : '固定 2 条'}</strong>
             <em>{hiddenJobCount > 0 ? `已折叠 ${hiddenJobCount} 条` : `共 ${jobHistorySummary.totalCount} 条`}</em>
           </div>
-          {visibleJobHistory.map((job) => (
+          {visibleJobHistory.map((job, index) => (
             <button
               type="button"
-              className={`job-row ${job.status}${activeJob?.id === job.id ? ' active' : ''}`}
+              className={`job-row history-slot-${index + 1} ${job.status}${activeJob?.id === job.id ? ' active' : ''}`}
               key={job.id}
               onClick={() => handleSelectJob(job)}
             >
@@ -1473,10 +1551,10 @@ export function GenerationPanel({
       </div>
 
       {promptPreview && (
-        <div className="prompt-preview-card" aria-label="3D-ready prompt 预览">
+        <div className={`prompt-preview-card${confirmedPromptMatchesCurrent ? ' confirmed' : ''}`} aria-label="3D-ready prompt 预览">
           <div>
             <span>3D-READY PROMPT</span>
-            <strong>{promptPreview.model}</strong>
+            <strong>{confirmedPromptMatchesCurrent ? '已确认' : promptPreview.model}</strong>
           </div>
           <p>{promptPreview.imagePrompt}</p>
         </div>

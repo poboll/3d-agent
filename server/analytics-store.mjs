@@ -3,6 +3,8 @@ import { ANALYTICS_EVENTS_FILE, WORKFLOW_STORE_DIR } from './config.mjs'
 
 export const ALLOWED_ANALYTICS_EVENTS = new Set([
   'workflow_prompt_focus',
+  'workflow_prompt_confirm',
+  'workflow_prompt_regenerate',
   'workflow_reference_generate_start',
   'workflow_reference_generate',
   'workflow_reference_generate_failed',

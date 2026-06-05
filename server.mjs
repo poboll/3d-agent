@@ -169,6 +169,7 @@ const server = http.createServer(async (request, response) => {
         imageProfile: input.imageProfile,
         imageSize: input.imageSize,
         imageQuality: input.imageQuality,
+        imagePromptOverride: input.imagePromptOverride,
         template: input.template,
         workflowMode: 'full-text-to-3d',
         deferReference: true,

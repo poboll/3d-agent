@@ -71,7 +71,7 @@ export function ModelViewer({ model }: Props) {
       return;
     }
 
-    if (target.closest('.stage-order-card, .stage-note-panel, .stage-info-main, .stage-concept-card')) {
+    if (target.closest('.stage-learning-rail, .stage-note-panel, .stage-info-main')) {
       setModelFocus(isCentralModelZone);
       return;
     }
@@ -88,8 +88,8 @@ export function ModelViewer({ model }: Props) {
     }
 
     const isOverlayLane =
-      y < 154 && (x < 198 || x > w - 214) ||
-      y > h - 154 && (x < 178 || x > w - 214) ||
+      y < 154 && (x < 198 || x > w - 236) ||
+      y > h - 154 && (x < 178 || x > w - 236) ||
       y > h - 76;
 
     setModelFocus(!isOverlayLane);
@@ -201,41 +201,43 @@ export function ModelViewer({ model }: Props) {
         <em>{model.whereItOccurs.habitat}</em>
       </article>
 
-      {model.concepts?.length ? (
-        <aside className="stage-annotation stage-concept-card" aria-label="概念图解">
+      <aside className="stage-learning-rail" aria-label="右侧教学栏" data-testid="stage-learning-rail">
+        <section className="stage-order-card" aria-label="观察顺序" data-testid="stage-order-card">
           <header>
-            <span>概念图解</span>
-            <small>初高中</small>
+            <span>观察顺序</span>
+            <small>固定</small>
           </header>
-          <div className="concept-list">
-            {model.concepts.slice(0, 2).map((concept) => (
-              <article key={concept.term}>
-                <div>
-                  <strong>{concept.term}</strong>
-                  <i>{concept.level}</i>
-                </div>
-                <p>{concept.explanation}</p>
-                <em>{concept.visualHint}</em>
-              </article>
+          <ol>
+            {model.features.slice(0, 4).map((feature, index) => (
+              <li key={feature.name}>
+                <i>{String(index + 1).padStart(2, '0')}</i>
+                <strong>{feature.name}</strong>
+                <p>{feature.detail}</p>
+              </li>
             ))}
-          </div>
-        </aside>
-      ) : null}
+          </ol>
+        </section>
 
-      <aside className="stage-order-card" aria-label="观察顺序" data-testid="stage-order-card">
-        <header>
-          <span>观察顺序</span>
-          <small>固定</small>
-        </header>
-        <ol>
-          {model.features.slice(0, 4).map((feature, index) => (
-            <li key={feature.name}>
-              <i>{String(index + 1).padStart(2, '0')}</i>
-              <strong>{feature.name}</strong>
-              <p>{feature.detail}</p>
-            </li>
-          ))}
-        </ol>
+        {model.concepts?.length ? (
+          <section className="stage-concept-card" aria-label="概念图解" data-testid="stage-concept-card">
+            <header>
+              <span>概念图解</span>
+              <small>初高中</small>
+            </header>
+            <div className="concept-list">
+              {model.concepts.slice(0, 2).map((concept) => (
+                <article key={concept.term}>
+                  <div>
+                    <strong>{concept.term}</strong>
+                    <i>{concept.level}</i>
+                  </div>
+                  <p>{concept.explanation}</p>
+                  <em>{concept.visualHint}</em>
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : null}
       </aside>
 
       <aside

@@ -6,6 +6,7 @@ import { getModelExtension, sanitizeModelId, validateModelBuffer } from '../serv
 import {
   buildBioReadyPrompt,
   normalizeImageGenerationOptions,
+  normalizeImagePromptOverride,
   normalizeReferencePrompt,
   validateImageBuffer,
 } from '../server/reference-store.mjs'
@@ -68,6 +69,9 @@ describe('LearningCell fusion API utilities', () => {
     assert.throws(() => normalizePrompt('细胞'), /更具体/)
     assert.equal(normalizeReferencePrompt('线粒体'), '线粒体')
     assert.throws(() => normalizeReferencePrompt('x'), /生物结构术语/)
+    assert.equal(normalizeImagePromptOverride(''), '')
+    assert.throws(() => normalizeImagePromptOverride('too short'), /过短/)
+    assert.throws(() => normalizeImagePromptOverride('x'.repeat(2401)), /2400/)
     assert.equal(normalizeProvider('selfhost-triposg'), 'selfhost-triposg')
     assert.equal(normalizeProvider('local-demo'), 'local-demo')
     assert.equal(normalizeProvider(''), 'selfhost-triposg')
@@ -158,7 +162,32 @@ describe('LearningCell fusion API utilities', () => {
     }
   })
 
+  it('preserves confirmed image prompts for full text-to-3D jobs', async () => {
+    const imagePromptOverride = [
+      'Botanical biology teaching model, single 3D-ready square reference image, three-quarter open cutaway plant cell.',
+      'Show cell wall, chloroplasts, nucleus and large vacuole as readable sculptural forms with soft studio light.',
+      'Use clean beige background, centered object, no labels, no multiple views, suitable for TripoSG image-to-3D.',
+    ].join(' ')
+    let job
+    try {
+      job = await createWorkflowJob({
+        prompt: '植物细胞开放剖面 3D 教学模型，突出叶绿体、细胞壁和大型液泡',
+        provider: 'local-demo',
+        template: 'plant-cell',
+        deferReference: true,
+        imagePromptOverride,
+      })
+
+      assert.equal(job.workflowMode, 'full-text-to-3d')
+      assert.equal(job.imagePromptOverride, imagePromptOverride)
+    } finally {
+      if (job?.id) await removeWorkflowJobFromStore(job.id)
+    }
+  })
+
   it('accepts frontend workflow analytics used by the generation panel', () => {
+    assert.equal(isAnalyticsEventAllowed('workflow_prompt_confirm'), true)
+    assert.equal(isAnalyticsEventAllowed('workflow_prompt_regenerate'), true)
     assert.equal(isAnalyticsEventAllowed('workflow_full_reference_ready'), true)
     assert.equal(isAnalyticsEventAllowed('workflow_job_prompt_reuse'), true)
     assert.equal(isAnalyticsEventAllowed('workflow_job_manual_sync'), true)
@@ -220,9 +249,9 @@ describe('LearningCell fusion API utilities', () => {
     const active = makeJob('job-active', 'queued', '动物细胞 3D 教学模型')
     const summary = buildJobHistorySummary(jobs, active)
 
-    assert.equal(summary.visible.length, 3)
-    assert.deepEqual(summary.visible.map((job) => job.id), ['job-active', 'job-live', 'job-done'])
-    assert.equal(summary.hiddenCount, 4)
+    assert.equal(summary.visible.length, 2)
+    assert.deepEqual(summary.visible.map((job) => job.id), ['job-active', 'job-live'])
+    assert.equal(summary.hiddenCount, 5)
     assert.equal(summary.totalCount, 7)
     assert.equal(summary.liveCount, 2)
   })
@@ -231,8 +260,8 @@ describe('LearningCell fusion API utilities', () => {
     const jobs = Array.from({ length: 12 }, (_, index) => makeJob(`job-${index}`, index === 0 ? 'processing' : 'completed', `生物结构 ${index} 教学模型`))
     const summary = buildJobHistorySummary(jobs, null)
 
-    assert.equal(summary.visible.length, 3)
-    assert.equal(summary.hiddenCount, 9)
+    assert.equal(summary.visible.length, 2)
+    assert.equal(summary.hiddenCount, 10)
     assert.equal(summary.totalCount, 12)
     assert.equal(summary.visible[0].id, 'job-0')
   })
@@ -252,9 +281,9 @@ describe('LearningCell fusion API utilities', () => {
     ]
     const summary = buildJobHistorySummary(jobs, null)
 
-    assert.equal(summary.visible.length, 3)
+    assert.equal(summary.visible.length, 2)
     assert.equal(summary.visible[0].id, failedSelfhost.id)
-    assert.equal(summary.hiddenCount, 1)
+    assert.equal(summary.hiddenCount, 2)
   })
 
   it('builds a clear full-generation timeline for the workbench', () => {

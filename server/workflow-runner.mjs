@@ -150,6 +150,7 @@ async function runFullTextTo3dWorkflow(job) {
     imageProfile: job.imageProfile,
     imageSize: job.imageSize,
     imageQuality: job.imageQuality,
+    imagePromptOverride: job.imagePromptOverride,
     onProgress: async ({ progress, stage, eventName, patch = {} }) => {
       await updateWorkflowJob(
         job.id,

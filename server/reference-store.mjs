@@ -56,6 +56,7 @@ export async function createReferenceImage(input = {}) {
   const template = chooseTemplateForPrompt(prompt, input.template)
   const provider = normalizeImageProvider(input.provider)
   const imageOptions = normalizeImageGenerationOptions(input, provider)
+  const promptOverride = normalizeImagePromptOverride(input.imagePromptOverride)
   const notify = typeof input.onProgress === 'function' ? input.onProgress : null
 
   await notifyReferenceProgress(notify, {
@@ -64,15 +65,29 @@ export async function createReferenceImage(input = {}) {
     eventName: 'reference-prompt-template-ready',
   })
   const promptPackage = await buildBioReadyPrompt(prompt, template)
-  await notifyReferenceProgress(notify, {
-    progress: 14,
-    stage: '基础 prompt 已生成，正在进行模型打磨。',
-    eventName: 'reference-prompt-polish-started',
-  })
-  const polishedPromptPackage = await polishBioReadyPrompt(promptPackage, prompt, {
-    provider,
-    timeoutMs: PROMPT_POLISH_TIMEOUT_MS,
-  })
+  let polishedPromptPackage
+  if (promptOverride) {
+    polishedPromptPackage = {
+      ...promptPackage,
+      imagePrompt: promptOverride,
+      promptModel: 'user-confirmed',
+    }
+    await notifyReferenceProgress(notify, {
+      progress: 16,
+      stage: '已使用用户确认的 3D-ready prompt，跳过再次打磨。',
+      eventName: 'reference-prompt-confirmed',
+    })
+  } else {
+    await notifyReferenceProgress(notify, {
+      progress: 14,
+      stage: '基础 prompt 已生成，正在进行模型打磨。',
+      eventName: 'reference-prompt-polish-started',
+    })
+    polishedPromptPackage = await polishBioReadyPrompt(promptPackage, prompt, {
+      provider,
+      timeoutMs: PROMPT_POLISH_TIMEOUT_MS,
+    })
+  }
   await notifyReferenceProgress(notify, {
     progress: 18,
     stage: `已完成 prompt 打磨，正在调用${provider === 'local-gateway' ? '本地图片网关' : 'OpenAI 图片服务'}生成单张参考图。`,
@@ -313,6 +328,18 @@ export function normalizeReferencePrompt(value) {
   }
   if (prompt.length > 600) {
     throw Object.assign(new Error('描述过长，请控制在 600 字以内。'), { status: 400 })
+  }
+  return prompt
+}
+
+export function normalizeImagePromptOverride(value) {
+  const prompt = String(value || '').replace(/\s+/g, ' ').trim()
+  if (!prompt) return ''
+  if (prompt.length < 80) {
+    throw Object.assign(new Error('确认后的 3D-ready prompt 过短，请先重新生成提示词。'), { status: 400 })
+  }
+  if (prompt.length > 2400) {
+    throw Object.assign(new Error('确认后的 3D-ready prompt 过长，请控制在 2400 字以内。'), { status: 400 })
   }
   return prompt
 }

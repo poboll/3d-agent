@@ -115,6 +115,7 @@ export function publicJob(job) {
     prompt: job.prompt,
     provider: job.provider,
     template: job.template,
+    imagePromptOverride: job.imagePromptOverride,
     status: job.status,
     stage: job.stage,
     progress: job.progress,

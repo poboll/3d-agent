@@ -59,6 +59,7 @@ export interface WorkflowJob {
   prompt: string;
   provider: string;
   template: string;
+  imagePromptOverride?: string;
   imageProvider?: string;
   referenceId?: string;
   referenceImageUrl?: string;
@@ -220,6 +221,7 @@ export async function createReferenceImage(input: {
   imageProfile?: string;
   imageSize?: string;
   imageQuality?: string;
+  imagePromptOverride?: string;
 }): Promise<ReferenceImagePayload> {
   const response = await fetch(apiUrl('/api/references/text-to-image'), {
     method: 'POST',
@@ -303,6 +305,7 @@ export async function createFullTextTo3dJob(input: {
   imageProfile?: string;
   imageSize?: string;
   imageQuality?: string;
+  imagePromptOverride?: string;
 }): Promise<{ reference: ReferenceImagePayload | null; job: WorkflowJob }> {
   const response = await fetch(apiUrl('/api/workflows/full-text-to-3d'), {
     method: 'POST',

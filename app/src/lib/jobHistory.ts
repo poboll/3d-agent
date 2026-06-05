@@ -1,6 +1,6 @@
 import type { WorkflowJob } from '../services/fusionApi';
 
-export const JOB_HISTORY_VISIBLE_LIMIT = 3;
+export const JOB_HISTORY_VISIBLE_LIMIT = 2;
 
 export interface JobHistorySummary {
   visible: WorkflowJob[];

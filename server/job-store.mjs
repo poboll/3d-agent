@@ -12,7 +12,7 @@ import {
   normalizeWorkflowImageProvider,
   publicJob,
 } from './workflow-utils.mjs'
-import { getReferenceImageStatus, normalizeImageGenerationOptions } from './reference-store.mjs'
+import { getReferenceImageStatus, normalizeImageGenerationOptions, normalizeImagePromptOverride } from './reference-store.mjs'
 
 export async function createWorkflowJob(input = {}) {
   const prompt = normalizePrompt(input.prompt)
@@ -27,6 +27,7 @@ export async function createWorkflowJob(input = {}) {
   const imageProfile = imageOptions.profile
   const imageSize = imageOptions.size
   const imageQuality = imageOptions.quality
+  const imagePromptOverride = normalizeImagePromptOverride(input.imagePromptOverride)
   const referenceId = String(input.referenceId || '').trim()
   const deferReference = Boolean(input.deferReference)
   const reference = referenceId ? await getReferenceImageStatus(referenceId) : null
@@ -41,6 +42,7 @@ export async function createWorkflowJob(input = {}) {
     provider,
     imageProvider,
     template,
+    imagePromptOverride: imagePromptOverride || undefined,
     referenceId: reference?.id,
     referenceImageUrl: publicReferenceUrl,
     reference,
@@ -61,6 +63,7 @@ export async function createWorkflowJob(input = {}) {
     provider: job.provider,
     imageProvider: job.imageProvider,
     template: job.template,
+    promptConfirmed: Boolean(job.imagePromptOverride),
     referenceId: job.referenceId,
     workflowMode: job.workflowMode,
     deferReference,

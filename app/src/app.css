@@ -649,6 +649,87 @@ body {
     repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.014) 0 1px, transparent 1px 13px);
 }
 
+.prompt-approval-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 56px;
+  padding: 6px 8px;
+  border: 1px solid rgba(28, 31, 27, 0.08);
+  border-left: 2px solid rgba(120, 102, 73, 0.42);
+  border-radius: 4px;
+  background:
+    linear-gradient(90deg, rgba(251, 250, 244, 0.76), rgba(223, 233, 220, 0.15)),
+    repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.012) 0 1px, transparent 1px 13px);
+}
+
+.prompt-approval-card.confirmed {
+  border-left-color: rgba(89, 111, 85, 0.5);
+  background:
+    linear-gradient(90deg, rgba(223, 233, 220, 0.36), rgba(251, 250, 244, 0.64)),
+    repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.018) 0 1px, transparent 1px 13px);
+}
+
+.prompt-approval-card span {
+  color: var(--ink-whisper);
+  font-family: var(--font-mono);
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.prompt-approval-card strong {
+  display: block;
+  margin-top: 2px;
+  color: var(--sumi);
+  font-family: var(--font-serif);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.prompt-approval-card p {
+  display: -webkit-box;
+  margin-top: 2px;
+  overflow: hidden;
+  color: rgba(43, 42, 38, 0.6);
+  font-size: 8.1px;
+  line-height: 1.28;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.prompt-approval-actions {
+  display: grid;
+  gap: 3px;
+}
+
+.prompt-approval-actions button {
+  min-height: 18px;
+  padding: 1px 5px;
+  border: 1px solid rgba(28, 31, 27, 0.12);
+  border-radius: 3px;
+  background: rgba(251, 250, 244, 0.62);
+  color: var(--sumi-soft);
+  font-family: var(--font-mono);
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.prompt-approval-actions button:last-child {
+  border-color: rgba(89, 111, 85, 0.28);
+  background: rgba(62, 76, 58, 0.94);
+  color: var(--paper-warm);
+}
+
+.prompt-approval-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
 .reference-card {
   display: grid;
   grid-template-columns: 76px minmax(0, 1fr);
@@ -670,6 +751,13 @@ body {
   border-left: 2px solid rgba(139, 58, 46, 0.36);
   background:
     linear-gradient(90deg, rgba(251, 250, 244, 0.68), rgba(251, 250, 244, 0.24)),
+    repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.018) 0 1px, transparent 1px 16px);
+}
+
+.prompt-preview-card.confirmed {
+  border-left-color: rgba(89, 111, 85, 0.52);
+  background:
+    linear-gradient(90deg, rgba(223, 233, 220, 0.3), rgba(251, 250, 244, 0.3)),
     repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.018) 0 1px, transparent 1px 16px);
 }
 
@@ -2382,19 +2470,23 @@ body {
 .job-history {
   flex: 0 0 auto;
   display: grid;
-  gap: 3px;
-  max-height: 108px;
-  padding: 5px 0 4px;
+  grid-template-columns: 68px repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 5px;
+  min-height: 64px;
+  max-height: 74px;
+  padding: 5px 0;
   border-top: 1px solid rgba(28, 31, 27, 0.065);
   border-bottom: 1px solid rgba(28, 31, 27, 0.055);
   overflow: hidden;
 }
 
 .job-history-title {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  min-width: 0;
+  display: grid;
+  align-content: center;
+  gap: 2px;
+  padding: 4px 5px 4px 0;
   color: var(--ink-whisper);
   font-family: var(--font-mono);
   font-size: 7.4px;
@@ -2404,42 +2496,67 @@ body {
 }
 
 .job-history-title span {
-  flex: 0 0 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .job-history-title em {
   min-width: 0;
-  flex: 1 1 auto;
   overflow: hidden;
   color: rgba(43, 42, 38, 0.48);
   font-style: normal;
-  text-align: right;
+  text-align: left;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .job-history-title strong {
-  flex: 0 0 auto;
+  min-width: 0;
+  overflow: hidden;
   color: rgba(89, 111, 85, 0.8);
   font-size: 7.2px;
   font-weight: 700;
   letter-spacing: 0.08em;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .job-row {
   width: 100%;
-  min-height: 20px;
+  min-height: 52px;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 8px;
-  padding: 2px 7px;
+  gap: 3px;
+  padding: 5px 6px;
   border: 1px solid var(--hairline-2);
   border-radius: 4px;
   background: rgba(252, 250, 244, 0.54);
   color: var(--sumi-soft);
   text-align: left;
+}
+
+.job-history .job-row {
+  grid-row: 1;
+  min-width: 0;
+}
+
+.job-history .job-row.history-slot-1 {
+  grid-column: 2;
+}
+
+.job-history .job-row.history-slot-2 {
+  grid-column: 3;
+}
+
+.job-history .job-row.history-slot-3 {
+  display: none;
+}
+
+.job-history .job-row.history-slot-4 {
+  display: none;
 }
 
 .job-row.active {
@@ -2484,15 +2601,22 @@ body {
   font-size: 8px;
   font-style: normal;
   line-height: 1.16;
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .job-row strong {
+  justify-self: end;
   white-space: nowrap;
   font-size: 8.5px;
 }
 
 .job-history-note {
+  grid-column: 1 / -1;
   margin: 0;
+  display: none;
   overflow: hidden;
   color: rgba(43, 42, 38, 0.42);
   font-family: var(--font-mono);
@@ -2801,7 +2925,7 @@ body {
 .viewer.is-model-focus .stage-info-main,
 .viewer.is-model-focus .stage-learning-panel,
 .viewer.is-model-focus .stage-note-panel,
-.viewer.is-model-focus .stage-concept-card {
+.viewer.is-model-focus .stage-learning-rail {
   z-index: 2;
   pointer-events: none;
 }
@@ -2810,7 +2934,8 @@ body {
   z-index: 140;
 }
 
-.viewer.is-model-focus .stage-order-card {
+.viewer.is-model-focus .stage-order-card,
+.viewer.is-model-focus .stage-concept-card {
   z-index: 2;
   pointer-events: none;
 }
@@ -2986,14 +3111,24 @@ body {
   pointer-events: auto;
 }
 
-.stage-order-card {
+.stage-learning-rail {
   position: absolute;
-  right: clamp(14px, 2.6vw, 32px);
-  top: 20px;
+  right: clamp(12px, 2vw, 24px);
+  top: 18px;
+  bottom: 178px;
   z-index: 9;
-  width: clamp(132px, 17vw, 220px);
+  width: clamp(150px, 17vw, 218px);
   min-width: 0;
-  max-width: min(220px, calc(100% - 62px));
+  max-width: min(218px, calc(100% - 62px));
+  display: grid;
+  grid-template-rows: minmax(112px, 1fr) minmax(104px, 0.82fr);
+  gap: 7px;
+  pointer-events: auto;
+}
+
+.stage-order-card,
+.stage-concept-card {
+  min-width: 0;
   max-height: min(228px, calc(100% - 104px));
   padding: 8px 9px 9px;
   border: 1px solid rgba(28, 31, 27, 0.12);
@@ -3009,6 +3144,11 @@ body {
   pointer-events: auto;
   contain: layout paint;
   overflow: hidden;
+  min-height: 0;
+}
+
+.stage-order-card {
+  min-height: 0;
 }
 
 .stage-order-card header {
@@ -3044,7 +3184,7 @@ body {
   display: grid;
   gap: 4px;
   list-style: none;
-  max-height: 166px;
+  max-height: calc(100% - 33px);
   padding-right: 4px;
   overflow-x: hidden;
   overflow-y: auto;
@@ -3200,14 +3340,14 @@ body {
 }
 
 .stage-question-drawer {
-  width: 34px;
+  width: 36px;
   right: 8px;
-  bottom: 74px;
+  bottom: 78px;
   z-index: 36;
   max-height: none;
   overflow: hidden;
   display: grid;
-  grid-template-columns: 0 34px;
+  grid-template-columns: 0 36px;
   transform: none;
   transition: width 0.24s ease, filter 0.2s ease, transform 0.24s ease;
 }
@@ -3225,17 +3365,18 @@ body {
 .stage-question-drawer:hover,
 .stage-question-drawer.open,
 .stage-question-drawer.pinned {
-  width: min(184px, 24%);
-  grid-template-columns: minmax(0, 1fr) 34px;
+  width: clamp(154px, 18vw, 206px);
+  max-width: calc(100% - 52px);
+  grid-template-columns: minmax(0, 1fr) 36px;
   overflow: visible;
-  transform: translateX(-6px);
+  transform: translateX(-7px);
 }
 
 .stage-question-drawer button {
   position: relative;
   z-index: 1;
-  width: 34px;
-  min-height: 122px;
+  width: 36px;
+  min-height: 134px;
   align-self: stretch;
   justify-content: center;
   flex-direction: column;
@@ -3261,6 +3402,7 @@ body {
   writing-mode: vertical-rl;
   text-orientation: mixed;
   white-space: nowrap;
+  font-size: 10.5px;
 }
 
 .stage-question-drawer button small {
@@ -3268,14 +3410,15 @@ body {
   writing-mode: vertical-rl;
   text-orientation: mixed;
   white-space: nowrap;
+  font-size: 6.5px;
 }
 
 .stage-question-drawer .question-clue {
   position: relative;
   z-index: 1;
   margin: 0;
-  min-height: 122px;
-  padding: 9px 8px 8px;
+  min-height: 134px;
+  padding: 10px 10px;
   border: 1px solid rgba(28, 31, 27, 0.12);
   border-right: 0;
   border-radius: 4px 0 0 4px;
@@ -3311,10 +3454,10 @@ body {
 }
 
 .stage-question-drawer .question-clue p {
-  margin-top: 7px;
+  margin-top: 6px;
   color: rgba(43, 42, 38, 0.82);
   font-family: "Klee One", "LXGW WenKai", "STKaiti", "KaiTi", var(--font-serif);
-  font-size: 8.1px;
+  font-size: 8.4px;
   line-height: 1.42;
   letter-spacing: 0.025em;
   overflow-wrap: break-word;
@@ -3441,28 +3584,10 @@ body {
 }
 
 .stage-concept-card {
-  position: absolute;
-  right: 32px;
-  top: 194px;
-  bottom: auto;
   z-index: 7;
-  width: clamp(138px, 16vw, 206px);
-  max-width: calc(100% - 66px);
-  max-height: 112px;
+  max-height: none;
+  height: 100%;
   padding: 7px 8px 8px;
-  border: 1px solid rgba(28, 31, 27, 0.1);
-  border-radius: 4px;
-  background:
-    radial-gradient(150px 110px at 92% 20%, rgba(223, 233, 220, 0.36), transparent 74%),
-    repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.018) 0 1px, transparent 1px 16px),
-    rgba(251, 250, 244, 0.62);
-  backdrop-filter: blur(8px);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 250, 240, 0.42),
-    0 18px 48px -42px rgba(28, 31, 27, 0.42);
-  pointer-events: auto;
-  contain: layout paint;
-  overflow: hidden;
 }
 
 .stage-concept-card header {
@@ -3495,7 +3620,7 @@ body {
 
 .concept-list {
   margin-top: 5px;
-  max-height: 74px;
+  max-height: calc(100% - 28px);
   display: grid;
   gap: 3px;
   overflow-x: hidden;
@@ -3507,6 +3632,11 @@ body {
   min-width: 0;
   padding-left: 7px;
   border-left: 1px solid rgba(139, 58, 46, 0.2);
+}
+
+.concept-list article + article {
+  padding-top: 4px;
+  border-top: 1px solid rgba(28, 31, 27, 0.06);
 }
 
 .concept-list article div {
@@ -5414,6 +5544,15 @@ body {
 
   .stage-info-main {
     margin-top: 14px;
+  }
+
+  .stage-learning-rail {
+    position: relative;
+    inset: auto;
+    width: auto;
+    max-width: none;
+    margin: 12px;
+    grid-template-rows: auto;
   }
 
   .stage-learning-panel,
