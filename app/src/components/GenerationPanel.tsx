@@ -443,6 +443,8 @@ export function GenerationPanel({
       imageProvider,
       imageProfile,
       imageProfileLabel: getImageProfileLabel(imageProfile),
+      imageSize: getImageProfileOption(imageProfile).size,
+      imageQuality: getImageProfileOption(imageProfile).quality,
       provider: modelProvider,
       promptLength: prompt.trim().length,
     });
@@ -477,7 +479,11 @@ export function GenerationPanel({
         provider: job.provider,
         costEstimateCny: job.costEstimateCny,
         referenceId: reference?.id ?? job.referenceId,
+        workflowMode: job.workflowMode,
+        imageProvider: job.imageProvider,
         imageProfile: job.imageProfile || imageProfile,
+        imageSize: job.imageSize || getImageProfileOption(imageProfile).size,
+        imageQuality: job.imageQuality || getImageProfileOption(imageProfile).quality,
       });
     } catch (error) {
       setStatus(error instanceof Error ? error.message : '完整生成链路启动失败。');
@@ -536,10 +542,21 @@ export function GenerationPanel({
 
     if (!nextReference) {
       setStatus('需要先生成或上传参考图，再确认图生建模。');
+      trackEvent('workflow_model_confirm_blocked', {
+        reason: 'missing-reference',
+        template: nextTemplate,
+        provider: nextModelProvider,
+      });
       return;
     }
     if (!options.reference && !referenceAccepted) {
       setStatus('请先检查参考图并点击“接收图片”，再提交图生 3D 建模。');
+      trackEvent('workflow_model_confirm_blocked', {
+        reason: 'reference-not-accepted',
+        template: nextTemplate,
+        provider: nextModelProvider,
+        referenceId: nextReference.id,
+      });
       return;
     }
 
@@ -556,6 +573,11 @@ export function GenerationPanel({
     trackEvent('workflow_model_confirm', {
       template: nextTemplate,
       provider: nextModelProvider,
+      imageProvider: nextImageProvider,
+      imageProfile: nextImageProfile,
+      imageSize: getImageProfileOption(nextImageProfile).size,
+      imageQuality: getImageProfileOption(nextImageProfile).quality,
+      referenceId: nextReference.id,
       uploaded: nextReference.uploaded,
       source: options.eventSource || 'panel',
     });
@@ -580,7 +602,11 @@ export function GenerationPanel({
         template: job.template,
         provider: job.provider,
         costEstimateCny: job.costEstimateCny,
+        workflowMode: job.workflowMode,
+        imageProvider: job.imageProvider,
         imageProfile: job.imageProfile || nextImageProfile,
+        imageSize: job.imageSize || getImageProfileOption(nextImageProfile).size,
+        imageQuality: job.imageQuality || getImageProfileOption(nextImageProfile).quality,
         source: options.eventSource || 'panel',
       });
     } catch (error) {
@@ -1203,7 +1229,7 @@ export function GenerationPanel({
       )}
 
       {visibleJobHistory.length > 0 && (
-        <div className="job-history">
+        <div className="job-history" data-testid="job-history-compact">
           <div className="job-history-title">
             <span>最近任务</span>
             <strong>{jobHistorySummary.liveCount > 0 ? `${jobHistorySummary.liveCount} 个运行中` : '关键 3 条'}</strong>
@@ -1458,6 +1484,11 @@ export function GenerationPanel({
       <div className="provider-hint" aria-label="当前生成链路">
         <span>{selectedProviderLabel}</span>
         <strong>{activeChainSummary} · {selectedImageProfileOption.label} {selectedImageProfileOption.size}</strong>
+      </div>
+
+      <div className="local-chain-proof" aria-label="本地链路说明" data-testid="local-chain-proof">
+        <span>本地链路</span>
+        <strong>{buildLocalChainProofText(providerStatus, imageProvider, modelProvider)}</strong>
       </div>
 
       <div className="provider-status-strip" aria-label="本地生成服务状态">
@@ -2118,6 +2149,20 @@ function buildProviderStatusText(status: ProviderStatusPayload | null, provider:
   const openai = status.image.openai;
   if (openai?.auth?.message && !openai.auth.ok) return openai.auth.message;
   return getImageQualityProfile(status, provider);
+}
+
+function buildLocalChainProofText(status: ProviderStatusPayload | null, imageProvider: string, modelProvider: string) {
+  const gateway = status?.image.localGateway;
+  const selfhost = status?.model3d.selfhostTriposg;
+  const imagePath = imageProvider === 'local-gateway'
+    ? `${gateway?.baseUrl || 'http://127.0.0.1:48760'} / ${gateway?.imageModel || 'gpt-image-2'}`
+    : 'OpenAI 直连图片服务';
+  const modelPath = modelProvider === 'selfhost-triposg'
+    ? `${selfhost?.baseUrl || 'ComfyUI'} / TripoSG raw -> Hunyuan3D-Paint textured -> Bio3D final`
+    : getModelProviderName(modelProvider);
+  const queue = selfhost?.status?.queue;
+  const queueText = queue ? `队列 ${queue.running ?? 0}/${queue.pending ?? 0}` : '队列待同步';
+  return `${imagePath} -> ${modelPath} · ${queueText}`;
 }
 
 function buildGatewayRouteHint(status: ProviderStatusPayload | null, provider: string) {

@@ -164,8 +164,8 @@ function buildGuideFrame(target: HTMLElement, targetId: string): GuideFrame {
   const focusTop = clamp(rect.top - focusPadding, safe, window.innerHeight - safe);
   const focusRight = clamp(rect.right + focusPadding, safe, window.innerWidth - safe);
   const focusBottom = clamp(rect.bottom + focusPadding, safe, window.innerHeight - safe);
-  const panelWidth = Math.min(300, window.innerWidth - safe * 2);
-  const estimatedPanelHeight = targetId === 'model-stage' ? 230 : 210;
+  const panelWidth = Math.min(targetId === 'model-stage' ? 236 : 258, window.innerWidth - safe * 2);
+  const estimatedPanelHeight = targetId === 'model-stage' ? 196 : 184;
 
   let left = focusRight + gap;
   let top = focusTop + (focusBottom - focusTop) / 2 - estimatedPanelHeight / 2;
@@ -173,7 +173,7 @@ function buildGuideFrame(target: HTMLElement, targetId: string): GuideFrame {
 
   if (targetId === 'model-stage') {
     placement = 'stage';
-    left = focusRight - panelWidth - 18;
+    left = focusRight - panelWidth - 20;
     top = focusTop + (focusBottom - focusTop) * 0.42 - estimatedPanelHeight / 2;
   } else if (window.innerWidth - focusRight >= panelWidth + gap) {
     placement = 'right';

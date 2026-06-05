@@ -9,6 +9,7 @@ export type AnalyticsEventName =
   | 'workflow_reference_accept'
   | 'workflow_reference_reject'
   | 'workflow_model_confirm'
+  | 'workflow_model_confirm_blocked'
   | 'workflow_full_run_start'
   | 'workflow_full_reference_ready'
   | 'workflow_job_prompt_reuse'

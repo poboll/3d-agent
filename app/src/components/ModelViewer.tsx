@@ -105,29 +105,29 @@ export function ModelViewer({ model }: Props) {
           <Canvas
             frameloop={autoRotate ? 'always' : 'demand'}
             shadows="percentage"
-            dpr={[1, 1.5]}
+            dpr={[1, 1.35]}
             camera={{ position: [0, 0, 4.4], fov: 45 }}
             gl={{
               antialias: true,
               preserveDrawingBuffer: true,
             }}
           >
-            <ambientLight intensity={1.5} />
+            <ambientLight intensity={1.72} />
             <directionalLight
               position={[5, 6, 4]}
-              intensity={2.32}
+              intensity={2.58}
               castShadow
               shadow-mapSize-width={1024}
               shadow-mapSize-height={1024}
             />
-            <directionalLight position={[-3, 2, -4]} intensity={1.14} />
-            <directionalLight position={[0, 2.4, 5]} intensity={0.82} />
-            <hemisphereLight args={['#fff7e6', '#d9e4d2', 0.82]} />
+            <directionalLight position={[-3, 2, -4]} intensity={1.26} />
+            <directionalLight position={[0, 2.4, 5]} intensity={0.98} />
+            <hemisphereLight args={['#fff7e6', '#d9e4d2', 0.92]} />
 
-            <Environment resolution={128} frames={1} environmentIntensity={1.58}>
-              <Lightformer form="rect" intensity={3.52} position={[0, 4, 4]} scale={[5.4, 2.4, 1]} />
-              <Lightformer form="rect" intensity={2.04} position={[-4, 2, -2]} scale={[3.4, 4.4, 1]} />
-              <Lightformer form="ring" intensity={1.34} position={[4, 1.5, -3]} scale={2.6} />
+            <Environment resolution={128} frames={1} environmentIntensity={1.72}>
+              <Lightformer form="rect" intensity={3.86} position={[0, 4, 4]} scale={[5.4, 2.4, 1]} />
+              <Lightformer form="rect" intensity={2.18} position={[-4, 2, -2]} scale={[3.4, 4.4, 1]} />
+              <Lightformer form="ring" intensity={1.42} position={[4, 1.5, -3]} scale={2.6} />
             </Environment>
 
             {isReady && entry?.gltf && (
@@ -143,7 +143,7 @@ export function ModelViewer({ model }: Props) {
 
             <ContactShadows
               position={[0, -1.35, 0]}
-              opacity={0.13}
+              opacity={0.12}
               scale={6}
               blur={3.4}
               far={3.2}
@@ -216,7 +216,7 @@ export function ModelViewer({ model }: Props) {
         </aside>
       ) : null}
 
-      <aside className="stage-order-card" aria-label="观察顺序">
+      <aside className="stage-order-card" aria-label="观察顺序" data-testid="stage-order-card">
         <header>
           <span>观察顺序</span>
           <small>固定</small>
@@ -235,6 +235,7 @@ export function ModelViewer({ model }: Props) {
       <aside
         className={`stage-drawer stage-question-drawer${clueOpen || cluePinned ? ' open' : ''}${cluePinned ? ' pinned' : ''}`}
         aria-label="提问线索"
+        data-testid="stage-question-drawer"
         onPointerEnter={() => {
           setModelFocus(false);
           setClueOpen(true);
@@ -252,6 +253,9 @@ export function ModelViewer({ model }: Props) {
           setClueOpen(true);
         }}
         onPointerLeave={() => {
+          if (!cluePinned) setClueOpen(false);
+        }}
+        onMouseLeave={() => {
           if (!cluePinned) setClueOpen(false);
         }}
       >

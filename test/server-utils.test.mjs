@@ -323,6 +323,7 @@ describe('LearningCell fusion API utilities', () => {
     assert.equal(imageBoard.phases.find((phase) => phase.id === 'reference').state, 'active')
     assert.match(imageBoard.summary, /1536x1536/)
     assert.match(imageBoard.queueNote, /避免队列面板一直向下增长/)
+    assert.equal(imageBoard.phases.find((phase) => phase.id === 'reference')?.meta, '本地图片网关')
 
     const modelingBoard = buildWorkflowPhaseBoard({
       prompt: '线粒体开放剖面 3D 教学模型',
@@ -339,6 +340,7 @@ describe('LearningCell fusion API utilities', () => {
 
     assert.equal(modelingBoard.title, '正在图生 3D')
     assert.equal(modelingBoard.phases.find((phase) => phase.id === 'modeling').state, 'active')
+    assert.equal(modelingBoard.phases.find((phase) => phase.id === 'reference')?.meta, '标准教学 1536x1536')
     assert.match(modelingBoard.phases.find((phase) => phase.id === 'modeling').hint, /final\.glb/)
   })
 

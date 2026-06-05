@@ -83,11 +83,15 @@ body {
 
 .guide-overlay .guide-panel {
   z-index: 3;
-  width: min(270px, 100%);
-  padding: 13px 15px 13px;
+  width: min(248px, 100%);
+  padding: 12px 14px 12px;
   background:
     repeating-linear-gradient(101deg, rgba(76, 91, 72, 0.02) 0 1px, transparent 1px 18px),
     rgba(251, 250, 244, 0.96);
+}
+
+.guide-overlay.guide-target-model-stage .guide-panel {
+  width: min(230px, 100%);
 }
 
 .guide-spotlight {
@@ -96,9 +100,9 @@ body {
   border: 1px solid rgba(89, 111, 85, 0.58);
   border-radius: 7px;
   background:
-    linear-gradient(180deg, rgba(251, 250, 244, 0.18), rgba(223, 233, 220, 0.12));
+    linear-gradient(180deg, rgba(251, 250, 244, 0.28), rgba(223, 233, 220, 0.18));
   box-shadow:
-    0 0 0 9999px rgba(30, 32, 28, 0.38),
+    0 0 0 9999px rgba(30, 32, 28, 0.46),
     0 0 0 6px rgba(251, 250, 244, 0.22),
     0 0 34px rgba(223, 233, 220, 0.42),
     0 20px 58px -38px rgba(28, 31, 27, 0.62);
@@ -115,43 +119,43 @@ body {
 }
 
 .guide-panel h2 {
-  margin-top: 9px;
+  margin-top: 8px;
   color: var(--sumi);
   font-family: var(--font-serif);
-  font-size: clamp(14px, 1.3vw, 18px);
+  font-size: clamp(13px, 1.18vw, 16px);
   font-weight: 500;
 }
 
 .guide-panel p {
-  max-width: 236px;
-  margin-top: 7px;
+  max-width: 218px;
+  margin-top: 6px;
   color: var(--sumi-soft);
-  font-size: 10.2px;
-  line-height: 1.52;
+  font-size: 9.3px;
+  line-height: 1.48;
 }
 
 .guide-target-label {
   display: inline-flex;
   width: fit-content;
-  margin-top: 10px;
+  margin-top: 9px;
   padding: 3px 6px 4px;
   border-left: 2px solid var(--vermilion);
   background: rgba(139, 58, 46, 0.055);
   color: var(--sumi-soft);
   font-family: var(--font-mono);
-  font-size: 7.8px;
+  font-size: 7.1px;
   font-weight: 600;
   letter-spacing: 0.08em;
 }
 
 .guide-steps {
-  margin-top: 13px;
+  margin-top: 11px;
   display: flex;
   gap: 6px;
 }
 
 .guide-steps button {
-  width: 24px;
+  width: 20px;
   height: 3px;
   padding: 0;
   border: 0;
@@ -163,7 +167,7 @@ body {
 }
 
 .overlay-actions {
-  margin-top: 12px;
+  margin-top: 10px;
   display: flex;
   justify-content: flex-end;
   gap: 10px;
@@ -172,12 +176,12 @@ body {
 .overlay-primary,
 .overlay-secondary,
 .image-preview-actions button {
-  min-height: 29px;
-  padding: 0 10px;
+  min-height: 26px;
+  padding: 0 9px;
   border: 1px solid var(--hairline);
   border-radius: 3px;
   font-family: var(--font-mono);
-  font-size: 8px;
+  font-size: 7.4px;
   letter-spacing: 0.08em;
 }
 
@@ -691,7 +695,8 @@ body {
   line-height: 1.52;
 }
 
-.provider-hint {
+.provider-hint,
+.local-chain-proof {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
@@ -704,15 +709,18 @@ body {
     repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.018) 0 1px, transparent 1px 16px);
 }
 
-.provider-hint span {
+.provider-hint span,
+.local-chain-proof span {
   color: var(--vermilion);
   font-family: var(--font-mono);
   font-size: 8px;
   font-weight: 700;
   letter-spacing: 0.1em;
+  white-space: nowrap;
 }
 
-.provider-hint strong {
+.provider-hint strong,
+.local-chain-proof strong {
   min-width: 0;
   overflow: hidden;
   color: var(--sumi-soft);
@@ -722,6 +730,25 @@ body {
   letter-spacing: 0.02em;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.local-chain-proof {
+  min-height: 26px;
+  padding-block: 5px;
+  border-left-color: rgba(120, 102, 73, 0.3);
+  background:
+    linear-gradient(90deg, rgba(214, 205, 184, 0.2), rgba(251, 250, 244, 0.18)),
+    repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.014) 0 1px, transparent 1px 14px);
+}
+
+.local-chain-proof span {
+  color: rgba(120, 102, 73, 0.92);
+}
+
+.local-chain-proof strong {
+  color: rgba(43, 42, 38, 0.62);
+  font-size: 7.6px;
+  letter-spacing: 0.03em;
 }
 
 .provider-status-strip {
@@ -929,10 +956,11 @@ body {
 .job-detail-body,
 .concept-list,
 .stage-note-panel,
+.stage-order-card ol,
 .specimen-summary-copy p,
 .cell-list {
   scrollbar-color: rgba(139, 58, 46, 0.5) transparent;
-  scrollbar-width: thin;
+  scrollbar-width: none;
   scrollbar-gutter: stable;
 }
 
@@ -941,6 +969,7 @@ body {
 .job-detail-body::-webkit-scrollbar,
 .concept-list::-webkit-scrollbar,
 .stage-note-panel::-webkit-scrollbar,
+.stage-order-card ol::-webkit-scrollbar,
 .specimen-summary-copy p::-webkit-scrollbar,
 .cell-list::-webkit-scrollbar {
   width: 2px;
@@ -952,6 +981,7 @@ body {
 .job-detail-body::-webkit-scrollbar-track,
 .concept-list::-webkit-scrollbar-track,
 .stage-note-panel::-webkit-scrollbar-track,
+.stage-order-card ol::-webkit-scrollbar-track,
 .specimen-summary-copy p::-webkit-scrollbar-track,
 .cell-list::-webkit-scrollbar-track {
   background: transparent;
@@ -962,6 +992,7 @@ body {
 .job-detail-body::-webkit-scrollbar-thumb,
 .concept-list::-webkit-scrollbar-thumb,
 .stage-note-panel::-webkit-scrollbar-thumb,
+.stage-order-card ol::-webkit-scrollbar-thumb,
 .specimen-summary-copy p::-webkit-scrollbar-thumb,
 .cell-list::-webkit-scrollbar-thumb {
   border-radius: 0;
@@ -2346,7 +2377,7 @@ body {
   flex: 0 0 auto;
   display: grid;
   gap: 4px;
-  max-height: 102px;
+  max-height: 92px;
   padding: 5px 0;
   border-top: 1px solid rgba(28, 31, 27, 0.065);
   border-bottom: 1px solid rgba(28, 31, 27, 0.055);
@@ -2386,12 +2417,12 @@ body {
 
 .job-row {
   width: 100%;
-  min-height: 23px;
+  min-height: 21px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
-  padding: 3px 7px;
+  padding: 2px 7px;
   border: 1px solid var(--hairline-2);
   border-radius: 4px;
   background: rgba(252, 250, 244, 0.54);
@@ -2438,7 +2469,7 @@ body {
 .job-row em {
   color: rgba(46, 48, 43, 0.78);
   font-family: var(--font-mono);
-  font-size: 8.4px;
+  font-size: 8px;
   font-style: normal;
   line-height: 1.16;
 }
@@ -2645,8 +2676,8 @@ body {
 .stage::before {
   content: '';
   position: absolute;
-  inset: 18px 42px 30px 44px;
-  background-image: url("data:image/svg+xml,%3Csvg width='1010' height='690' viewBox='0 0 1010 690' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M561 82C724 91 858 169 879 301C907 476 704 606 453 589C246 575 98 464 116 314C132 179 300 92 535 82' fill='none' stroke='%231c1c1a' stroke-opacity='.145' stroke-width='1.02' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  inset: 22px 38px 34px 38px;
+  background-image: url("data:image/svg+xml,%3Csvg width='1010' height='690' viewBox='0 0 1010 690' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M552 74C725 82 872 165 890 305C912 471 716 605 461 594C241 584 96 469 112 321C127 184 294 93 526 75' fill='none' stroke='%231c1c1a' stroke-opacity='.16' stroke-width='1.05' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-position: center;
   background-repeat: no-repeat;
   background-size: 100% 100%;
@@ -2701,7 +2732,7 @@ body {
 
 .viewer-canvas-zone {
   position: absolute;
-  inset: 20px 20px 40px;
+  inset: 26px 28px 46px;
   z-index: 3;
   overflow: visible;
   pointer-events: auto;
@@ -2721,7 +2752,7 @@ body {
 
 .stage-info {
   position: absolute;
-  z-index: 4;
+  z-index: 6;
   border: 1px solid rgba(28, 28, 26, 0.11);
   border-radius: 4px;
   background: rgba(251, 250, 244, 0.58);
@@ -2796,7 +2827,7 @@ body {
 .stage-info-main {
   top: 20px;
   left: 24px;
-  width: clamp(132px, 14vw, 164px);
+  width: clamp(122px, 12vw, 152px);
   padding: 7px 9px;
 }
 
@@ -2887,7 +2918,7 @@ body {
   left: 22px;
   right: 22px;
   bottom: 14px;
-  z-index: 58;
+  z-index: 132;
   min-height: 32px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -2932,13 +2963,13 @@ body {
 
 .stage-order-card {
   position: absolute;
-  right: clamp(30px, 4.2vw, 58px);
+  right: clamp(18px, 3.2vw, 42px);
   top: 20px;
   z-index: 9;
-  width: fit-content;
-  min-width: 132px;
-  max-width: min(336px, calc(100% - 84px));
-  max-height: min(232px, calc(100% - 98px));
+  width: clamp(136px, 20vw, 248px);
+  min-width: 0;
+  max-width: min(248px, calc(100% - 62px));
+  max-height: min(228px, calc(100% - 104px));
   padding: 8px 9px 9px;
   border: 1px solid rgba(28, 31, 27, 0.12);
   border-radius: 4px;
@@ -2988,6 +3019,10 @@ body {
   display: grid;
   gap: 4px;
   list-style: none;
+  max-height: 168px;
+  padding-right: 4px;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .stage-order-card li {
@@ -3013,7 +3048,7 @@ body {
   overflow-wrap: break-word;
   color: var(--sumi);
   font-family: var(--font-serif);
-  font-size: 10px;
+  font-size: 9.6px;
   font-weight: 600;
   line-height: 1.15;
 }
@@ -3024,7 +3059,7 @@ body {
   overflow: hidden;
   color: var(--ink-mute);
   font-family: var(--font-sans);
-  font-size: 8.4px;
+  font-size: 8.1px;
   line-height: 1.32;
   letter-spacing: 0;
   overflow-wrap: break-word;
@@ -3140,14 +3175,14 @@ body {
 }
 
 .stage-question-drawer {
-  width: 35px;
-  right: 14px;
-  bottom: 66px;
+  width: 34px;
+  right: 8px;
+  bottom: 74px;
   z-index: 36;
   max-height: none;
   overflow: hidden;
   display: grid;
-  grid-template-columns: 0 35px;
+  grid-template-columns: 0 34px;
   transform: none;
   transition: width 0.24s ease, filter 0.2s ease, transform 0.24s ease;
 }
@@ -3156,17 +3191,17 @@ body {
   content: '';
   position: absolute;
   left: auto;
-  right: 0;
+  right: -18px;
   top: 0;
   bottom: 0;
-  width: 42px;
+  width: 62px;
 }
 
 .stage-question-drawer:hover,
 .stage-question-drawer.open,
 .stage-question-drawer.pinned {
-  width: min(218px, 30%);
-  grid-template-columns: minmax(0, 1fr) 35px;
+  width: min(206px, 27%);
+  grid-template-columns: minmax(0, 1fr) 34px;
   overflow: visible;
   transform: translateX(-6px);
 }
@@ -3174,8 +3209,8 @@ body {
 .stage-question-drawer button {
   position: relative;
   z-index: 1;
-  width: 35px;
-  min-height: 116px;
+  width: 34px;
+  min-height: 122px;
   align-self: stretch;
   justify-content: center;
   flex-direction: column;
@@ -3214,7 +3249,7 @@ body {
   position: relative;
   z-index: 1;
   margin: 0;
-  min-height: 116px;
+  min-height: 122px;
   padding: 10px 9px 9px;
   border: 1px solid rgba(28, 31, 27, 0.12);
   border-right: 0;
@@ -3224,7 +3259,7 @@ body {
     repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.018) 0 1px, transparent 1px 16px),
     rgba(251, 250, 244, 0.83);
   opacity: 0;
-  transform: translateX(18px);
+  transform: translateX(22px);
   box-shadow: 0 18px 46px -38px rgba(28, 31, 27, 0.46);
   transition: opacity 0.2s ease, transform 0.24s ease;
   grid-column: 1;
@@ -3254,7 +3289,7 @@ body {
   margin-top: 7px;
   color: rgba(43, 42, 38, 0.82);
   font-family: "Klee One", "LXGW WenKai", "STKaiti", "KaiTi", var(--font-serif);
-  font-size: 8.6px;
+  font-size: 8.4px;
   line-height: 1.42;
   letter-spacing: 0.025em;
   overflow-wrap: break-word;
@@ -3338,8 +3373,8 @@ body {
   position: absolute;
   left: 22px;
   bottom: 62px;
-  z-index: 4;
-  width: clamp(108px, 12vw, 136px);
+  z-index: 6;
+  width: clamp(104px, 10.6vw, 128px);
   max-height: 124px;
   padding: 4px 0 4px 12px;
   overflow-y: auto;
@@ -3382,11 +3417,11 @@ body {
 
 .stage-concept-card {
   position: absolute;
-  right: 48px;
-  top: 198px;
+  right: 42px;
+  top: 194px;
   bottom: auto;
-  z-index: 5;
-  width: clamp(160px, 22vw, 292px);
+  z-index: 7;
+  width: clamp(148px, 18vw, 238px);
   max-width: calc(100% - 66px);
   max-height: 112px;
   padding: 7px 8px 8px;
@@ -4028,7 +4063,7 @@ body {
 .cell-list {
   flex: 1 1 auto;
   width: 100%;
-  min-height: 0;
+  min-height: 74px;
   margin: 0;
   padding: 0 4px 0 0;
   list-style: none;
@@ -4042,7 +4077,7 @@ body {
 
 .cell-list li {
   min-width: 0;
-  min-height: 34px;
+  min-height: 36px;
 }
 
 .cell-empty {
@@ -4329,7 +4364,7 @@ body {
   position: relative;
   width: 100%;
   min-height: 0;
-  height: 32px;
+  height: 34px;
   display: flex;
   gap: 5px;
   align-items: center;
@@ -4556,14 +4591,14 @@ body {
   align-items: center;
   gap: 3px;
   flex: 0 0 auto;
-  max-width: 44px;
+  max-width: 54px;
   padding: 1px 4px 2px;
   overflow: hidden;
   border-left: 1px solid rgba(139, 58, 46, 0.18);
   background: transparent;
   color: var(--ink-mute);
   font-family: var(--font-mono);
-  font-size: 5.9px;
+  font-size: 5.7px;
   letter-spacing: 0.02em;
   text-transform: none;
   text-overflow: ellipsis;
