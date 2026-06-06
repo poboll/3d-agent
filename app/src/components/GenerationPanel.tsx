@@ -186,7 +186,7 @@ export function GenerationPanel({
           if (latestInspectableJob?.reference) {
             restoredLatestJobRef.current = true;
             setActiveJob(latestInspectableJob);
-            setDetailsOpen(true);
+            setDetailsOpen(isLiveWorkflowJob(latestInspectableJob));
             setReferenceImage(toReferenceImage(latestInspectableJob.reference, false));
             setReferenceAccepted(Boolean(latestInspectableJob.referenceId));
             setPromptPreview({
@@ -1070,6 +1070,74 @@ export function GenerationPanel({
         <p>文本或图片先形成参考图，确认后再交给图生 3D 服务，适合课堂里逐步讲解。</p>
       </div>
 
+      <label className="generation-field generation-prompt-field">
+        <span>01 TEXT PROMPT / 生物结构描述</span>
+        <textarea
+          value={prompt}
+          maxLength={600}
+          onFocus={() => trackEvent('workflow_prompt_focus', { template })}
+          onChange={(event) => {
+            setPrompt(event.target.value);
+            setPromptPreview(null);
+            setConfirmedPrompt(null);
+          }}
+          placeholder="例如：动物细胞 3D 教学模型，突出线粒体、细胞核和细胞膜"
+        />
+      </label>
+
+      <section className={`prompt-approval-card${confirmedPromptMatchesCurrent ? ' confirmed' : ''}`} aria-label="提示词确认" data-testid="prompt-approval-card">
+        <div className="prompt-approval-copy">
+          <span>提示词工序</span>
+          <strong>{confirmedPromptMatchesCurrent ? '已锁定 3D-ready prompt' : promptPreviewMatchesCurrent ? '检查后确认提示词' : '先生成可复现提示词'}</strong>
+          <p>{confirmedPromptMatchesCurrent ? '参考图会使用已确认版本，降低构图漂移。' : '先让 GPT-5.5 打磨单图 prompt，再生成参考图或完整生成。'}</p>
+        </div>
+        <div className="prompt-approval-actions">
+          <button type="button" onClick={handlePreviewPrompt} disabled={!canCreateReference || busy} data-testid="preview-prompt">
+            预览提示词
+          </button>
+          <button type="button" onClick={handleRegeneratePrompt} disabled={!canCreateReference || busy} data-testid="regenerate-prompt">
+            重新生成
+          </button>
+          <button type="button" onClick={handleConfirmPrompt} disabled={!promptPreviewMatchesCurrent || busy || confirmedPromptMatchesCurrent} data-testid="confirm-prompt">
+            {confirmedPromptMatchesCurrent ? '已确认' : '确认提示词'}
+          </button>
+        </div>
+      </section>
+
+      <div className="generation-actions" id="workflow-actions" aria-label="生成操作">
+        <div className="generation-action-main" aria-label="主流程操作">
+          <button type="button" className="generation-primary" onClick={handleCreateReference} disabled={!canCreateReference} data-testid="generate-reference">
+            生成参考图
+          </button>
+          <button type="button" className="generation-primary full-action" onClick={handleRunFullWorkflow} disabled={!canCreateReference || busy} data-testid="run-full-workflow">
+            完整生成
+          </button>
+          <button type="button" className="generation-primary confirm-action" onClick={handleConfirmModeling} disabled={!canConfirmModeling} data-testid="confirm-modeling">
+            确认建模
+          </button>
+        </div>
+        <div className="generation-action-secondary" aria-label="辅助操作">
+          <button type="button" className="generation-secondary" onClick={() => imageInputRef.current?.click()} disabled={busy} data-testid="upload-reference-image">
+            上传图片
+          </button>
+          <button type="button" className="generation-secondary" onClick={handleCreateReference} disabled={!canCreateReference} data-testid="retry-reference-image">
+            重试图片
+          </button>
+          <button type="button" className="generation-secondary" onClick={handleAcceptReference} disabled={!referenceImage || busy} data-testid="accept-reference-image">
+            {referenceAccepted ? '已接收' : '接收图片'}
+          </button>
+          <button type="button" className="generation-secondary" onClick={handleRejectReference} disabled={!referenceImage || busy} data-testid="reject-reference-image">
+            退回图片
+          </button>
+          <button type="button" className="generation-secondary" onClick={handleLoadDemo} disabled={busy}>
+            加载缓存
+          </button>
+          <button type="button" className="generation-secondary" onClick={() => modelInputRef.current?.click()} disabled={busy}>
+            导入 GLB
+          </button>
+        </div>
+      </div>
+
       <section className={`generation-timeline ${generationTimeline.state}`} aria-label="完整生成路线" data-testid="generation-timeline">
         <header>
           <span>生成路线</span>
@@ -1146,69 +1214,30 @@ export function GenerationPanel({
         <em>{workflowPreflight.recommendation}</em>
       </section>
 
-      <label className="generation-field generation-prompt-field">
-        <span>01 TEXT PROMPT / 生物结构描述</span>
-        <textarea
-          value={prompt}
-          maxLength={600}
-          onFocus={() => trackEvent('workflow_prompt_focus', { template })}
-          onChange={(event) => {
-            setPrompt(event.target.value);
-            setPromptPreview(null);
-            setConfirmedPrompt(null);
-          }}
-          placeholder="例如：动物细胞 3D 教学模型，突出线粒体、细胞核和细胞膜"
-        />
-      </label>
-
-      <section className={`prompt-approval-card${confirmedPromptMatchesCurrent ? ' confirmed' : ''}`} aria-label="提示词确认" data-testid="prompt-approval-card">
-        <div>
-          <span>提示词确认</span>
-          <strong>{confirmedPromptMatchesCurrent ? '已确认 3D-ready prompt' : promptPreviewMatchesCurrent ? '待确认提示词' : '先预览或重新生成'}</strong>
-          <p>{confirmedPromptMatchesCurrent ? '生成参考图会直接使用已确认版本，避免重复打磨造成构图漂移。' : '确认后再生成图片，链路会更适合教学演示和客户复现。'}</p>
+      {visibleJobHistory.length > 0 && (
+        <div className="job-history" data-testid="job-history-compact">
+          <div className="job-history-title">
+            <span>队列摘要</span>
+            <strong>{jobHistorySummary.liveCount > 0 ? `${jobHistorySummary.liveCount} 个运行中` : '最近 2 条'}</strong>
+            <em>{hiddenJobCount > 0 ? `其余 ${hiddenJobCount} 条已折叠` : `共 ${jobHistorySummary.totalCount} 条`}</em>
+          </div>
+          {visibleJobHistory.map((job, index) => (
+            <button
+              type="button"
+              className={`job-row history-slot-${index + 1} ${job.status}${activeJob?.id === job.id ? ' active' : ''}`}
+              key={job.id}
+              onClick={() => handleSelectJob(job)}
+            >
+              <span>
+                <small>{getWorkflowModeLabel(job.workflowMode || 'image-to-3d')} · {getShortJobId(job.id)}</small>
+                <em>{job.prompt}</em>
+              </span>
+              <strong>{job.status === 'completed' ? '完成' : job.status === 'failed' ? '失败' : `${job.progress}%`}</strong>
+            </button>
+          ))}
+          <p className="job-history-note">后台队列持续同步，只保留关键任务摘要，不再向下堆积。</p>
         </div>
-        <div className="prompt-approval-actions">
-          <button type="button" onClick={handleRegeneratePrompt} disabled={!canCreateReference || busy} data-testid="regenerate-prompt">
-            重新生成提示词
-          </button>
-          <button type="button" onClick={handleConfirmPrompt} disabled={!promptPreviewMatchesCurrent || busy} data-testid="confirm-prompt">
-            确认提示词
-          </button>
-        </div>
-      </section>
-
-      <div className="generation-actions" id="workflow-actions" aria-label="生成操作">
-        <button type="button" className="generation-primary" onClick={handleCreateReference} disabled={!canCreateReference} data-testid="generate-reference">
-          生成参考图
-        </button>
-        <button type="button" className="generation-secondary" onClick={handlePreviewPrompt} disabled={!canCreateReference} data-testid="preview-prompt">
-          预览 Prompt
-        </button>
-        <button type="button" className="generation-primary full-action" onClick={handleRunFullWorkflow} disabled={!canCreateReference || busy} data-testid="run-full-workflow">
-          完整生成
-        </button>
-        <button type="button" className="generation-primary confirm-action" onClick={handleConfirmModeling} disabled={!canConfirmModeling} data-testid="confirm-modeling">
-          确认建模
-        </button>
-        <button type="button" className="generation-secondary" onClick={() => imageInputRef.current?.click()} disabled={busy} data-testid="upload-reference-image">
-          上传图片
-        </button>
-        <button type="button" className="generation-secondary" onClick={handleCreateReference} disabled={!canCreateReference} data-testid="retry-reference-image">
-          重试图片
-        </button>
-        <button type="button" className="generation-secondary" onClick={handleAcceptReference} disabled={!referenceImage || busy} data-testid="accept-reference-image">
-          {referenceAccepted ? '已接收' : '接收图片'}
-        </button>
-        <button type="button" className="generation-secondary" onClick={handleRejectReference} disabled={!referenceImage || busy} data-testid="reject-reference-image">
-          退回图片
-        </button>
-        <button type="button" className="generation-secondary" onClick={handleLoadDemo} disabled={busy}>
-          加载缓存
-        </button>
-        <button type="button" className="generation-secondary" onClick={() => modelInputRef.current?.click()} disabled={busy}>
-          导入 GLB
-        </button>
-      </div>
+      )}
 
       {generatedModels.length > 0 && (
         <button
@@ -1289,31 +1318,6 @@ export function GenerationPanel({
           </span>
         ))}
       </div>
-
-      {visibleJobHistory.length > 0 && (
-        <div className="job-history" data-testid="job-history-compact">
-          <div className="job-history-title">
-            <span>任务摘要</span>
-            <strong>{jobHistorySummary.liveCount > 0 ? `${jobHistorySummary.liveCount} 个运行中` : '只显示 2 条'}</strong>
-            <em>{hiddenJobCount > 0 ? `其余 ${hiddenJobCount} 条已折叠` : `共 ${jobHistorySummary.totalCount} 条`}</em>
-          </div>
-          {visibleJobHistory.map((job, index) => (
-            <button
-              type="button"
-              className={`job-row history-slot-${index + 1} ${job.status}${activeJob?.id === job.id ? ' active' : ''}`}
-              key={job.id}
-              onClick={() => handleSelectJob(job)}
-            >
-              <span>
-                <small>{getWorkflowModeLabel(job.workflowMode || 'image-to-3d')} · {getShortJobId(job.id)}</small>
-                <em>{job.prompt}</em>
-              </span>
-              <strong>{job.status === 'completed' ? '完成' : job.status === 'failed' ? '失败' : `${job.progress}%`}</strong>
-            </button>
-          ))}
-          <p className="job-history-note">后台队列持续同步，面板固定两张摘要卡，不再向下堆积。</p>
-        </div>
-      )}
 
       {taskWatch && (
         <section className={`task-watch-card ${taskWatch.state}`} aria-label="长任务观察" data-testid="task-watch-card">

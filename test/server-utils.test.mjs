@@ -307,6 +307,15 @@ describe('LearningCell fusion API utilities', () => {
     assert.equal(summary.hiddenCount, 2)
   })
 
+  it('keeps queue wait copy focused on a compact task summary', () => {
+    const hint = getWorkflowWaitHint(88, 'queue')
+
+    assert.ok(hint)
+    assert.equal(hint?.label, '后台仍在生成')
+    assert.match(hint?.hint || '', /关键任务摘要/)
+    assert.doesNotMatch(hint?.hint || '', /关键 3 条/)
+  })
+
   it('builds a clear full-generation timeline for the workbench', () => {
     const idle = buildGenerationTimeline({
       prompt: '植物细胞 3D 教学模型',

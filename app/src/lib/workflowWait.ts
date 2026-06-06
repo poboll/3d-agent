@@ -56,7 +56,7 @@ function buildNormalWaitHint(stage: WorkflowWaitStage, imageProfile: string, mod
     return `${modelProfile} 正在排队或贴图打包；完成后会自动进入标本列表。`;
   }
   if (stage === 'queue') {
-    return '队列只展示关键 3 条，后台继续轮询当前任务，避免面板一直向下增长。';
+    return '队列只展示关键任务摘要，后台继续轮询当前任务，避免面板一直向下增长。';
   }
   return '任务仍在后台执行，可保持页面开启等待同步。';
 }

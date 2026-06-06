@@ -71,12 +71,17 @@ export function ModelViewer({ model }: Props) {
       return;
     }
 
-    if (target.closest('.stage-learning-rail, .stage-note-panel, .stage-info-main')) {
+    if (target.closest('.stage-learning-rail')) {
+      setModelFocus(isCentralModelZone || x < w * 0.78);
+      return;
+    }
+
+    if (target.closest('.stage-note-panel, .stage-info-main')) {
       setModelFocus(isCentralModelZone);
       return;
     }
 
-    const isQuestionHotZone = x > w - 84 && y > 116 && y < h - 58;
+    const isQuestionHotZone = x > w - 42 && y > 116 && y < h - 58;
     if (isQuestionHotZone) {
       setClueOpen(true);
       setModelFocus(false);
@@ -267,9 +272,12 @@ export function ModelViewer({ model }: Props) {
           if (!cluePinned) setClueOpen(false);
         }}
       >
-        <button type="button" aria-expanded={clueOpen || cluePinned} onClick={() => setCluePinned((value) => !value)}>
+        <button type="button" aria-expanded={clueOpen || cluePinned} onClick={() => {
+          setClueOpen(true);
+          setCluePinned((value) => !value);
+        }}>
           <span>提问线索</span>
-          <small>{cluePinned ? '已展开' : '点击展开'}</small>
+          <small>{cluePinned ? '已固定' : '点击固定'}</small>
         </button>
         <div className="question-clue">
           <span>课堂提问</span>
