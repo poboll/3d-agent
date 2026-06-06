@@ -1219,7 +1219,7 @@ export function GenerationPanel({
           <div className="job-history-title">
             <span>队列摘要</span>
             <strong>{jobHistorySummary.liveCount > 0 ? `${jobHistorySummary.liveCount} 个运行中` : '最近 2 条'}</strong>
-            <em>{hiddenJobCount > 0 ? `其余 ${hiddenJobCount} 条已折叠` : `共 ${jobHistorySummary.totalCount} 条`}</em>
+            <em>{hiddenJobCount > 0 ? `已收纳 ${hiddenJobCount} 条历史` : `共 ${jobHistorySummary.totalCount} 条`}</em>
           </div>
           {visibleJobHistory.map((job, index) => (
             <button
@@ -1235,7 +1235,7 @@ export function GenerationPanel({
               <strong>{job.status === 'completed' ? '完成' : job.status === 'failed' ? '失败' : `${job.progress}%`}</strong>
             </button>
           ))}
-          <p className="job-history-note">后台队列持续同步，只保留关键任务摘要，不再向下堆积。</p>
+          <p className="job-history-note">后台队列持续同步，当前只展示最近任务；完整记录保留在本地任务接口。</p>
         </div>
       )}
 

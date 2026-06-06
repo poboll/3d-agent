@@ -942,14 +942,15 @@ body {
 
 .gateway-route-hint strong {
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
   color: rgba(43, 42, 38, 0.68);
   font-family: var(--font-mono);
   font-size: 7.3px;
   font-weight: 700;
   letter-spacing: 0.025em;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.28;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .workflow-next-action {
@@ -2032,12 +2033,17 @@ body {
 
 .task-watch-head span,
 .task-watch-grid small {
+  min-width: 0;
+  max-width: 100%;
+  display: block;
+  overflow: hidden;
   color: var(--ink-whisper);
   font-family: var(--font-mono);
   font-size: 6.9px;
   font-weight: 700;
   letter-spacing: 0.09em;
   text-transform: uppercase;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -2665,14 +2671,18 @@ body {
 .job-history {
   flex: 0 0 auto;
   display: grid;
-  grid-template-columns: minmax(0, 0.86fr) minmax(0, 1.07fr) minmax(0, 1.07fr);
+  grid-template-columns: minmax(72px, 0.7fr) repeat(2, minmax(0, 1fr));
   align-items: stretch;
   gap: 4px;
-  min-height: 48px;
-  max-height: 52px;
-  padding: 3px 0;
-  border-top: 1px solid rgba(28, 31, 27, 0.065);
-  border-bottom: 1px solid rgba(28, 31, 27, 0.055);
+  min-height: 54px;
+  max-height: 58px;
+  padding: 4px;
+  border: 1px solid rgba(28, 31, 27, 0.07);
+  border-left: 2px solid rgba(120, 102, 73, 0.34);
+  border-radius: 4px;
+  background:
+    linear-gradient(90deg, rgba(251, 250, 244, 0.62), rgba(223, 233, 220, 0.12)),
+    repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.012) 0 1px, transparent 1px 13px);
   overflow: hidden;
 }
 
@@ -2680,8 +2690,8 @@ body {
   min-width: 0;
   display: grid;
   align-content: center;
-  gap: 2px;
-  padding: 3px 3px 3px 2px;
+  gap: 3px;
+  padding: 4px 4px 4px 2px;
   color: var(--ink-whisper);
   font-family: var(--font-mono);
   font-size: 6.5px;
@@ -2711,7 +2721,7 @@ body {
   min-width: 0;
   overflow: hidden;
   color: rgba(89, 111, 85, 0.8);
-  font-size: 6.6px;
+  font-size: 7px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-overflow: ellipsis;
@@ -2720,7 +2730,7 @@ body {
 
 .job-row {
   width: 100%;
-  min-height: 40px;
+  min-height: 44px;
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;
   align-items: center;
@@ -2762,6 +2772,14 @@ body {
     repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.014) 0 1px, transparent 1px 13px);
 }
 
+.job-row:hover,
+.job-row:focus-visible {
+  border-color: rgba(139, 58, 46, 0.24);
+  background:
+    linear-gradient(90deg, rgba(139, 58, 46, 0.045), rgba(252, 250, 244, 0.68)),
+    repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.014) 0 1px, transparent 1px 13px);
+}
+
 .job-row span,
 .job-row strong {
   min-width: 0;
@@ -2776,7 +2794,9 @@ body {
 
 .job-row small,
 .job-row em {
+  display: block;
   min-width: 0;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -4012,12 +4032,27 @@ body {
   white-space: nowrap;
 }
 
+.progress-load-detail {
+  margin: -5px 0 12px;
+  color: rgba(43, 42, 38, 0.58);
+  font-family: var(--font-mono);
+  font-size: 8.2px;
+  font-weight: 700;
+  line-height: 1.55;
+  letter-spacing: 0.035em;
+  text-align: left;
+}
+
 .progress-overlay.heavy-model .progress-model-weight {
   border-left: 2px solid rgba(139, 58, 46, 0.42);
 }
 
 .progress-overlay.heavy-model .progress-model-weight em {
   color: rgba(139, 58, 46, 0.9);
+}
+
+.progress-overlay.heavy-model .progress-load-detail {
+  color: rgba(139, 58, 46, 0.72);
 }
 
 .progress-bar {

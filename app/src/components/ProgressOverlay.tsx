@@ -1,5 +1,5 @@
 import type { LoadStatus } from '../lib/modelLoader';
-import { formatModelBytes, getModelLoadHint, isHeavyModel } from '../lib/modelWeight';
+import { formatModelBytes, getModelLoadDetail, getModelLoadHint, isHeavyModel } from '../lib/modelWeight';
 
 interface Props {
   progress: number;
@@ -34,6 +34,7 @@ export function ProgressOverlay({ progress, status, modelName, fileSize, error, 
           <span>{formatModelBytes(fileSize)}</span>
           <em>{getModelLoadHint(fileSize)}</em>
         </div>
+        <p className="progress-load-detail">{getModelLoadDetail(fileSize)}</p>
         <div className="progress-bar">
           <div
             className="progress-fill"

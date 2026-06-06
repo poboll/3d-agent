@@ -27,6 +27,9 @@ export function ModelViewer({ model }: Props) {
 
   const isReady = status === 'done' && !!entry?.gltf;
   const heavyModel = isHeavyModel(model.fileSize);
+  const renderDpr: [number, number] = heavyModel ? [1, 1.15] : [1, 1.35];
+  const environmentResolution = heavyModel ? 96 : 128;
+  const shadowMapSize = heavyModel ? 768 : 1024;
   const modelSizeLabel = formatModelBytes(model.fileSize);
   const modelLoadHint = getModelLoadHint(model.fileSize);
 
@@ -116,26 +119,28 @@ export function ModelViewer({ model }: Props) {
           <Canvas
             frameloop={autoRotate ? 'always' : 'demand'}
             shadows="percentage"
-            dpr={[1, 1.35]}
+            dpr={renderDpr}
             camera={{ position: [0, 0, 4.4], fov: 45 }}
             gl={{
               antialias: true,
               preserveDrawingBuffer: true,
+              powerPreference: 'high-performance',
             }}
+            performance={{ min: heavyModel ? 0.58 : 0.72 }}
           >
             <ambientLight intensity={1.72} />
             <directionalLight
               position={[5, 6, 4]}
               intensity={2.58}
               castShadow
-              shadow-mapSize-width={1024}
-              shadow-mapSize-height={1024}
+              shadow-mapSize-width={shadowMapSize}
+              shadow-mapSize-height={shadowMapSize}
             />
             <directionalLight position={[-3, 2, -4]} intensity={1.26} />
             <directionalLight position={[0, 2.4, 5]} intensity={0.98} />
             <hemisphereLight args={['#fff7e6', '#d9e4d2', 0.92]} />
 
-            <Environment resolution={128} frames={1} environmentIntensity={1.72}>
+            <Environment resolution={environmentResolution} frames={1} environmentIntensity={1.72}>
               <Lightformer form="rect" intensity={3.86} position={[0, 4, 4]} scale={[5.4, 2.4, 1]} />
               <Lightformer form="rect" intensity={2.18} position={[-4, 2, -2]} scale={[3.4, 4.4, 1]} />
               <Lightformer form="ring" intensity={1.42} position={[4, 1.5, -3]} scale={2.6} />

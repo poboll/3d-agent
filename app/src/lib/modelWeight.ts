@@ -13,8 +13,18 @@ export function isHeavyModel(bytes?: number) {
 
 export function getModelLoadHint(bytes?: number) {
   if (isHeavyModel(bytes)) {
-    return '重模型 · 建议加载完成后再切换标本';
+    return '重模型 · 已启用轻量渲染并保留光影';
   }
   if (bytes && bytes > 0) return '轻量模型 · 可快速预览';
   return '模型大小待测 · 正在读取缓存';
+}
+
+export function getModelLoadDetail(bytes?: number) {
+  if (isHeavyModel(bytes)) {
+    return '首次解析会更久，加载完成前建议先停留在当前标本；舞台会降低像素密度与环境贴图分辨率，但保留阴影、环境贴图和主光。';
+  }
+  if (bytes && bytes > 0) {
+    return '模型体积较小，解析完成后即可拖拽观察。';
+  }
+  return '正在读取本地缓存信息，完成后会自动进入 3D 舞台。';
 }

@@ -14,7 +14,7 @@ import { sanitizeFileName } from '../server/http-utils.mjs'
 import { DEFAULT_IMAGE_PROVIDER, WORKFLOW_JOBS_FILE } from '../server/config.mjs'
 import { isAnalyticsEventAllowed } from '../server/analytics-store.mjs'
 import { isTransientComfyError, normalizeComfyFetchError, scrubComfyEndpoint } from '../server/comfyui-provider.mjs'
-import { formatModelBytes, getModelLoadHint, isHeavyModel } from '../app/src/lib/modelWeight.ts'
+import { formatModelBytes, getModelLoadDetail, getModelLoadHint, isHeavyModel } from '../app/src/lib/modelWeight.ts'
 import { getWorkflowWaitHint } from '../app/src/lib/workflowWait.ts'
 import { buildJobHistorySummary } from '../app/src/lib/jobHistory.ts'
 import { buildGenerationTimeline } from '../app/src/lib/workflowTimeline.ts'
@@ -200,7 +200,8 @@ describe('LearningCell fusion API utilities', () => {
     assert.equal(formatModelBytes(60656016), '57.8 MB')
     assert.equal(isHeavyModel(60656016), true)
     assert.equal(isHeavyModel(2838504), false)
-    assert.equal(getModelLoadHint(60656016), '重模型 · 建议加载完成后再切换标本')
+    assert.equal(getModelLoadHint(60656016), '重模型 · 已启用轻量渲染并保留光影')
+    assert.match(getModelLoadDetail(60656016), /保留阴影、环境贴图和主光/)
     assert.equal(getModelLoadHint(2838504), '轻量模型 · 可快速预览')
   })
 
@@ -477,7 +478,7 @@ describe('LearningCell fusion API utilities', () => {
     assert.equal(preflight.checks.find((check) => check.id === 'model')?.value, '0/0')
   })
 
-  it('warns when OpenAI direct image route is unavailable but local gateway can be used', () => {
+  it('keeps preflight usable when OpenAI direct image route is unavailable but local gateway can be used', () => {
     const status = makeProviderStatus()
     const preflight = buildWorkflowPreflight({
       status,
@@ -487,9 +488,10 @@ describe('LearningCell fusion API utilities', () => {
       imageSpecLabel: '标准教学 1536x1536',
     })
 
-    assert.equal(preflight.state, 'warn')
-    assert.match(preflight.recommendation, /切回 48760/)
-    assert.match(preflight.checks.find((check) => check.id === 'image')?.hint || '', /disabled/)
+    assert.equal(preflight.state, 'ok')
+    assert.match(preflight.recommendation, /48760/)
+    assert.equal(preflight.checks.find((check) => check.id === 'image')?.value, '备用异常')
+    assert.match(preflight.checks.find((check) => check.id === 'image')?.hint || '', /主链路继续生成/)
   })
 
   it('detects recoverable workflow jobs without reviving stale or completed work', () => {

@@ -65,28 +65,35 @@ export function buildWorkflowPreflight(input: WorkflowPreflightInput): WorkflowP
 function buildImageCheck(status: ProviderStatusPayload | null, provider: string): WorkflowPreflightCheck {
   if (!status) return createCheck('image', '图片网关', '未同步', 'pending', '等待后端返回 provider 状态。');
 
+  const gateway = status.image.localGateway;
+  const gatewayReady = isLocalGatewayReady(status);
+
   if (provider === 'openai') {
     const openai = status.image.openai;
     const ready = Boolean(openai?.configured && (openai.auth ? openai.auth.ok : true));
     return createCheck(
       'image',
       '图片服务',
-      ready ? openai?.imageToolModel || openai?.imageModel || 'OpenAI' : `直连异常 ${openai?.auth?.status || ''}`.trim(),
-      ready ? 'ok' : 'warn',
-      ready ? 'OpenAI 图片服务可用。' : openai?.auth?.message || 'OpenAI 直连不可用，建议切回本地图片网关。'
+      ready
+        ? openai?.imageToolModel || openai?.imageModel || 'OpenAI'
+        : gatewayReady
+          ? '备用异常'
+          : `直连异常 ${openai?.auth?.status || ''}`.trim(),
+      ready || gatewayReady ? 'ok' : 'warn',
+      ready
+        ? 'OpenAI 图片服务可用。'
+        : gatewayReady
+          ? 'OpenAI 直连不可用，但 48760 本地图片网关可作为主链路继续生成。'
+          : openai?.auth?.message || 'OpenAI 直连不可用，建议切回本地图片网关。'
     );
   }
 
-  const gateway = status.image.localGateway;
-  const healthReady = gateway?.health ? gateway.health.ok : true;
-  const modelsReady = gateway?.models ? gateway.models.ok : true;
-  const ready = Boolean(gateway?.configured && healthReady && modelsReady);
   return createCheck(
     'image',
     '图片网关',
-    ready ? `${gateway?.imageModel || 'gpt-image-2'} · 48760` : '需检查',
-    ready ? 'ok' : 'warn',
-    ready ? `${gateway?.baseUrl || 'http://127.0.0.1:48760'} 已通过 health/models。` : '请检查 48760 服务、API Key 或模型列表。'
+    gatewayReady ? `${gateway?.imageModel || 'gpt-image-2'} · 48760` : '需检查',
+    gatewayReady ? 'ok' : 'warn',
+    gatewayReady ? `${gateway?.baseUrl || 'http://127.0.0.1:48760'} 已通过 health/models。` : '请检查 48760 服务、API Key 或模型列表。'
   );
 }
 
@@ -139,6 +146,7 @@ function buildPreflightSummary(checks: WorkflowPreflightCheck[]) {
 function buildPreflightRecommendation(state: WorkflowPreflightState, imageProvider: string, modelProvider: string) {
   if (state === 'ok') {
     if (modelProvider === 'local-demo') return '可以先用缓存链路快速验证，再切回自部署 3D 跑正式模型。';
+    if (imageProvider === 'openai') return '当前可生成；若直连 OpenAI 不稳定，建议切回 48760 本地图片网关作为主链路。';
     return '可以点击“生成参考图”走可控确认，也可以点击“完整生成”直接跑默认链路。';
   }
   if (state === 'pending') return '等待预检完成后再提交正式任务，避免长任务中途失败。';
@@ -148,4 +156,11 @@ function buildPreflightRecommendation(state: WorkflowPreflightState, imageProvid
 
 function createCheck(id: string, label: string, value: string, state: WorkflowPreflightState, hint: string): WorkflowPreflightCheck {
   return { id, label, value, state, hint };
+}
+
+function isLocalGatewayReady(status: ProviderStatusPayload | null) {
+  const gateway = status?.image.localGateway;
+  const healthReady = gateway?.health ? gateway.health.ok : true;
+  const modelsReady = gateway?.models ? gateway.models.ok : true;
+  return Boolean(gateway?.configured && healthReady && modelsReady);
 }
