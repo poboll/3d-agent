@@ -20,6 +20,7 @@ import { buildJobHistorySummary } from '../app/src/lib/jobHistory.ts'
 import { buildGenerationTimeline } from '../app/src/lib/workflowTimeline.ts'
 import { buildWorkflowPhaseBoard } from '../app/src/lib/workflowPhaseBoard.ts'
 import { buildWorkflowNextAction } from '../app/src/lib/workflowNextAction.ts'
+import { buildWorkflowPreflight } from '../app/src/lib/workflowPreflight.ts'
 import { createWorkflowJob } from '../server/job-store.mjs'
 import {
   chooseTemplateForPrompt,
@@ -266,6 +267,26 @@ describe('LearningCell fusion API utilities', () => {
     assert.equal(summary.visible[0].id, 'job-0')
   })
 
+  it('replaces stale completed active jobs with newer completed jobs for the same prompt', () => {
+    const active = {
+      ...makeJob('job-old-active', 'completed', '叶绿体开放剖面教学模型'),
+      updatedAt: '2026-05-24T01:03:15.000Z',
+    }
+    const jobs = [
+      {
+        ...makeJob('job-new-completed', 'completed', '叶绿体开放剖面教学模型'),
+        updatedAt: '2026-05-24T01:23:36.000Z',
+      },
+      makeJob('job-live-different', 'processing', '线粒体开放剖面教学模型'),
+    ]
+
+    const summary = buildJobHistorySummary(jobs, active)
+
+    assert.equal(summary.visible.length, 2)
+    assert.equal(summary.visible[0].id, 'job-new-completed')
+    assert.equal(summary.visible[1].id, 'job-live-different')
+  })
+
   it('summarizes resumable self-hosted failures before old completed jobs', () => {
     const failedSelfhost = {
       ...makeJob('job-selfhost-failed', 'failed', '线粒体远端三维任务'),
@@ -429,6 +450,39 @@ describe('LearningCell fusion API utilities', () => {
     )
   })
 
+  it('summarizes local gateway and self-hosted 3D preflight status', () => {
+    const status = makeProviderStatus()
+    const preflight = buildWorkflowPreflight({
+      status,
+      loading: false,
+      imageProvider: 'local-gateway',
+      modelProvider: 'selfhost-triposg',
+      imageSpecLabel: '标准教学 1536x1536',
+    })
+
+    assert.equal(preflight.state, 'ok')
+    assert.match(preflight.title, /通过/)
+    assert.match(preflight.summary, /均可用/)
+    assert.equal(preflight.checks.length, 5)
+    assert.equal(preflight.checks.find((check) => check.id === 'image')?.value, 'gpt-image-2 · 48760')
+    assert.equal(preflight.checks.find((check) => check.id === 'model')?.value, '0/0')
+  })
+
+  it('warns when OpenAI direct image route is unavailable but local gateway can be used', () => {
+    const status = makeProviderStatus()
+    const preflight = buildWorkflowPreflight({
+      status,
+      loading: false,
+      imageProvider: 'openai',
+      modelProvider: 'selfhost-triposg',
+      imageSpecLabel: '标准教学 1536x1536',
+    })
+
+    assert.equal(preflight.state, 'warn')
+    assert.match(preflight.recommendation, /切回 48760/)
+    assert.match(preflight.checks.find((check) => check.id === 'image')?.hint || '', /disabled/)
+  })
+
   it('detects recoverable workflow jobs without reviving stale or completed work', () => {
     const now = Date.parse('2026-05-23T04:00:00.000Z')
     const baseJob = {
@@ -499,5 +553,43 @@ function makeJob(id, status, prompt) {
     createdAt: '2026-05-23T03:50:00.000Z',
     updatedAt: '2026-05-23T03:58:00.000Z',
     workflowMode: status === 'queued' ? 'full-text-to-3d' : 'image-to-3d',
+  }
+}
+
+function makeProviderStatus() {
+  return {
+    image: {
+      localGateway: {
+        configured: true,
+        baseUrl: 'http://127.0.0.1:48760',
+        promptModel: 'gpt-5.5',
+        imageModel: 'gpt-image-2',
+        imageSize: '1536x1536',
+        imageQuality: 'high',
+        health: { ok: true, status: 200, message: 'ok' },
+        models: { ok: true, status: 200, message: 'ok', modelIds: ['gpt-image-2'] },
+      },
+      openai: {
+        configured: true,
+        baseUrl: 'https://api.anhesea.top:9443/v1',
+        imageModel: 'gpt-5.5',
+        imageToolModel: 'gpt-image-2',
+        imageSize: '1536x1536',
+        imageQuality: 'high',
+        auth: { ok: false, status: 401, message: 'API key is disabled' },
+      },
+    },
+    model3d: {
+      selfhostTriposg: {
+        configured: true,
+        baseUrl: 'http://47.242.195.8:8010',
+        status: {
+          ok: true,
+          queue: { running: 0, pending: 0 },
+        },
+      },
+      localCache: { configured: true },
+      tencentHunyuan: { configured: false },
+    },
   }
 }

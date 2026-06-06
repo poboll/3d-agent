@@ -23,6 +23,7 @@ import { buildGenerationTimeline } from '../lib/workflowTimeline';
 import { getWorkflowWaitHint } from '../lib/workflowWait';
 import { buildWorkflowPhaseBoard } from '../lib/workflowPhaseBoard';
 import { buildWorkflowNextAction } from '../lib/workflowNextAction';
+import { buildWorkflowPreflight } from '../lib/workflowPreflight';
 
 interface Props {
   id?: string;
@@ -241,6 +242,24 @@ export function GenerationPanel({
       window.clearInterval(timer);
     };
   }, [activeJob, applyWorkflowJobUpdate]);
+
+  const handleRefreshProviderStatus = async () => {
+    setProviderStatusLoading(true);
+    setStatus('正在刷新本地图片网关与 3D 队列状态...');
+    try {
+      const statusPayload = await fetchProviderStatus(true);
+      setProviderStatus(statusPayload);
+      const imageReady = isImageProviderReady(statusPayload, imageProvider);
+      const modelReady = isModel3dReady(statusPayload);
+      setStatus(imageReady && modelReady
+        ? '链路预检完成：图片网关与 3D 服务均可用。'
+        : '链路预检完成：仍有节点需要复查，请查看预检卡片。');
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : '链路预检失败。');
+    } finally {
+      setProviderStatusLoading(false);
+    }
+  };
 
   const handleLoadDemo = async () => {
     setBusy(true);
@@ -1003,6 +1022,13 @@ export function GenerationPanel({
   const texturedModelUrl = activeJob?.result?.texturedModelUrl;
   const canResumeActiveJob = isSelfhostJobResumable(activeJob);
   const canDiagnoseActiveJob = isSelfhostJobDiagnosable(activeJob);
+  const workflowPreflight = buildWorkflowPreflight({
+    status: providerStatus,
+    loading: providerStatusLoading,
+    imageProvider,
+    modelProvider,
+    imageSpecLabel: selectedImageSpecLabel,
+  });
   const nextAction = buildWorkflowNextAction({
     prompt,
     busy,
@@ -1098,6 +1124,26 @@ export function GenerationPanel({
         >
           {nextAction.label}
         </button>
+      </section>
+
+      <section className={`workflow-preflight-card ${workflowPreflight.state}`} aria-label="链路预检" data-testid="workflow-preflight-card">
+        <header>
+          <span>链路预检</span>
+          <strong>{workflowPreflight.title}</strong>
+          <button type="button" onClick={handleRefreshProviderStatus} disabled={providerStatusLoading} data-testid="refresh-provider-status">
+            {providerStatusLoading ? '同步中' : '刷新'}
+          </button>
+        </header>
+        <p>{workflowPreflight.summary}</p>
+        <div className="workflow-preflight-grid">
+          {workflowPreflight.checks.map((check) => (
+            <span className={check.state} title={check.hint} key={check.id}>
+              <small>{check.label}</small>
+              <strong>{check.value}</strong>
+            </span>
+          ))}
+        </div>
+        <em>{workflowPreflight.recommendation}</em>
       </section>
 
       <label className="generation-field generation-prompt-field">
@@ -1248,8 +1294,8 @@ export function GenerationPanel({
         <div className="job-history" data-testid="job-history-compact">
           <div className="job-history-title">
             <span>任务摘要</span>
-            <strong>{jobHistorySummary.liveCount > 0 ? `${jobHistorySummary.liveCount} 个运行中` : '固定 2 条'}</strong>
-            <em>{hiddenJobCount > 0 ? `已折叠 ${hiddenJobCount} 条` : `共 ${jobHistorySummary.totalCount} 条`}</em>
+            <strong>{jobHistorySummary.liveCount > 0 ? `${jobHistorySummary.liveCount} 个运行中` : '只显示 2 条'}</strong>
+            <em>{hiddenJobCount > 0 ? `其余 ${hiddenJobCount} 条已折叠` : `共 ${jobHistorySummary.totalCount} 条`}</em>
           </div>
           {visibleJobHistory.map((job, index) => (
             <button
@@ -1265,7 +1311,7 @@ export function GenerationPanel({
               <strong>{job.status === 'completed' ? '完成' : job.status === 'failed' ? '失败' : `${job.progress}%`}</strong>
             </button>
           ))}
-          <p className="job-history-note">后台队列持续同步，面板只保留当前、运行中和最近结果。</p>
+          <p className="job-history-note">后台队列持续同步，面板固定两张摘要卡，不再向下堆积。</p>
         </div>
       )}
 

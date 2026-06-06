@@ -17,13 +17,20 @@ export function buildJobHistorySummary(
   const maxVisible = Math.max(1, Math.floor(limit || JOB_HISTORY_VISIBLE_LIMIT));
   const uniqueJobs = dedupeJobs([activeJob, ...jobs].filter((job): job is WorkflowJob => Boolean(job)));
   const visible: WorkflowJob[] = [];
-  const seenPrompts = new Set<string>();
 
   const addJob = (job?: WorkflowJob | null) => {
-    if (!job || visible.some((item) => item.id === job.id) || visible.length >= maxVisible) return;
+    if (!job || visible.some((item) => item.id === job.id)) return;
     const promptKey = normalizeJobHistoryPrompt(job.prompt);
-    if (promptKey && seenPrompts.has(promptKey) && visible.length > 0) return;
-    if (promptKey) seenPrompts.add(promptKey);
+    if (promptKey) {
+      const duplicateIndex = visible.findIndex((item) => normalizeJobHistoryPrompt(item.prompt) === promptKey);
+      if (duplicateIndex >= 0) {
+        if (shouldReplaceDuplicatePrompt(visible[duplicateIndex], job)) {
+          visible[duplicateIndex] = job;
+        }
+        return;
+      }
+    }
+    if (visible.length >= maxVisible) return;
     visible.push(job);
   };
 
@@ -69,4 +76,16 @@ function normalizeJobHistoryPrompt(prompt: string) {
     .replace(/\s+/g, '')
     .replace(/[，。,.!！?？:：；;]/g, '')
     .slice(0, 36);
+}
+
+function shouldReplaceDuplicatePrompt(current: WorkflowJob, candidate: WorkflowJob) {
+  if (isLiveHistoryJob(current) || isResumableSelfhostHistoryJob(current)) return false;
+  if (isLiveHistoryJob(candidate) || isResumableSelfhostHistoryJob(candidate)) return true;
+  if (candidate.status !== 'completed' || current.status !== 'completed') return false;
+  return getJobTime(candidate) > getJobTime(current);
+}
+
+function getJobTime(job: WorkflowJob) {
+  const time = Date.parse(job.updatedAt || job.createdAt || '');
+  return Number.isFinite(time) ? time : 0;
 }
