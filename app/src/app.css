@@ -972,6 +972,27 @@ body {
   overflow: hidden;
 }
 
+.generation-actions .workflow-next-action {
+  position: relative;
+  margin: 0 0 1px;
+  padding: 6px 6px 6px 9px;
+  border-color: rgba(139, 58, 46, 0.12);
+  border-left-width: 3px;
+  background:
+    linear-gradient(90deg, rgba(251, 250, 244, 0.82), rgba(223, 233, 220, 0.22)),
+    repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.016) 0 1px, transparent 1px 13px);
+}
+
+.generation-actions .workflow-next-action::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: -4px;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(139, 58, 46, 0.24), rgba(89, 111, 85, 0.08));
+}
+
 .workflow-next-action.done {
   border-left-color: rgba(89, 111, 85, 0.48);
 }
@@ -1042,6 +1063,13 @@ body {
   background: rgba(62, 76, 58, 0.96);
 }
 
+.generation-actions .workflow-next-action button.is-recommended {
+  border-color: rgba(139, 58, 46, 0.36);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 250, 240, 0.18),
+    0 0 0 2px rgba(139, 58, 46, 0.12);
+}
+
 .workflow-next-action.warn button {
   border-color: rgba(157, 55, 43, 0.38);
   background: rgba(139, 58, 46, 0.96);
@@ -1050,6 +1078,32 @@ body {
 .workflow-next-action button:disabled {
   cursor: not-allowed;
   opacity: 0.42;
+}
+
+.generation-primary.is-recommended,
+.generation-secondary.is-recommended {
+  position: relative;
+  border-color: rgba(139, 58, 46, 0.54);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 250, 240, 0.28),
+    0 0 0 2px rgba(139, 58, 46, 0.11);
+}
+
+.generation-primary.is-recommended::after,
+.generation-secondary.is-recommended::after {
+  content: '建议';
+  position: absolute;
+  right: 4px;
+  top: -8px;
+  padding: 1px 4px;
+  border: 1px solid rgba(139, 58, 46, 0.2);
+  border-radius: 999px;
+  background: rgba(251, 250, 244, 0.92);
+  color: var(--vermilion);
+  font-family: var(--font-mono);
+  font-size: 5.6px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
 }
 
 .workflow-preflight-card {

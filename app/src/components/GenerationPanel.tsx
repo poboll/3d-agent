@@ -1061,6 +1061,7 @@ export function GenerationPanel({
       state: phase === 'failed' ? 'warn' : phase === 'done' ? 'ok' : busy ? 'pending' : 'idle',
     },
   ];
+  const recommendedActionTestId = nextAction.targetTestId;
 
   return (
     <section className="generation-panel" id={id} data-testid="generation-panel">
@@ -1105,14 +1106,28 @@ export function GenerationPanel({
       </section>
 
       <div className="generation-actions" id="workflow-actions" aria-label="生成操作">
+        <section className={`workflow-next-action ${nextAction.state}`} aria-label="推荐下一步" data-testid="workflow-next-action">
+          <small>当前建议</small>
+          <span>{nextAction.title}</span>
+          <p>{nextAction.hint}</p>
+          <button
+            type="button"
+            className={isRecommendedNextActionEnabled(nextAction.id) ? 'is-recommended' : ''}
+            onClick={() => handleRecommendedNextAction(nextAction.id)}
+            disabled={!isRecommendedNextActionEnabled(nextAction.id)}
+            data-testid="workflow-next-action-button"
+          >
+            {nextAction.label}
+          </button>
+        </section>
         <div className="generation-action-main" aria-label="主流程操作">
-          <button type="button" className="generation-primary" onClick={handleCreateReference} disabled={!canCreateReference} data-testid="generate-reference">
+          <button type="button" className={`generation-primary${recommendedActionTestId === 'generate-reference' ? ' is-recommended' : ''}`} onClick={handleCreateReference} disabled={!canCreateReference} data-testid="generate-reference">
             生成参考图
           </button>
           <button type="button" className="generation-primary full-action" onClick={handleRunFullWorkflow} disabled={!canCreateReference || busy} data-testid="run-full-workflow">
             完整生成
           </button>
-          <button type="button" className="generation-primary confirm-action" onClick={handleConfirmModeling} disabled={!canConfirmModeling} data-testid="confirm-modeling">
+          <button type="button" className={`generation-primary confirm-action${recommendedActionTestId === 'confirm-modeling' ? ' is-recommended' : ''}`} onClick={handleConfirmModeling} disabled={!canConfirmModeling} data-testid="confirm-modeling">
             确认建模
           </button>
         </div>
@@ -1123,7 +1138,7 @@ export function GenerationPanel({
           <button type="button" className="generation-secondary" onClick={handleCreateReference} disabled={!canCreateReference} data-testid="retry-reference-image">
             重试图片
           </button>
-          <button type="button" className="generation-secondary" onClick={handleAcceptReference} disabled={!referenceImage || busy} data-testid="accept-reference-image">
+          <button type="button" className={`generation-secondary${recommendedActionTestId === 'accept-reference-image' ? ' is-recommended' : ''}`} onClick={handleAcceptReference} disabled={!referenceImage || busy} data-testid="accept-reference-image">
             {referenceAccepted ? '已接收' : '接收图片'}
           </button>
           <button type="button" className="generation-secondary" onClick={handleRejectReference} disabled={!referenceImage || busy} data-testid="reject-reference-image">
@@ -1178,20 +1193,6 @@ export function GenerationPanel({
           <strong>{phaseBoard.summary}</strong>
           <em>{phaseBoard.queueNote}</em>
         </footer>
-      </section>
-
-      <section className={`workflow-next-action ${nextAction.state}`} aria-label="推荐下一步" data-testid="workflow-next-action">
-        <small>推荐下一步</small>
-        <span>{nextAction.title}</span>
-        <p>{nextAction.hint}</p>
-        <button
-          type="button"
-          onClick={() => handleRecommendedNextAction(nextAction.id)}
-          disabled={!isRecommendedNextActionEnabled(nextAction.id)}
-          data-testid="workflow-next-action-button"
-        >
-          {nextAction.label}
-        </button>
       </section>
 
       <section className={`workflow-preflight-card ${workflowPreflight.state}`} aria-label="链路预检" data-testid="workflow-preflight-card">
