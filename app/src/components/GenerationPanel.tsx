@@ -1062,6 +1062,14 @@ export function GenerationPanel({
     },
   ];
   const recommendedActionTestId = nextAction.targetTestId;
+  const actionStatusItems = buildActionStatusItems({
+    referenceImage,
+    referenceAccepted,
+    activeJob,
+    selectedProviderOnline,
+    model3dReady,
+    providerStatusLoading,
+  });
 
   return (
     <section className="generation-panel" id={id} data-testid="generation-panel">
@@ -1120,6 +1128,14 @@ export function GenerationPanel({
             {nextAction.label}
           </button>
         </section>
+        <div className="generation-action-status" aria-label="当前链路节点" data-testid="generation-action-status">
+          {actionStatusItems.map((item) => (
+            <span className={item.state} key={item.label}>
+              <small>{item.label}</small>
+              <strong>{item.value}</strong>
+            </span>
+          ))}
+        </div>
         <div className="generation-action-main" aria-label="主流程操作">
           <button type="button" className={`generation-primary${recommendedActionTestId === 'generate-reference' ? ' is-recommended' : ''}`} onClick={handleCreateReference} disabled={!canCreateReference} data-testid="generate-reference">
             生成参考图
@@ -1218,9 +1234,9 @@ export function GenerationPanel({
       {visibleJobHistory.length > 0 && (
         <div className="job-history" data-testid="job-history-compact">
           <div className="job-history-title">
-            <span>队列摘要</span>
+            <span>任务摘要</span>
             <strong>{jobHistorySummary.liveCount > 0 ? `${jobHistorySummary.liveCount} 个运行中` : '最近 2 条'}</strong>
-            <em>{hiddenJobCount > 0 ? `已收纳 ${hiddenJobCount} 条历史` : `共 ${jobHistorySummary.totalCount} 条`}</em>
+            <em>{hiddenJobCount > 0 ? `已收纳 ${hiddenJobCount} 条` : `共 ${jobHistorySummary.totalCount} 条`}</em>
           </div>
           {visibleJobHistory.map((job, index) => (
             <button
@@ -1236,7 +1252,7 @@ export function GenerationPanel({
               <strong>{job.status === 'completed' ? '完成' : job.status === 'failed' ? '失败' : `${job.progress}%`}</strong>
             </button>
           ))}
-          <p className="job-history-note">后台队列持续同步，当前只展示最近任务；完整记录保留在本地任务接口。</p>
+          <p className="job-history-note">队列不展开滚动，完整记录保留在本地任务接口。</p>
         </div>
       )}
 
@@ -2244,6 +2260,38 @@ function getPhaseLabel(phase: WorkflowPhase) {
   if (phase === 'modeling') return '建模中';
   if (phase === 'done') return '已入库';
   return '失败';
+}
+
+function buildActionStatusItems(input: {
+  referenceImage: ReferenceImage | null;
+  referenceAccepted: boolean;
+  activeJob: WorkflowJob | null;
+  selectedProviderOnline: boolean;
+  model3dReady: boolean;
+  providerStatusLoading: boolean;
+}) {
+  const hasReference = Boolean(input.referenceImage || input.activeJob?.reference || input.activeJob?.referenceId);
+  const hasResult = Boolean(input.activeJob?.status === 'completed' && input.activeJob.result?.modelUrl);
+  const live = input.activeJob?.status === 'queued' || input.activeJob?.status === 'processing';
+  const failed = input.activeJob?.status === 'failed';
+
+  return [
+    {
+      label: '参考图',
+      value: hasReference ? (input.referenceAccepted || input.activeJob?.referenceId ? '已确认' : '待接收') : input.providerStatusLoading ? '同步中' : input.selectedProviderOnline ? '可生成' : '需检查',
+      state: hasReference ? (input.referenceAccepted || input.activeJob?.referenceId ? 'ok' : 'ready') : input.providerStatusLoading ? 'pending' : input.selectedProviderOnline ? 'ready' : 'warn',
+    },
+    {
+      label: '图生 3D',
+      value: hasResult ? '已完成' : live ? '进行中' : input.model3dReady ? '可提交' : '需检查',
+      state: hasResult ? 'ok' : failed ? 'warn' : live ? 'pending' : input.model3dReady ? 'ready' : 'warn',
+    },
+    {
+      label: '结果入库',
+      value: hasResult ? '可查看' : failed ? '未完成' : live ? `${input.activeJob?.progress ?? 0}%` : '等待',
+      state: hasResult ? 'ok' : failed ? 'warn' : live ? 'pending' : 'idle',
+    },
+  ];
 }
 
 function isImageProviderReady(status: ProviderStatusPayload | null, provider: string) {

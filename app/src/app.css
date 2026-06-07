@@ -993,6 +993,103 @@ body {
   background: linear-gradient(90deg, rgba(139, 58, 46, 0.24), rgba(89, 111, 85, 0.08));
 }
 
+.generation-action-status {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  padding: 3px 0 2px;
+}
+
+.generation-action-status::before {
+  content: '';
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: 50%;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(139, 58, 46, 0.24), rgba(89, 111, 85, 0.18));
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.generation-action-status span {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  padding: 4px 5px 4px 6px;
+  border: 1px solid rgba(28, 31, 27, 0.075);
+  border-left: 2px solid rgba(120, 102, 73, 0.26);
+  border-radius: 2px;
+  background:
+    linear-gradient(180deg, rgba(251, 250, 244, 0.88), rgba(232, 230, 221, 0.24)),
+    repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.012) 0 1px, transparent 1px 12px);
+  box-shadow: 0 1px 0 rgba(255, 250, 240, 0.42);
+  overflow: hidden;
+}
+
+.generation-action-status small {
+  min-width: 0;
+  overflow: hidden;
+  color: rgba(43, 42, 38, 0.44);
+  font-family: var(--font-mono);
+  font-size: 6.2px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.generation-action-status strong {
+  min-width: 0;
+  overflow: hidden;
+  color: rgba(43, 42, 38, 0.66);
+  font-family: var(--font-serif);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  line-height: 1.05;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.generation-action-status span.ready {
+  border-left-color: rgba(139, 58, 46, 0.36);
+  background:
+    linear-gradient(180deg, rgba(139, 58, 46, 0.05), rgba(251, 250, 244, 0.44)),
+    repeating-linear-gradient(103deg, rgba(139, 58, 46, 0.01) 0 1px, transparent 1px 12px);
+}
+
+.generation-action-status span.ready strong {
+  color: var(--vermilion);
+}
+
+.generation-action-status span.ok {
+  border-left-color: rgba(89, 111, 85, 0.4);
+  background:
+    linear-gradient(180deg, rgba(223, 233, 220, 0.32), rgba(251, 250, 244, 0.34)),
+    repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.014) 0 1px, transparent 1px 12px);
+}
+
+.generation-action-status span.ok strong {
+  color: var(--moss);
+}
+
+.generation-action-status span.pending strong {
+  color: rgba(139, 58, 46, 0.82);
+}
+
+.generation-action-status span.warn {
+  border-left-color: rgba(157, 55, 43, 0.48);
+  background: rgba(139, 58, 46, 0.055);
+}
+
+.generation-action-status span.warn strong {
+  color: var(--danger);
+}
+
 .workflow-next-action.done {
   border-left-color: rgba(89, 111, 85, 0.48);
 }
@@ -2725,17 +2822,17 @@ body {
 .job-history {
   flex: 0 0 auto;
   display: grid;
-  grid-template-columns: minmax(72px, 0.7fr) repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(64px, 0.58fr) repeat(2, minmax(0, 1fr));
   align-items: stretch;
-  gap: 4px;
-  min-height: 54px;
-  max-height: 58px;
-  padding: 4px;
+  gap: 5px;
+  min-height: 50px;
+  max-height: 54px;
+  padding: 4px 5px;
   border: 1px solid rgba(28, 31, 27, 0.07);
-  border-left: 2px solid rgba(120, 102, 73, 0.34);
-  border-radius: 4px;
+  border-left: 3px solid rgba(89, 111, 85, 0.34);
+  border-radius: 3px;
   background:
-    linear-gradient(90deg, rgba(251, 250, 244, 0.62), rgba(223, 233, 220, 0.12)),
+    linear-gradient(90deg, rgba(251, 250, 244, 0.76), rgba(223, 233, 220, 0.16)),
     repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.012) 0 1px, transparent 1px 13px);
   overflow: hidden;
 }
@@ -2744,11 +2841,11 @@ body {
   min-width: 0;
   display: grid;
   align-content: center;
-  gap: 3px;
-  padding: 4px 4px 4px 2px;
+  gap: 2px;
+  padding: 3px 3px 3px 1px;
   color: var(--ink-whisper);
   font-family: var(--font-mono);
-  font-size: 6.5px;
+  font-size: 6.2px;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -2775,7 +2872,7 @@ body {
   min-width: 0;
   overflow: hidden;
   color: rgba(89, 111, 85, 0.8);
-  font-size: 7px;
+  font-size: 7.4px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-overflow: ellipsis;
@@ -2784,17 +2881,18 @@ body {
 
 .job-row {
   width: 100%;
-  min-height: 44px;
+  min-height: 40px;
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 3px;
-  padding: 4px 4px;
+  gap: 2px;
+  padding: 4px 5px;
   border: 1px solid var(--hairline-2);
-  border-radius: 4px;
+  border-radius: 3px;
   background: rgba(252, 250, 244, 0.54);
   color: var(--sumi-soft);
   text-align: left;
+  cursor: pointer;
 }
 
 .job-history .job-row {
@@ -2820,7 +2918,7 @@ body {
 
 .job-row.active {
   border-color: rgba(139, 58, 46, 0.24);
-  border-left: 2px solid var(--vermilion);
+  border-left: 3px solid var(--vermilion);
   background:
     linear-gradient(90deg, rgba(139, 58, 46, 0.055), rgba(252, 250, 244, 0.62)),
     repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.014) 0 1px, transparent 1px 13px);
@@ -2859,7 +2957,7 @@ body {
 .job-row small {
   color: rgba(43, 42, 38, 0.42);
   font-family: var(--font-mono);
-  font-size: 6.2px;
+  font-size: 6px;
   font-weight: 700;
   letter-spacing: 0.06em;
 }
@@ -2867,7 +2965,7 @@ body {
 .job-row em {
   color: rgba(46, 48, 43, 0.78);
   font-family: var(--font-mono);
-  font-size: 6.9px;
+  font-size: 6.8px;
   font-style: normal;
   line-height: 1.16;
   white-space: normal;
@@ -2879,7 +2977,7 @@ body {
 .job-row strong {
   justify-self: end;
   white-space: nowrap;
-  font-size: 8px;
+  font-size: 7.4px;
 }
 
 .job-history-note {
