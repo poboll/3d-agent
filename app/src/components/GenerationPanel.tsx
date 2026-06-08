@@ -24,6 +24,7 @@ import { getWorkflowWaitHint } from '../lib/workflowWait';
 import { buildWorkflowPhaseBoard } from '../lib/workflowPhaseBoard';
 import { buildWorkflowNextAction } from '../lib/workflowNextAction';
 import { buildWorkflowPreflight } from '../lib/workflowPreflight';
+import { TaskWatchCard, type TaskWatchViewModel } from './TaskWatchCard';
 
 interface Props {
   id?: string;
@@ -1105,83 +1106,13 @@ export function GenerationPanel({
             预览提示词
           </button>
           <button type="button" onClick={handleRegeneratePrompt} disabled={!canCreateReference || busy} data-testid="regenerate-prompt">
-            重新生成
+            重新生成提示词
           </button>
           <button type="button" onClick={handleConfirmPrompt} disabled={!promptPreviewMatchesCurrent || busy || confirmedPromptMatchesCurrent} data-testid="confirm-prompt">
             {confirmedPromptMatchesCurrent ? '已确认' : '确认提示词'}
           </button>
         </div>
       </section>
-
-      {taskWatch && (
-        <section className={`task-watch-card ${taskWatch.state}`} aria-label="长任务观察" data-testid="task-watch-card">
-          <div className="task-watch-head">
-            <span>{taskWatch.eyebrow}</span>
-            <strong>{taskWatch.title}</strong>
-            <div className="task-watch-actions">
-              <button type="button" onClick={handleSyncActiveJob} disabled={Boolean(syncingJobId)} data-testid="sync-active-job">
-                {syncingJobId ? '同步中' : '同步状态'}
-              </button>
-              {canResumeActiveJob && (
-                <button type="button" onClick={handleResumeActiveJob} disabled={Boolean(syncingJobId)} data-testid="resume-active-job">
-                  续接输出
-                </button>
-              )}
-              {canDiagnoseActiveJob && (
-                <button type="button" onClick={handleDiagnoseActiveJob} disabled={Boolean(diagnosingJobId)} data-testid="diagnose-active-job">
-                  {diagnosingJobId ? '诊断中' : '诊断远端'}
-                </button>
-              )}
-              {activeJob?.result && (
-                <button type="button" onClick={handleOpenActiveJobModel} data-testid="open-active-job-model">
-                  查看模型
-                </button>
-              )}
-            </div>
-          </div>
-          <div className="task-watch-rail" aria-label={`任务进度 ${taskWatch.progress}%`}>
-            <span style={{ width: `${taskWatch.progress}%` }} />
-          </div>
-          <div className="task-watch-strategy" aria-label="任务等待策略" data-testid="task-watch-strategy">
-            {taskWatch.strategy.map((item) => (
-              <span className={item.state} key={item.label}>
-                <small>{item.label}</small>
-                <strong>{item.value}</strong>
-              </span>
-            ))}
-          </div>
-          <div className="task-watch-grid">
-            {taskWatch.items.map((item) => (
-              <span className={item.state} key={item.label}>
-                <small>{item.label}</small>
-                <strong>{item.value}</strong>
-              </span>
-            ))}
-          </div>
-          <p>{taskWatch.hint}</p>
-          {taskWatch.recoveryLabel && taskWatch.recoveryHint && (
-            <div className="task-watch-recovery" data-testid="task-watch-recovery">
-              <span>{taskWatch.recoveryLabel}</span>
-              <strong>{taskWatch.recoveryHint}</strong>
-            </div>
-          )}
-          {diagnostics && activeJob?.providerJobId === diagnostics.promptId && (
-            <div className={`task-watch-diagnostics ${diagnostics.outputs.glbCount > 0 ? 'ok' : diagnostics.history.found ? 'warn' : 'pending'}`} data-testid="task-watch-diagnostics">
-              <span>远端诊断</span>
-              <strong>
-                队列 {diagnostics.queue.running}/{diagnostics.queue.pending} · history {diagnostics.history.found ? diagnostics.history.status : '未返回'} · GLB {diagnostics.outputs.glbCount}
-              </strong>
-              <em>{diagnostics.recommendation}</em>
-            </div>
-          )}
-          {taskWatch.waitLabel && taskWatch.waitHint && (
-            <div className={`task-watch-wait ${taskWatch.waitState}`} data-testid="task-watch-wait">
-              <span>{taskWatch.waitLabel}</span>
-              <strong>{taskWatch.waitHint}</strong>
-            </div>
-          )}
-        </section>
-      )}
 
       <div className="generation-actions" id="workflow-actions" aria-label="生成操作">
         <section className={`workflow-next-action ${nextAction.state}`} aria-label="推荐下一步" data-testid="workflow-next-action">
@@ -1238,6 +1169,22 @@ export function GenerationPanel({
           </button>
         </div>
       </div>
+
+      {taskWatch && (
+        <TaskWatchCard
+          taskWatch={taskWatch}
+          activeJob={activeJob}
+          diagnostics={diagnostics}
+          syncingJobId={syncingJobId}
+          diagnosingJobId={diagnosingJobId}
+          canResumeActiveJob={canResumeActiveJob}
+          canDiagnoseActiveJob={canDiagnoseActiveJob}
+          onSync={handleSyncActiveJob}
+          onResume={handleResumeActiveJob}
+          onDiagnose={handleDiagnoseActiveJob}
+          onOpenModel={handleOpenActiveJobModel}
+        />
+      )}
 
       <section className={`generation-timeline ${generationTimeline.state}`} aria-label="完整生成路线" data-testid="generation-timeline">
         <header>
@@ -1867,29 +1814,6 @@ interface StageMonitor {
   nextAction: string;
 }
 
-interface TaskWatch {
-  state: 'pending' | 'ok' | 'warn';
-  eyebrow: string;
-  title: string;
-  progress: number;
-  hint: string;
-  recoveryLabel?: string;
-  recoveryHint?: string;
-  waitLabel?: string;
-  waitHint?: string;
-  waitState?: 'pending' | 'warn';
-  strategy: Array<{
-    label: string;
-    value: string;
-    state: 'idle' | 'pending' | 'ok' | 'warn';
-  }>;
-  items: Array<{
-    label: string;
-    value: string;
-    state: 'idle' | 'pending' | 'ok' | 'warn';
-  }>;
-}
-
 function toReferenceImage(reference: ReferenceImagePayload, uploaded: boolean): ReferenceImage {
   return {
     id: reference.id,
@@ -1913,7 +1837,7 @@ function getTimestamp() {
   return Date.now();
 }
 
-function buildTaskWatch(job: WorkflowJob, now: number): TaskWatch {
+function buildTaskWatch(job: WorkflowJob, now: number): TaskWatchViewModel {
   const progress = Math.max(0, Math.min(100, job.progress || 0));
   const isLive = isLiveWorkflowJob(job);
   const hasReference = Boolean(job.referenceId || job.reference);
@@ -1922,7 +1846,7 @@ function buildTaskWatch(job: WorkflowJob, now: number): TaskWatch {
   const secondsSinceUpdate = Number.isFinite(updatedAt) ? Math.max(0, Math.floor((now - updatedAt) / 1000)) : 0;
   const createdAt = Date.parse(job.createdAt || job.updatedAt || '');
   const secondsSinceCreated = Number.isFinite(createdAt) ? Math.max(secondsSinceUpdate, Math.floor((now - createdAt) / 1000)) : secondsSinceUpdate;
-  const state: TaskWatch['state'] = job.status === 'failed' ? 'warn' : job.status === 'completed' ? 'ok' : 'pending';
+  const state: TaskWatchViewModel['state'] = job.status === 'failed' ? 'warn' : job.status === 'completed' ? 'ok' : 'pending';
   const providerName = getModelProviderName(job.provider);
   const imageName = getImageProviderName(job.imageProvider || 'local-gateway');
   const waitStage = getJobWaitStage(job, hasReference);

@@ -84,7 +84,7 @@ export function ModelViewer({ model }: Props) {
       return;
     }
 
-    const isQuestionHotZone = x > w - 42 && y > 116 && y < h - 58;
+    const isQuestionHotZone = x > w - 64 && y > 118 && y < h - 74;
     if (isQuestionHotZone) {
       setClueOpen(true);
       setModelFocus(false);
@@ -215,7 +215,7 @@ export function ModelViewer({ model }: Props) {
         <section className="stage-order-card" aria-label="观察顺序" data-testid="stage-order-card">
           <header>
             <span>观察顺序</span>
-            <small>固定</small>
+            <small>{model.features.length} 项</small>
           </header>
           <ol>
             {model.features.slice(0, 4).map((feature, index) => (
@@ -255,19 +255,15 @@ export function ModelViewer({ model }: Props) {
         aria-label="提问线索"
         data-testid="stage-question-drawer"
         onPointerEnter={() => {
-          setModelFocus(false);
           setClueOpen(true);
         }}
         onPointerMove={() => {
-          setModelFocus(false);
           setClueOpen(true);
         }}
         onMouseEnter={() => {
-          setModelFocus(false);
           setClueOpen(true);
         }}
         onMouseMove={() => {
-          setModelFocus(false);
           setClueOpen(true);
         }}
         onPointerLeave={() => {

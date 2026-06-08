@@ -652,11 +652,11 @@ body {
 .prompt-approval-card {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: minmax(0, 0.84fr) minmax(0, 1.16fr);
   align-items: stretch;
-  gap: 4px;
-  min-height: 58px;
-  padding: 6px 6px 6px 8px;
+  gap: 7px;
+  min-height: 52px;
+  padding: 6px 7px 6px 9px;
   border: 1px solid rgba(28, 31, 27, 0.08);
   border-left: 2px solid rgba(120, 102, 73, 0.42);
   border-radius: 4px;
@@ -694,35 +694,39 @@ body {
 }
 
 .prompt-approval-card p {
-  display: none;
+  display: -webkit-box;
   margin-top: 2px;
   overflow: hidden;
   color: rgba(43, 42, 38, 0.6);
-  font-size: 7.2px;
-  line-height: 1.24;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 7px;
+  line-height: 1.28;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .prompt-approval-actions {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 3px;
 }
 
 .prompt-approval-actions button {
-  min-height: 20px;
-  padding: 2px 4px;
+  min-height: 21px;
+  padding: 2px 5px;
   border: 1px solid rgba(28, 31, 27, 0.12);
   border-radius: 3px;
   background: rgba(251, 250, 244, 0.62);
   color: var(--sumi-soft);
   font-family: var(--font-mono);
-  font-size: 6.35px;
+  font-size: 6.5px;
   font-weight: 800;
   letter-spacing: 0.02em;
   white-space: normal;
   overflow-wrap: anywhere;
+}
+
+.prompt-approval-actions button:last-child {
+  grid-column: 1 / -1;
 }
 
 .prompt-approval-actions button:last-child {
@@ -1387,7 +1391,7 @@ body {
 .stage-order-card ol::-webkit-scrollbar,
 .specimen-summary-copy p::-webkit-scrollbar,
 .cell-list::-webkit-scrollbar {
-  width: 2px;
+  width: 1px;
   height: 3px;
 }
 
@@ -1413,7 +1417,7 @@ body {
 .specimen-summary-copy p::-webkit-scrollbar-thumb,
 .cell-list::-webkit-scrollbar-thumb {
   border-radius: 0;
-  background: linear-gradient(180deg, var(--scroll-line), var(--scroll-line-soft));
+  background: linear-gradient(180deg, rgba(139, 58, 46, 0.64), rgba(89, 111, 85, 0.38));
   background-clip: content-box;
 }
 
@@ -2878,11 +2882,11 @@ body {
 .job-history {
   flex: 0 0 auto;
   display: grid;
-  grid-template-columns: minmax(64px, 0.58fr) repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(68px, 0.52fr) repeat(2, minmax(0, 1fr));
   align-items: stretch;
-  gap: 5px;
-  min-height: 50px;
-  max-height: 54px;
+  gap: 4px;
+  min-height: 46px;
+  max-height: 50px;
   padding: 4px 5px;
   border: 1px solid rgba(28, 31, 27, 0.07);
   border-left: 3px solid rgba(89, 111, 85, 0.34);
@@ -2937,12 +2941,12 @@ body {
 
 .job-row {
   width: 100%;
-  min-height: 40px;
+  min-height: 36px;
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;
   align-items: center;
   gap: 2px;
-  padding: 4px 5px;
+  padding: 3px 5px;
   border: 1px solid var(--hairline-2);
   border-radius: 3px;
   background: rgba(252, 250, 244, 0.54);
@@ -3013,7 +3017,7 @@ body {
 .job-row small {
   color: rgba(43, 42, 38, 0.42);
   font-family: var(--font-mono);
-  font-size: 6px;
+  font-size: 5.8px;
   font-weight: 700;
   letter-spacing: 0.06em;
 }
@@ -3021,7 +3025,7 @@ body {
 .job-row em {
   color: rgba(46, 48, 43, 0.78);
   font-family: var(--font-mono);
-  font-size: 6.8px;
+  font-size: 6.5px;
   font-style: normal;
   line-height: 1.16;
   white-space: normal;
@@ -3033,7 +3037,7 @@ body {
 .job-row strong {
   justify-self: end;
   white-space: nowrap;
-  font-size: 7.4px;
+  font-size: 7px;
 }
 
 .job-history-note {
@@ -3248,8 +3252,8 @@ body {
 .stage::before {
   content: '';
   position: absolute;
-  inset: 18px 28px 30px 28px;
-  background-image: url("data:image/svg+xml,%3Csvg width='1040' height='710' viewBox='0 0 1040 710' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M579 102C736 107 866 178 888 306C916 468 723 589 468 580C251 573 116 463 128 333C140 207 296 116 528 104' fill='none' stroke='%231c1c1a' stroke-opacity='.16' stroke-width='1.04' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  inset: 14px 18px 26px 18px;
+  background-image: url("data:image/svg+xml,%3Csvg width='1040' height='710' viewBox='0 0 1040 710' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M598 96C753 105 872 183 888 311C908 468 718 589 474 584C251 580 121 466 135 333C148 212 301 122 519 105C548 103 576 100 598 96' fill='none' stroke='%231c1c1a' stroke-opacity='.145' stroke-width='.92' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-position: center;
   background-repeat: no-repeat;
   background-size: 100% 100%;
@@ -3304,7 +3308,7 @@ body {
 
 .viewer-canvas-zone {
   position: absolute;
-  inset: 12px 12px 38px 14px;
+  inset: 10px 10px 38px 12px;
   z-index: 3;
   overflow: visible;
   pointer-events: auto;
@@ -3369,8 +3373,8 @@ body {
 }
 
 .viewer.is-model-focus .stage-question-drawer {
-  z-index: 8;
-  pointer-events: none;
+  z-index: 170;
+  pointer-events: auto;
 }
 
 .viewer.is-model-focus .stage-question-drawer.open,
@@ -3393,7 +3397,7 @@ body {
 }
 
 .viewer.is-stage-expanded .stage-learning-rail {
-  right: 0;
+  right: 8px;
   width: clamp(150px, 14vw, 214px);
 }
 
@@ -3546,15 +3550,15 @@ body {
 
 .stage-learning-rail {
   position: absolute;
-  right: 0;
+  right: 8px;
   top: 12px;
-  bottom: 132px;
+  bottom: 126px;
   z-index: 9;
-  width: clamp(102px, 9.4vw, 136px);
+  width: clamp(138px, 14vw, 186px);
   min-width: 0;
-  max-width: min(136px, calc(100% - 50px));
+  max-width: min(186px, calc(100% - 62px));
   display: grid;
-  grid-template-rows: minmax(92px, 1fr) minmax(76px, 0.86fr);
+  grid-template-rows: minmax(112px, 1.05fr) minmax(94px, 0.92fr);
   gap: 6px;
   pointer-events: auto;
   transform: none;
@@ -3564,7 +3568,7 @@ body {
 .stage-learning-rail:hover,
 .stage-learning-rail:focus-within,
 .viewer.is-stage-expanded .stage-learning-rail {
-  right: 0;
+  right: 8px;
   filter: drop-shadow(0 14px 28px rgba(28, 31, 27, 0.08));
 }
 
@@ -3583,7 +3587,7 @@ body {
 .stage-concept-card {
   min-width: 0;
   max-height: none;
-  padding: 6px 5px 6px;
+  padding: 7px 6px 7px;
   border: 1px solid rgba(28, 31, 27, 0.12);
   border-radius: 4px;
   background:
@@ -3665,25 +3669,26 @@ body {
   overflow-wrap: break-word;
   color: var(--sumi);
   font-family: var(--font-serif);
-  font-size: 7.5px;
+  font-size: 8.5px;
   font-weight: 600;
   line-height: 1.15;
 }
 
 .stage-order-card li p {
-  display: block;
+  display: -webkit-box;
   margin-top: 0;
   overflow: hidden;
   color: var(--ink-mute);
   font-family: var(--font-sans);
-  font-size: 6.8px;
-  line-height: 1.26;
+  font-size: 7.35px;
+  line-height: 1.3;
   letter-spacing: 0;
   overflow-wrap: break-word;
   word-break: break-word;
   white-space: normal;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .stage-order-card {
@@ -3792,16 +3797,18 @@ body {
 }
 
 .stage-question-drawer {
-  width: 32px;
+  width: 34px;
   right: 0;
-  bottom: 48px;
-  z-index: 36;
+  bottom: 54px;
+  z-index: 170;
   max-height: none;
   overflow: hidden;
-  display: grid;
-  grid-template-columns: 0 32px;
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-end;
   transform: translateX(0);
   transition: width 0.24s ease, filter 0.2s ease, transform 0.24s ease;
+  pointer-events: auto;
 }
 
 .stage-question-drawer::before {
@@ -3817,18 +3824,18 @@ body {
 .stage-question-drawer:hover,
 .stage-question-drawer.open,
 .stage-question-drawer.pinned {
-  width: clamp(118px, 11vw, 148px);
+  width: clamp(142px, 14vw, 190px);
   max-width: calc(100% - 42px);
-  grid-template-columns: minmax(0, 1fr) 32px;
   overflow: visible;
   transform: translateX(-6px);
 }
 
 .stage-question-drawer button {
   position: relative;
-  z-index: 1;
-  width: 32px;
-  min-height: 104px;
+  z-index: 2;
+  flex: 0 0 34px;
+  width: 34px;
+  min-height: 116px;
   align-self: stretch;
   justify-content: center;
   flex-direction: column;
@@ -3836,8 +3843,6 @@ body {
   padding: 9px 2px;
   border-radius: 0 3px 3px 0;
   box-shadow: 0 10px 30px -28px rgba(28, 31, 27, 0.46);
-  grid-column: 2;
-  grid-row: 1;
 }
 
 .stage-question-drawer:hover {
@@ -3868,9 +3873,11 @@ body {
 .stage-question-drawer .question-clue {
   position: relative;
   z-index: 1;
+  flex: 1 1 auto;
+  min-width: 0;
   margin: 0;
-  min-height: 104px;
-  padding: 8px 7px;
+  min-height: 116px;
+  padding: 9px 8px;
   border: 1px solid rgba(28, 31, 27, 0.12);
   border-right: 0;
   border-radius: 4px 0 0 4px;
@@ -3879,11 +3886,9 @@ body {
     repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.018) 0 1px, transparent 1px 16px),
     rgba(251, 250, 244, 0.83);
   opacity: 0;
-  transform: translateX(22px);
+  transform: translateX(18px);
   box-shadow: 0 18px 46px -38px rgba(28, 31, 27, 0.46);
   transition: opacity 0.2s ease, transform 0.24s ease;
-  grid-column: 1;
-  grid-row: 1;
   overflow: hidden;
 }
 
@@ -3909,8 +3914,8 @@ body {
   margin-top: 6px;
   color: rgba(43, 42, 38, 0.82);
   font-family: "Klee One", "LXGW WenKai", "STKaiti", "KaiTi", var(--font-serif);
-  font-size: 7.2px;
-  line-height: 1.42;
+  font-size: 8.2px;
+  line-height: 1.48;
   letter-spacing: 0.025em;
   overflow-wrap: break-word;
   word-break: break-word;
@@ -4039,7 +4044,7 @@ body {
   z-index: 7;
   max-height: none;
   height: 100%;
-  padding: 6px 5px 6px;
+  padding: 7px 6px 7px;
   border-right: 0;
   border-right-color: rgba(139, 58, 46, 0.2);
   background:
@@ -4076,7 +4081,7 @@ body {
 }
 
 .concept-list {
-  margin-top: 4px;
+  margin-top: 5px;
   max-height: calc(100% - 28px);
   display: grid;
   gap: 2px;
@@ -4109,7 +4114,7 @@ body {
   overflow-wrap: anywhere;
   color: var(--sumi);
   font-family: var(--font-serif);
-  font-size: 7.8px;
+  font-size: 8.8px;
   font-weight: 600;
 }
 
@@ -4118,12 +4123,12 @@ body {
   margin-top: 2px;
   overflow: hidden;
   color: var(--ink-mute);
-  font-size: 6.8px;
-  line-height: 1.26;
+  font-size: 7.45px;
+  line-height: 1.34;
   letter-spacing: 0;
   overflow-wrap: anywhere;
   word-break: break-word;
-  -webkit-line-clamp: 1;
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
 }
 
@@ -4132,11 +4137,11 @@ body {
   margin-top: 2px;
   color: rgba(43, 42, 38, 0.72);
   font-family: var(--font-mono);
-  font-size: 5.8px;
+  font-size: 6.35px;
   font-style: normal;
   letter-spacing: 0.02em;
   overflow-wrap: anywhere;
-  -webkit-line-clamp: 1;
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -4546,17 +4551,17 @@ body {
   max-height: none;
   overflow-y: auto;
   color: rgba(43, 42, 38, 0.76);
-  font-size: 9.2px;
-  line-height: 13.4px;
+  font-size: 9.8px;
+  line-height: 14px;
   padding: 1px 5px 1px 0;
   background-image: repeating-linear-gradient(
     to bottom,
     transparent 0,
-    transparent 13.4px,
-    rgba(28, 31, 27, 0.05) 13.4px,
-    rgba(28, 31, 27, 0.05) 14.4px
+    transparent 14px,
+    rgba(28, 31, 27, 0.05) 14px,
+    rgba(28, 31, 27, 0.05) 15px
   );
-  background-position: 0 13.4px;
+  background-position: 0 14px;
 }
 
 .specimen-learning {
@@ -4690,21 +4695,21 @@ body {
 .cell-list {
   flex: 1 1 auto;
   width: 100%;
-  min-height: 72px;
+  min-height: 78px;
   margin: 0;
   padding: 0 4px 0 0;
   list-style: none;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   align-content: start;
-  gap: 4px;
+  gap: 3px;
   overflow-x: hidden;
   overflow-y: auto;
 }
 
 .cell-list li {
   min-width: 0;
-  min-height: 32px;
+  min-height: 30px;
 }
 
 .cell-empty {
@@ -4993,9 +4998,9 @@ body {
   position: relative;
   width: 100%;
   min-height: 0;
-  height: 34px;
+  height: 31px;
   display: flex;
-  gap: 4px;
+  gap: 3px;
   align-items: center;
   padding: 3px 5px 3px 5px;
   border: 1px solid rgba(28, 28, 26, 0.065);
@@ -5066,21 +5071,21 @@ body {
 
 .cell-current-mark {
   position: absolute;
-  right: 4px;
-  bottom: 1px;
+  right: 5px;
+  bottom: 2px;
   z-index: 2;
   color: var(--vermilion);
   font-family: var(--font-mono);
-  font-size: 5.6px;
+  font-size: 5.2px;
   font-weight: 700;
   letter-spacing: 0.04em;
 }
 
 .cell-thumb {
   position: relative;
-  flex: 0 0 18px;
-  width: 18px;
-  height: 18px;
+  flex: 0 0 17px;
+  width: 17px;
+  height: 17px;
   border: 1px solid rgba(28, 28, 26, 0.1);
   border-radius: 3px;
   background: var(--paper-2);
@@ -5200,7 +5205,7 @@ body {
   overflow: hidden;
   color: var(--sumi);
   font-family: var(--font-serif);
-  font-size: 9.1px;
+  font-size: 8.7px;
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -5210,7 +5215,7 @@ body {
   margin-top: 1px;
   overflow: hidden;
   color: var(--ink-mute);
-  font-size: 7px;
+  font-size: 6.6px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -5220,14 +5225,14 @@ body {
   align-items: center;
   gap: 3px;
   flex: 0 0 auto;
-  max-width: 50px;
-  padding: 1px 4px 2px;
+  max-width: 46px;
+  padding: 1px 3px 2px;
   overflow: hidden;
   border-left: 1px solid rgba(139, 58, 46, 0.18);
   background: transparent;
   color: var(--ink-mute);
   font-family: var(--font-mono);
-  font-size: 5.5px;
+  font-size: 5.2px;
   letter-spacing: 0.02em;
   text-transform: none;
   text-overflow: ellipsis;

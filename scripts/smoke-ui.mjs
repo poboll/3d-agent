@@ -6,6 +6,7 @@ const APP_BASE = (process.env.SMOKE_APP_BASE || 'http://127.0.0.1:5173').replace
 const MIN_DEMO_MODELS = Number(process.env.SMOKE_MIN_DEMO_MODELS || 1)
 const UI_SOURCE_FILES = [
   'app/src/components/GenerationPanel.tsx',
+  'app/src/components/TaskWatchCard.tsx',
   'app/src/components/Sidebar.tsx',
   'app/src/components/ModelViewer.tsx',
   'app/src/components/ProgressOverlay.tsx',
