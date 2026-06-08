@@ -93,7 +93,9 @@ function buildImageCheck(status: ProviderStatusPayload | null, provider: string)
     '图片网关',
     gatewayReady ? `${gateway?.imageModel || 'gpt-image-2'} · 48760` : '需检查',
     gatewayReady ? 'ok' : 'warn',
-    gatewayReady ? `${gateway?.baseUrl || 'http://127.0.0.1:48760'} 已通过 health/models。` : '请检查 48760 服务、API Key 或模型列表。'
+    gatewayReady
+      ? buildLocalGatewayHint(gateway)
+      : '请检查 48760 服务、API Key 或模型列表。'
   );
 }
 
@@ -161,6 +163,12 @@ function createCheck(id: string, label: string, value: string, state: WorkflowPr
 function isLocalGatewayReady(status: ProviderStatusPayload | null) {
   const gateway = status?.image.localGateway;
   const healthReady = gateway?.health ? gateway.health.ok : true;
-  const modelsReady = gateway?.models ? gateway.models.ok : true;
-  return Boolean(gateway?.configured && healthReady && modelsReady);
+  return Boolean(gateway?.configured && healthReady);
+}
+
+function buildLocalGatewayHint(gateway: ProviderStatusPayload['image']['localGateway']) {
+  const baseUrl = gateway?.baseUrl || 'http://127.0.0.1:48760';
+  if (!gateway?.models) return `${baseUrl} 已通过 health，模型列表等待同步。`;
+  if (gateway.models.ok) return `${baseUrl} 已通过 health/models。`;
+  return `${baseUrl} health 可用，models 暂未返回；生成接口仍按配置模型发起。`;
 }

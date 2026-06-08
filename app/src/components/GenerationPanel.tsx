@@ -1183,6 +1183,7 @@ export function GenerationPanel({
           onResume={handleResumeActiveJob}
           onDiagnose={handleDiagnoseActiveJob}
           onOpenModel={handleOpenActiveJobModel}
+          onToggleDetails={() => setDetailsOpen((current) => !current)}
         />
       )}
 
@@ -2279,8 +2280,7 @@ function isImageProviderReady(status: ProviderStatusPayload | null, provider: st
   if (provider === 'local-gateway') {
     const gateway = status.image.localGateway;
     const healthReady = gateway?.health ? gateway.health.ok : true;
-    const modelsReady = gateway?.models ? gateway.models.ok : true;
-    return Boolean(gateway?.configured && healthReady && modelsReady);
+    return Boolean(gateway?.configured && healthReady);
   }
   if (provider === 'openai') {
     const openai = status.image.openai;

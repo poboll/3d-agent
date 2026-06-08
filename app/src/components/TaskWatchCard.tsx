@@ -35,6 +35,7 @@ interface Props {
   onResume: () => void;
   onDiagnose: () => void;
   onOpenModel: () => void;
+  onToggleDetails: () => void;
 }
 
 export function TaskWatchCard({
@@ -49,10 +50,55 @@ export function TaskWatchCard({
   onResume,
   onDiagnose,
   onOpenModel,
+  onToggleDetails,
 }: Props) {
   const diagnosticsForActiveJob = diagnostics && activeJob?.providerJobId === diagnostics.promptId
     ? diagnostics
     : null;
+  const isCompleted = activeJob?.status === 'completed' && Boolean(activeJob.result);
+  const resultItem = taskWatch.items.find((item) => item.label === '结果');
+  const specItem = taskWatch.items.find((item) => item.label === '生成规格');
+  const serviceItem = taskWatch.items.find((item) => item.label === '三维服务');
+  const updatedItem = taskWatch.items.find((item) => item.label === '最近更新');
+
+  if (isCompleted) {
+    return (
+      <section className="task-watch-card compact ok" aria-label="长任务观察" data-testid="task-watch-card">
+        <div className="task-watch-compact-main">
+          <div className="task-watch-compact-line">
+            <span>{taskWatch.eyebrow}</span>
+            <strong>结果已入库</strong>
+            <em>{updatedItem?.value || '刚刚'}</em>
+          </div>
+          <div className="task-watch-compact-meta" aria-label="完成任务摘要">
+            <span>
+              <small>模型</small>
+              <strong>{resultItem?.value || '已缓存'}</strong>
+            </span>
+            <span>
+              <small>规格</small>
+              <strong>{specItem?.value || '参考图'}</strong>
+            </span>
+            <span>
+              <small>链路</small>
+              <strong>{serviceItem?.value || '本地 3D'}</strong>
+            </span>
+          </div>
+        </div>
+        <div className="task-watch-compact-actions">
+          <button type="button" onClick={onOpenModel} data-testid="open-active-job-model">
+            查看模型
+          </button>
+          <button type="button" onClick={onSync} disabled={Boolean(syncingJobId)} data-testid="sync-active-job">
+            {syncingJobId ? '同步中' : '同步'}
+          </button>
+          <button type="button" onClick={onToggleDetails} data-testid="toggle-active-job-detail">
+            详情
+          </button>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className={`task-watch-card ${taskWatch.state}`} aria-label="长任务观察" data-testid="task-watch-card">

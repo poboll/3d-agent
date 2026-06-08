@@ -2178,6 +2178,123 @@ body {
   border-left-color: rgba(157, 55, 43, 0.56);
 }
 
+.task-watch-card.compact {
+  min-height: 48px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: stretch;
+  gap: 6px;
+  padding: 5px 6px 5px 8px;
+  border-left-color: rgba(89, 111, 85, 0.5);
+  background:
+    linear-gradient(90deg, rgba(223, 233, 220, 0.34), rgba(251, 250, 244, 0.68)),
+    repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.016) 0 1px, transparent 1px 13px);
+}
+
+.task-watch-compact-main {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  align-content: center;
+}
+
+.task-watch-compact-line {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) auto auto;
+  align-items: baseline;
+  gap: 7px;
+}
+
+.task-watch-compact-line span,
+.task-watch-compact-line em,
+.task-watch-compact-meta small {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink-whisper);
+  font-family: var(--font-mono);
+  font-size: 6.7px;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.task-watch-compact-line strong {
+  color: var(--moss);
+  font-family: var(--font-serif);
+  font-size: 10.2px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.task-watch-compact-meta {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 3px;
+}
+
+.task-watch-compact-meta span {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+  padding-top: 3px;
+  border-top: 1px solid rgba(28, 31, 27, 0.065);
+}
+
+.task-watch-compact-meta strong {
+  min-width: 0;
+  overflow: hidden;
+  color: rgba(43, 42, 38, 0.72);
+  font-family: var(--font-mono);
+  font-size: 6.9px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.task-watch-compact-actions {
+  width: 82px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px;
+  align-content: center;
+}
+
+.task-watch-compact-actions button:first-child {
+  grid-column: 1 / -1;
+}
+
+.task-watch-compact-actions button {
+  min-width: 0;
+  min-height: 20px;
+  padding: 2px 4px;
+  border: 1px solid rgba(28, 31, 27, 0.1);
+  border-radius: 3px;
+  background: rgba(251, 250, 244, 0.62);
+  color: var(--sumi-soft);
+  font-family: var(--font-mono);
+  font-size: 6.7px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.task-watch-compact-actions button:first-child {
+  border-color: rgba(89, 111, 85, 0.24);
+  background: rgba(62, 76, 58, 0.94);
+  color: var(--paper-warm);
+}
+
+.task-watch-compact-actions button:disabled {
+  cursor: progress;
+  opacity: 0.48;
+}
+
 .task-watch-head {
   min-width: 0;
   display: grid;
@@ -3358,7 +3475,7 @@ body {
 .viewer.is-model-focus .stage-learning-panel,
 .viewer.is-model-focus .stage-note-panel,
 .viewer.is-model-focus .stage-learning-rail {
-  z-index: 8;
+  z-index: 4;
   pointer-events: none;
 }
 
@@ -3368,7 +3485,7 @@ body {
 
 .viewer.is-model-focus .stage-order-card,
 .viewer.is-model-focus .stage-concept-card {
-  z-index: 8;
+  z-index: 4;
   pointer-events: none;
 }
 
@@ -3552,13 +3669,13 @@ body {
   position: absolute;
   right: 8px;
   top: 12px;
-  bottom: 126px;
+  bottom: 142px;
   z-index: 9;
-  width: clamp(138px, 14vw, 186px);
+  width: clamp(150px, 13vw, 178px);
   min-width: 0;
-  max-width: min(186px, calc(100% - 62px));
+  max-width: min(178px, calc(100% - 62px));
   display: grid;
-  grid-template-rows: minmax(112px, 1.05fr) minmax(94px, 0.92fr);
+  grid-template-rows: minmax(112px, 1.06fr) minmax(102px, 0.94fr);
   gap: 6px;
   pointer-events: auto;
   transform: none;
@@ -3687,7 +3804,7 @@ body {
   word-break: break-word;
   white-space: normal;
   text-overflow: ellipsis;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
 }
 
@@ -3797,9 +3914,9 @@ body {
 }
 
 .stage-question-drawer {
-  width: 34px;
+  width: 36px;
   right: 0;
-  bottom: 54px;
+  bottom: 58px;
   z-index: 170;
   max-height: none;
   overflow: hidden;
@@ -3815,31 +3932,31 @@ body {
   content: '';
   position: absolute;
   left: auto;
-  right: -18px;
+  right: 0;
   top: 0;
   bottom: 0;
-  width: 62px;
+  width: 48px;
 }
 
 .stage-question-drawer:hover,
 .stage-question-drawer.open,
 .stage-question-drawer.pinned {
-  width: clamp(142px, 14vw, 190px);
+  width: clamp(148px, 15vw, 198px);
   max-width: calc(100% - 42px);
   overflow: visible;
-  transform: translateX(-6px);
+  transform: translateX(-10px);
 }
 
 .stage-question-drawer button {
   position: relative;
   z-index: 2;
-  flex: 0 0 34px;
-  width: 34px;
-  min-height: 116px;
+  flex: 0 0 36px;
+  width: 36px;
+  min-height: 128px;
   align-self: stretch;
   justify-content: center;
   flex-direction: column;
-  gap: 6px;
+  gap: 7px;
   padding: 9px 2px;
   border-radius: 0 3px 3px 0;
   box-shadow: 0 10px 30px -28px rgba(28, 31, 27, 0.46);
@@ -3859,7 +3976,7 @@ body {
   writing-mode: vertical-rl;
   text-orientation: mixed;
   white-space: nowrap;
-  font-size: 8px;
+  font-size: 8.4px;
 }
 
 .stage-question-drawer button small {
@@ -3867,7 +3984,7 @@ body {
   writing-mode: vertical-rl;
   text-orientation: mixed;
   white-space: nowrap;
-  font-size: 6.2px;
+  font-size: 6.1px;
 }
 
 .stage-question-drawer .question-clue {
@@ -3876,8 +3993,8 @@ body {
   flex: 1 1 auto;
   min-width: 0;
   margin: 0;
-  min-height: 116px;
-  padding: 9px 8px;
+  min-height: 128px;
+  padding: 10px 9px;
   border: 1px solid rgba(28, 31, 27, 0.12);
   border-right: 0;
   border-radius: 4px 0 0 4px;
@@ -3914,8 +4031,8 @@ body {
   margin-top: 6px;
   color: rgba(43, 42, 38, 0.82);
   font-family: "Klee One", "LXGW WenKai", "STKaiti", "KaiTi", var(--font-serif);
-  font-size: 8.2px;
-  line-height: 1.48;
+  font-size: 8.5px;
+  line-height: 1.5;
   letter-spacing: 0.025em;
   overflow-wrap: break-word;
   word-break: break-word;
@@ -6056,8 +6173,10 @@ body {
     display: grid;
     grid-template-columns: 1fr;
     width: auto;
+    max-width: none;
     margin-top: 0;
     overflow: hidden;
+    transform: none;
   }
 
   .stage-question-drawer .question-clue {
