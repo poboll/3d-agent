@@ -1000,8 +1000,8 @@ body {
 .generation-action-status {
   position: relative;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 4px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 3px;
   padding: 3px 0 2px;
 }
 
@@ -1023,7 +1023,7 @@ body {
   min-width: 0;
   display: grid;
   gap: 2px;
-  padding: 4px 5px 4px 6px;
+  padding: 4px 4px 4px 5px;
   border: 1px solid rgba(28, 31, 27, 0.075);
   border-left: 2px solid rgba(120, 102, 73, 0.26);
   border-radius: 2px;
@@ -1039,7 +1039,7 @@ body {
   overflow: hidden;
   color: rgba(43, 42, 38, 0.44);
   font-family: var(--font-mono);
-  font-size: 6.2px;
+  font-size: 5.9px;
   font-weight: 800;
   letter-spacing: 0.06em;
   text-overflow: ellipsis;
@@ -1051,7 +1051,7 @@ body {
   overflow: hidden;
   color: rgba(43, 42, 38, 0.66);
   font-family: var(--font-serif);
-  font-size: 9px;
+  font-size: 8.3px;
   font-weight: 700;
   letter-spacing: 0.03em;
   line-height: 1.05;

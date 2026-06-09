@@ -1064,6 +1064,11 @@ export function GenerationPanel({
   ];
   const recommendedActionTestId = nextAction.targetTestId;
   const actionStatusItems = buildActionStatusItems({
+    phase,
+    busy,
+    promptReady: prompt.trim().length >= 6,
+    promptPreviewReady: promptPreviewMatchesCurrent,
+    promptConfirmed: confirmedPromptMatchesCurrent,
     referenceImage,
     referenceAccepted,
     activeJob,
@@ -2244,6 +2249,11 @@ function getPhaseLabel(phase: WorkflowPhase) {
 }
 
 function buildActionStatusItems(input: {
+  phase: WorkflowPhase;
+  busy: boolean;
+  promptReady: boolean;
+  promptPreviewReady: boolean;
+  promptConfirmed: boolean;
   referenceImage: ReferenceImage | null;
   referenceAccepted: boolean;
   activeJob: WorkflowJob | null;
@@ -2257,6 +2267,19 @@ function buildActionStatusItems(input: {
   const failed = input.activeJob?.status === 'failed';
 
   return [
+    {
+      label: 'Prompt',
+      value: input.promptConfirmed
+        ? '已确认'
+        : input.promptPreviewReady
+          ? '待确认'
+          : input.busy && input.phase === 'prompt'
+            ? '打磨中'
+            : input.promptReady
+              ? '可预览'
+              : '待输入',
+      state: input.promptConfirmed ? 'ok' : input.promptPreviewReady || input.promptReady ? 'ready' : input.busy && input.phase === 'prompt' ? 'pending' : 'idle',
+    },
     {
       label: '参考图',
       value: hasReference ? (input.referenceAccepted || input.activeJob?.referenceId ? '已确认' : '待接收') : input.providerStatusLoading ? '同步中' : input.selectedProviderOnline ? '可生成' : '需检查',
