@@ -1119,6 +1119,17 @@ export function GenerationPanel({
         </div>
       </section>
 
+      {promptPreview && (
+        <div className={`prompt-preview-card inline${confirmedPromptMatchesCurrent ? ' confirmed' : ''}`} aria-label="3D-ready prompt 预览" data-testid="prompt-preview-card">
+          <div>
+            <span>3D-READY PROMPT</span>
+            <strong>{confirmedPromptMatchesCurrent ? '已确认' : promptPreview.model}</strong>
+          </div>
+          <p>{promptPreview.imagePrompt}</p>
+          <em>{confirmedPromptMatchesCurrent ? '下一步可以生成参考图或直接完整生成。' : '检查构图、剖面和白底单图要求后，点击“确认提示词”。'}</em>
+        </div>
+      )}
+
       <div className="generation-actions" id="workflow-actions" aria-label="生成操作">
         <section className={`workflow-next-action ${nextAction.state}`} aria-label="推荐下一步" data-testid="workflow-next-action">
           <small>当前建议</small>
@@ -1577,16 +1588,6 @@ export function GenerationPanel({
           </select>
         </label>
       </div>
-
-      {promptPreview && (
-        <div className={`prompt-preview-card${confirmedPromptMatchesCurrent ? ' confirmed' : ''}`} aria-label="3D-ready prompt 预览">
-          <div>
-            <span>3D-READY PROMPT</span>
-            <strong>{confirmedPromptMatchesCurrent ? '已确认' : promptPreview.model}</strong>
-          </div>
-          <p>{promptPreview.imagePrompt}</p>
-        </div>
-      )}
 
       <div className="provider-hint" aria-label="当前生成链路">
         <span>{selectedProviderLabel}</span>
