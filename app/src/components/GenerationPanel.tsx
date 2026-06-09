@@ -416,7 +416,7 @@ export function GenerationPanel({
       });
       setActiveJob(null);
       setDetailsOpen(true);
-      setStatus(`${getImageProviderName(nextImageProvider)} 已产出参考图，请检查后点击“接收图片”，再确认建模。`);
+      setStatus(`${getImageProviderName(nextImageProvider)} 已产出 ${buildImageSpecLabel(reference.imageProfile, reference.imageSize, reference.imageQuality)} 参考图，请检查后点击“接收图片”，再确认建模。`);
       trackEvent('workflow_reference_generate', {
         template: nextTemplate,
         imageProvider: nextImageProvider,
@@ -1185,6 +1185,41 @@ export function GenerationPanel({
           </button>
         </div>
       </div>
+
+      {referenceImage && (
+        <section className={`reference-gate-card${referenceAccepted ? ' accepted' : ''}`} aria-label="参考图验收" data-testid="reference-gate-card">
+          <header>
+            <span>参考图验收</span>
+            <strong>{referenceAccepted ? '已接收，可建模' : '待接收图片'}</strong>
+          </header>
+          <div className="reference-gate-grid" aria-label="参考图生成信息">
+            <span>
+              <small>来源</small>
+              <strong>{referenceImage.source || selectedProviderLabel}</strong>
+            </span>
+            <span>
+              <small>规格</small>
+              <strong>{buildImageSpecLabel(referenceImage.imageProfile, referenceImage.imageSize, referenceImage.imageQuality)}</strong>
+            </span>
+            <span>
+              <small>模型</small>
+              <strong>{referenceImage.model || referenceImage.promptModel || '本地缓存'}</strong>
+            </span>
+          </div>
+          <p>{referenceAccepted ? '参考图已锁定，下一步提交图生 3D；不满意仍可重试图片。' : '确认单主体、剖面清晰、白底留白充足后，再接收图片进入建模。'}</p>
+          <div className="reference-gate-actions" aria-label="参考图验收操作">
+            <button type="button" onClick={handleAcceptReference} disabled={busy || referenceAccepted} data-testid="accept-reference-gate">
+              {referenceAccepted ? '已接收' : '接收图片'}
+            </button>
+            <button type="button" onClick={handleCreateReference} disabled={!canCreateReference} data-testid="retry-reference-gate">
+              重试图片
+            </button>
+            <button type="button" onClick={handleConfirmModeling} disabled={!canConfirmModeling} data-testid="confirm-modeling-gate">
+              确认建模
+            </button>
+          </div>
+        </section>
+      )}
 
       {taskWatch && (
         <TaskWatchCard

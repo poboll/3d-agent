@@ -2187,6 +2187,143 @@ body {
     repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.016) 0 1px, transparent 1px 13px);
 }
 
+.reference-gate-card {
+  flex: 0 0 auto;
+  display: grid;
+  gap: 5px;
+  padding: 7px 8px;
+  border: 1px solid rgba(139, 58, 46, 0.12);
+  border-left: 2px solid rgba(139, 58, 46, 0.42);
+  border-radius: 4px;
+  background:
+    radial-gradient(120px 58px at 94% 0%, rgba(139, 58, 46, 0.05), transparent 72%),
+    linear-gradient(180deg, rgba(251, 250, 244, 0.72), rgba(223, 233, 220, 0.15)),
+    repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.014) 0 1px, transparent 1px 13px);
+  box-shadow: inset 0 1px 0 rgba(255, 250, 240, 0.38);
+  overflow: hidden;
+}
+
+.reference-gate-card.accepted {
+  border-left-color: rgba(89, 111, 85, 0.5);
+  background:
+    linear-gradient(180deg, rgba(223, 233, 220, 0.32), rgba(251, 250, 244, 0.5)),
+    repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.016) 0 1px, transparent 1px 13px);
+}
+
+.reference-gate-card header {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.reference-gate-card header span,
+.reference-gate-grid small {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink-whisper);
+  font-family: var(--font-mono);
+  font-size: 6.9px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reference-gate-card header strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--vermilion);
+  font-family: var(--font-serif);
+  font-size: 10.8px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reference-gate-card.accepted header strong {
+  color: var(--moss);
+}
+
+.reference-gate-grid {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 3px;
+}
+
+.reference-gate-grid span {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+  padding: 4px 5px;
+  border-top: 1px solid rgba(28, 31, 27, 0.065);
+  background: rgba(251, 250, 244, 0.3);
+  overflow: hidden;
+}
+
+.reference-gate-grid strong {
+  min-width: 0;
+  overflow: hidden;
+  color: rgba(43, 42, 38, 0.72);
+  font-family: var(--font-mono);
+  font-size: 6.85px;
+  font-weight: 800;
+  letter-spacing: 0.025em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reference-gate-card p {
+  display: -webkit-box;
+  overflow: hidden;
+  color: rgba(43, 42, 38, 0.68);
+  font-size: 8.2px;
+  line-height: 1.35;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.reference-gate-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.reference-gate-actions button {
+  min-width: 0;
+  min-height: 22px;
+  padding: 3px 5px;
+  border: 1px solid rgba(28, 31, 27, 0.1);
+  border-radius: 3px;
+  background: rgba(251, 250, 244, 0.64);
+  color: var(--sumi-soft);
+  font-family: var(--font-mono);
+  font-size: 6.9px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.reference-gate-actions button:first-child {
+  border-color: rgba(89, 111, 85, 0.24);
+  background: rgba(62, 76, 58, 0.94);
+  color: var(--paper-warm);
+}
+
+.reference-gate-actions button:last-child {
+  border-color: rgba(139, 58, 46, 0.26);
+  color: var(--vermilion);
+}
+
+.reference-gate-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
 .task-watch-card {
   position: relative;
   flex: 0 0 auto;
