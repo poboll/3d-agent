@@ -1021,7 +1021,7 @@ export function GenerationPanel({
   const resultModelUrl = activeJob?.result?.modelUrl;
   const rawModelUrl = activeJob?.result?.rawModelUrl;
   const texturedModelUrl = activeJob?.result?.texturedModelUrl;
-  const modelOutputChain = activeJob?.result ? buildModelOutputChain(activeJob) : [];
+  const modelOutputChain = activeJob?.result ? buildModelOutputChain(activeJob) : null;
   const canResumeActiveJob = isSelfhostJobResumable(activeJob);
   const canDiagnoseActiveJob = isSelfhostJobDiagnosable(activeJob);
   const workflowPreflight = buildWorkflowPreflight({
@@ -1120,7 +1120,32 @@ export function GenerationPanel({
         </div>
       </section>
 
-      {promptPreview && (
+      {visibleJobHistory.length > 0 && (
+        <div className="job-history" data-testid="job-history-compact">
+          <div className="job-history-title">
+            <span>队列摘要</span>
+            <strong>{jobHistorySummary.liveCount > 0 ? `${jobHistorySummary.liveCount} 个运行中` : '最近 2 条'}</strong>
+            <em>{hiddenJobCount > 0 ? `已收纳 ${hiddenJobCount} 条` : `共 ${jobHistorySummary.totalCount} 条`}</em>
+          </div>
+          {visibleJobHistory.map((job, index) => (
+            <button
+              type="button"
+              className={`job-row history-slot-${index + 1} ${job.status}${activeJob?.id === job.id ? ' active' : ''}`}
+              key={job.id}
+              onClick={() => handleSelectJob(job)}
+            >
+              <span>
+                <small>{getWorkflowModeLabel(job.workflowMode || 'image-to-3d')} · {getShortJobId(job.id)}</small>
+                <em>{job.prompt}</em>
+              </span>
+              <strong>{job.status === 'completed' ? '完成' : job.status === 'failed' ? '失败' : `${job.progress}%`}</strong>
+            </button>
+          ))}
+          <p className="job-history-note">队列不展开滚动，完整记录保留在本地任务接口。</p>
+        </div>
+      )}
+
+      {promptPreview?.imagePrompt && (
         <div className={`prompt-preview-card inline${confirmedPromptMatchesCurrent ? ' confirmed' : ''}`} aria-label="3D-ready prompt 预览" data-testid="prompt-preview-card">
           <div>
             <span>3D-READY PROMPT</span>
@@ -1301,31 +1326,6 @@ export function GenerationPanel({
         <em>{workflowPreflight.recommendation}</em>
       </section>
 
-      {visibleJobHistory.length > 0 && (
-        <div className="job-history" data-testid="job-history-compact">
-          <div className="job-history-title">
-            <span>任务摘要</span>
-            <strong>{jobHistorySummary.liveCount > 0 ? `${jobHistorySummary.liveCount} 个运行中` : '最近 2 条'}</strong>
-            <em>{hiddenJobCount > 0 ? `已收纳 ${hiddenJobCount} 条` : `共 ${jobHistorySummary.totalCount} 条`}</em>
-          </div>
-          {visibleJobHistory.map((job, index) => (
-            <button
-              type="button"
-              className={`job-row history-slot-${index + 1} ${job.status}${activeJob?.id === job.id ? ' active' : ''}`}
-              key={job.id}
-              onClick={() => handleSelectJob(job)}
-            >
-              <span>
-                <small>{getWorkflowModeLabel(job.workflowMode || 'image-to-3d')} · {getShortJobId(job.id)}</small>
-                <em>{job.prompt}</em>
-              </span>
-              <strong>{job.status === 'completed' ? '完成' : job.status === 'failed' ? '失败' : `${job.progress}%`}</strong>
-            </button>
-          ))}
-          <p className="job-history-note">队列不展开滚动，完整记录保留在本地任务接口。</p>
-        </div>
-      )}
-
       {generatedModels.length > 0 && (
         <button
           type="button"
@@ -1376,14 +1376,14 @@ export function GenerationPanel({
               复制 Prompt
             </button>
           </div>
-          {modelOutputChain.length > 0 && (
-            <section className="model-output-chain" aria-label="3D 输出链路" data-testid="model-output-chain">
+          {modelOutputChain && (
+            <section className={`model-output-chain ${modelOutputChain.mode}`} aria-label="3D 输出链路" data-testid="model-output-chain">
               <header>
-                <span>3D 输出链路</span>
-                <strong>{modelOutputChain.filter((item) => item.url).length}/3 已返回</strong>
+                <span>{modelOutputChain.title}</span>
+                <strong>{modelOutputChain.returnedLabel}</strong>
               </header>
               <div className="model-output-grid">
-                {modelOutputChain.map((item) => (
+                {modelOutputChain.items.map((item) => (
                   <article className={item.state} key={item.id}>
                     <i>{item.no}</i>
                     <span>
@@ -1815,8 +1815,41 @@ function buildResultReview(job: WorkflowJob) {
 
 function buildModelOutputChain(job: WorkflowJob) {
   const result = job.result;
-  if (!result) return [];
-  return [
+  if (!result) return null;
+
+  if (job.provider !== 'selfhost-triposg') {
+    const referenceUrl = job.reference?.imageUrl || job.referenceImageUrl;
+    const items = [
+      {
+        id: 'reference',
+        no: '01',
+        label: '参考图缓存',
+        detail: referenceUrl ? `${job.reference?.source || getImageProviderName(job.imageProvider || 'local-gateway')} · ${buildImageSpecLabel(job.imageProfile, job.imageSize, job.imageQuality)}` : '等待参考图缓存',
+        url: referenceUrl,
+        action: '打开',
+        state: referenceUrl ? 'ok' : 'pending',
+        testId: 'reference-output-link',
+      },
+      {
+        id: 'final',
+        no: '02',
+        label: '缓存 GLB',
+        detail: result.modelUrl ? `${formatFileSize(result.fileSize)} · ${result.provider}` : '等待本地 GLB 入库',
+        url: result.modelUrl,
+        action: '查看',
+        state: result.modelUrl ? 'current' : 'pending',
+        testId: 'final-output-link',
+      },
+    ];
+    return {
+      mode: 'demo',
+      title: '本地演示链路',
+      returnedLabel: `${items.filter((item) => item.url).length}/${items.length} 已返回`,
+      items,
+    };
+  }
+
+  const items = [
     {
       id: 'raw',
       no: '01',
@@ -1848,6 +1881,12 @@ function buildModelOutputChain(job: WorkflowJob) {
       testId: 'final-output-link',
     },
   ];
+  return {
+    mode: 'selfhost',
+    title: '3D 输出链路',
+    returnedLabel: `${items.filter((item) => item.url).length}/${items.length} 已返回`,
+    items,
+  };
 }
 
 function getWorkflowStatusLabel(status: WorkflowJob['status']) {

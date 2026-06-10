@@ -653,11 +653,11 @@ body {
   position: relative;
   flex: 0 0 auto;
   display: grid;
-  grid-template-columns: minmax(0, 0.84fr) minmax(0, 1.16fr);
+  grid-template-columns: minmax(0, 0.78fr) minmax(124px, 1.22fr);
   align-items: stretch;
-  gap: 7px;
-  min-height: 68px;
-  padding: 6px 7px 7px 9px;
+  gap: 6px;
+  min-height: 58px;
+  padding: 6px 7px 6px 9px;
   border: 1px solid rgba(28, 31, 27, 0.08);
   border-left: 2px solid rgba(120, 102, 73, 0.42);
   border-radius: 4px;
@@ -689,7 +689,7 @@ body {
   margin-top: 2px;
   color: var(--sumi);
   font-family: var(--font-serif);
-  font-size: 10.2px;
+  font-size: 9.6px;
   font-weight: 700;
   letter-spacing: 0.04em;
 }
@@ -707,27 +707,23 @@ body {
 
 .prompt-approval-actions {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 3px;
 }
 
 .prompt-approval-actions button {
-  min-height: 19px;
-  padding: 2px 5px;
+  min-height: 28px;
+  padding: 3px 5px;
   border: 1px solid rgba(28, 31, 27, 0.12);
   border-radius: 3px;
   background: rgba(251, 250, 244, 0.62);
   color: var(--sumi-soft);
   font-family: var(--font-mono);
-  font-size: 6.2px;
+  font-size: 6.35px;
   font-weight: 800;
   letter-spacing: 0.02em;
   white-space: normal;
   overflow-wrap: anywhere;
-}
-
-.prompt-approval-actions button:last-child {
-  grid-column: 1 / -1;
 }
 
 .prompt-approval-actions button:last-child {
@@ -755,8 +751,8 @@ body {
 
 .prompt-preview-card {
   flex: 0 0 auto;
-  min-height: 74px;
-  max-height: 106px;
+  min-height: 66px;
+  max-height: 92px;
   display: grid;
   gap: 5px;
   padding: 7px 9px 6px;
@@ -808,9 +804,9 @@ body {
   display: -webkit-box;
   overflow: hidden;
   color: var(--sumi-soft);
-  font-size: 9.2px;
-  line-height: 1.42;
-  -webkit-line-clamp: 3;
+  font-size: 8.6px;
+  line-height: 1.38;
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
 }
 
@@ -3070,6 +3066,10 @@ body {
   overflow: hidden;
 }
 
+.model-output-chain.demo {
+  min-height: 92px;
+}
+
 .model-output-chain header {
   min-width: 0;
   display: flex;
@@ -3134,6 +3134,10 @@ body {
   background:
     linear-gradient(180deg, rgba(139, 58, 46, 0.055), rgba(251, 250, 244, 0.46)),
     repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.012) 0 1px, transparent 1px 12px);
+}
+
+.model-output-chain.demo .model-output-grid article {
+  min-height: 30px;
 }
 
 .model-output-grid i {
@@ -3308,11 +3312,11 @@ body {
 .job-history {
   flex: 0 0 auto;
   display: grid;
-  grid-template-columns: minmax(68px, 0.42fr) repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(74px, 0.42fr) repeat(2, minmax(0, 1fr));
   align-items: stretch;
   gap: 3px;
-  min-height: 40px;
-  max-height: 42px;
+  min-height: 45px;
+  max-height: 47px;
   padding: 3px;
   border: 1px solid rgba(28, 31, 27, 0.07);
   border-left: 3px solid rgba(89, 111, 85, 0.34);
@@ -3367,12 +3371,13 @@ body {
 
 .job-row {
   width: 100%;
-  min-height: 32px;
+  min-height: 36px;
   display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: none;
   align-items: center;
-  gap: 1px;
-  padding: 3px 4px 3px 5px;
+  gap: 5px;
+  padding: 4px 5px 4px 6px;
   border: 1px solid var(--hairline-2);
   border-radius: 3px;
   background: rgba(252, 250, 244, 0.54);
@@ -3384,7 +3389,7 @@ body {
 .job-history .job-row {
   grid-row: 1;
   min-width: 0;
-  max-height: 34px;
+  max-height: 39px;
   overflow: hidden;
 }
 
@@ -3453,19 +3458,23 @@ body {
 .job-row em {
   color: rgba(46, 48, 43, 0.78);
   font-family: var(--font-mono);
-  font-size: 6px;
+  font-size: 6.2px;
   font-style: normal;
-  line-height: 1.16;
+  line-height: 1.18;
   white-space: normal;
   display: -webkit-box;
-  -webkit-line-clamp: 1;
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
 }
 
 .job-row strong {
   justify-self: end;
+  align-self: center;
   white-space: nowrap;
-  font-size: 6.4px;
+  padding: 2px 4px;
+  border: 1px solid rgba(89, 111, 85, 0.14);
+  background: rgba(251, 250, 244, 0.42);
+  font-size: 6.2px;
 }
 
 .job-history-note {
@@ -3772,14 +3781,14 @@ body {
 }
 
 .viewer.is-model-focus .viewer-canvas-zone {
-  z-index: 160;
+  z-index: 260;
   filter: drop-shadow(0 22px 38px rgba(28, 28, 26, 0.16));
   pointer-events: auto;
 }
 
 .viewer.is-model-focus .viewer canvas {
   position: relative;
-  z-index: 162;
+  z-index: 262;
 }
 
 .viewer.is-model-focus .stage-info-main,
@@ -3791,7 +3800,7 @@ body {
 }
 
 .viewer.is-model-focus .viewer-interaction-frame {
-  z-index: 160;
+  z-index: 260;
 }
 
 .viewer.is-model-focus .stage-order-card,
@@ -3982,11 +3991,11 @@ body {
   top: 10px;
   bottom: 142px;
   z-index: 9;
-  width: clamp(134px, 11.6vw, 158px);
+  width: clamp(146px, 12.8vw, 176px);
   min-width: 0;
-  max-width: min(158px, calc(100% - 54px));
+  max-width: min(176px, calc(100% - 54px));
   display: grid;
-  grid-template-rows: minmax(116px, 1.05fr) minmax(106px, 0.95fr);
+  grid-template-rows: minmax(118px, 1fr) minmax(112px, 1fr);
   gap: 6px;
   pointer-events: auto;
   transform: none;
@@ -4015,7 +4024,7 @@ body {
 .stage-concept-card {
   min-width: 0;
   max-height: none;
-  padding: 7px 5px 7px 7px;
+  padding: 7px 6px 7px 8px;
   border: 1px solid rgba(28, 31, 27, 0.12);
   border-right: 0;
   border-radius: 4px 0 0 4px;
@@ -4098,7 +4107,7 @@ body {
   overflow-wrap: break-word;
   color: var(--sumi);
   font-family: var(--font-serif);
-  font-size: 8.25px;
+  font-size: 8.45px;
   font-weight: 600;
   line-height: 1.15;
 }
@@ -4109,7 +4118,7 @@ body {
   overflow: hidden;
   color: var(--ink-mute);
   font-family: var(--font-sans);
-  font-size: 7.15px;
+  font-size: 7.25px;
   line-height: 1.3;
   letter-spacing: 0;
   overflow-wrap: break-word;
@@ -4226,7 +4235,7 @@ body {
 }
 
 .stage-question-drawer {
-  width: 32px;
+  width: 34px;
   right: 0;
   bottom: 58px;
   z-index: 170;
@@ -4253,23 +4262,23 @@ body {
 .stage-question-drawer:hover,
 .stage-question-drawer.open,
 .stage-question-drawer.pinned {
-  width: clamp(126px, 12vw, 158px);
+  width: clamp(154px, 16vw, 206px);
   max-width: calc(100% - 42px);
   overflow: visible;
-  transform: translateX(-6px);
+  transform: translateX(-8px);
 }
 
 .stage-question-drawer button {
   position: relative;
   z-index: 2;
-  flex: 0 0 32px;
-  width: 32px;
-  min-height: 108px;
+  flex: 0 0 34px;
+  width: 34px;
+  min-height: 132px;
   align-self: stretch;
   justify-content: center;
   flex-direction: column;
   gap: 7px;
-  padding: 9px 2px;
+  padding: 10px 2px;
   border-radius: 0 3px 3px 0;
   box-shadow: 0 10px 30px -28px rgba(28, 31, 27, 0.46);
 }
@@ -4305,8 +4314,8 @@ body {
   flex: 1 1 auto;
   min-width: 0;
   margin: 0;
-  min-height: 108px;
-  padding: 8px 7px;
+  min-height: 132px;
+  padding: 9px 9px;
   border: 1px solid rgba(28, 31, 27, 0.12);
   border-right: 0;
   border-radius: 4px 0 0 4px;
@@ -4315,7 +4324,7 @@ body {
     repeating-linear-gradient(103deg, rgba(76, 91, 72, 0.018) 0 1px, transparent 1px 16px),
     rgba(251, 250, 244, 0.83);
   opacity: 0;
-  transform: translateX(18px);
+  transform: translateX(20px);
   box-shadow: 0 18px 46px -38px rgba(28, 31, 27, 0.46);
   transition: opacity 0.2s ease, transform 0.24s ease;
   overflow: hidden;
@@ -4343,8 +4352,8 @@ body {
   margin-top: 6px;
   color: rgba(43, 42, 38, 0.82);
   font-family: "Klee One", "LXGW WenKai", "STKaiti", "KaiTi", var(--font-serif);
-  font-size: 7.75px;
-  line-height: 1.46;
+  font-size: 8.1px;
+  line-height: 1.5;
   letter-spacing: 0.025em;
   overflow-wrap: break-word;
   word-break: break-word;
@@ -4473,7 +4482,7 @@ body {
   z-index: 7;
   max-height: none;
   height: 100%;
-  padding: 7px 5px 7px 7px;
+  padding: 7px 6px 7px 8px;
   border-right: 0;
   border-right-color: rgba(139, 58, 46, 0.2);
   background:
@@ -4543,7 +4552,7 @@ body {
   overflow-wrap: anywhere;
   color: var(--sumi);
   font-family: var(--font-serif);
-  font-size: 8.3px;
+  font-size: 8.55px;
   font-weight: 600;
 }
 
@@ -4552,7 +4561,7 @@ body {
   margin-top: 2px;
   overflow: hidden;
   color: var(--ink-mute);
-  font-size: 7.05px;
+  font-size: 7.25px;
   line-height: 1.34;
   letter-spacing: 0;
   overflow-wrap: anywhere;
@@ -4566,7 +4575,7 @@ body {
   margin-top: 2px;
   color: rgba(43, 42, 38, 0.72);
   font-family: var(--font-mono);
-  font-size: 6.2px;
+  font-size: 6.35px;
   font-style: normal;
   letter-spacing: 0.02em;
   overflow-wrap: anywhere;
