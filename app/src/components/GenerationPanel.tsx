@@ -1021,6 +1021,7 @@ export function GenerationPanel({
   const resultModelUrl = activeJob?.result?.modelUrl;
   const rawModelUrl = activeJob?.result?.rawModelUrl;
   const texturedModelUrl = activeJob?.result?.texturedModelUrl;
+  const modelOutputChain = activeJob?.result ? buildModelOutputChain(activeJob) : [];
   const canResumeActiveJob = isSelfhostJobResumable(activeJob);
   const canDiagnoseActiveJob = isSelfhostJobDiagnosable(activeJob);
   const workflowPreflight = buildWorkflowPreflight({
@@ -1375,6 +1376,32 @@ export function GenerationPanel({
               复制 Prompt
             </button>
           </div>
+          {modelOutputChain.length > 0 && (
+            <section className="model-output-chain" aria-label="3D 输出链路" data-testid="model-output-chain">
+              <header>
+                <span>3D 输出链路</span>
+                <strong>{modelOutputChain.filter((item) => item.url).length}/3 已返回</strong>
+              </header>
+              <div className="model-output-grid">
+                {modelOutputChain.map((item) => (
+                  <article className={item.state} key={item.id}>
+                    <i>{item.no}</i>
+                    <span>
+                      <strong>{item.label}</strong>
+                      <small>{item.detail}</small>
+                    </span>
+                    {item.url ? (
+                      <a href={item.url} target="_blank" rel="noreferrer" data-testid={item.testId}>
+                        {item.action}
+                      </a>
+                    ) : (
+                      <em>未返回</em>
+                    )}
+                  </article>
+                ))}
+              </div>
+            </section>
+          )}
           <div className="result-review-grid">
             <article>
               <small>参考图</small>
@@ -1546,13 +1573,13 @@ export function GenerationPanel({
                   </span>
                   <div>
                     {resultModelUrl && (
-                      <a href={resultModelUrl} target="_blank" rel="noreferrer">贴图 GLB</a>
+                      <a href={resultModelUrl} target="_blank" rel="noreferrer" data-testid="detail-final-output-link">当前展示</a>
                     )}
                     {rawModelUrl && (
-                      <a href={rawModelUrl} target="_blank" rel="noreferrer">Raw GLB</a>
+                      <a href={rawModelUrl} target="_blank" rel="noreferrer" data-testid="detail-raw-output-link">Raw GLB</a>
                     )}
                     {texturedModelUrl && (
-                      <a href={texturedModelUrl} target="_blank" rel="noreferrer">Textured GLB</a>
+                      <a href={texturedModelUrl} target="_blank" rel="noreferrer" data-testid="detail-textured-output-link">Textured GLB</a>
                     )}
                   </div>
                 </div>
@@ -1784,6 +1811,43 @@ function buildResultReview(job: WorkflowJob) {
       : '可结合观察顺序讲解结构、位置和模型上的可见特征。',
     nextStep: '建议先点击“查看模型”切到 3D 舞台，再用底部“概念速读”和右侧观察顺序完成课堂讲解。',
   };
+}
+
+function buildModelOutputChain(job: WorkflowJob) {
+  const result = job.result;
+  if (!result) return [];
+  return [
+    {
+      id: 'raw',
+      no: '01',
+      label: 'Raw GLB',
+      detail: result.rawModelUrl ? 'TripoSG 几何初稿已缓存' : '等待 raw.glb 输出',
+      url: result.rawModelUrl,
+      action: '下载',
+      state: result.rawModelUrl ? 'ok' : 'pending',
+      testId: 'raw-output-link',
+    },
+    {
+      id: 'textured',
+      no: '02',
+      label: 'Textured GLB',
+      detail: result.texturedModelUrl ? '贴图版已写入缓存' : '等待贴图 GLB',
+      url: result.texturedModelUrl,
+      action: '下载',
+      state: result.texturedModelUrl ? 'ok' : 'pending',
+      testId: 'textured-output-link',
+    },
+    {
+      id: 'final',
+      no: '03',
+      label: '当前展示',
+      detail: result.modelUrl ? `${formatFileSize(result.fileSize)} · ${result.provider}` : '等待前端入库',
+      url: result.modelUrl,
+      action: '打开',
+      state: result.modelUrl ? 'current' : 'pending',
+      testId: 'final-output-link',
+    },
+  ];
 }
 
 function getWorkflowStatusLabel(status: WorkflowJob['status']) {
