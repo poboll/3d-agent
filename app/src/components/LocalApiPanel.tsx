@@ -29,7 +29,7 @@ const endpoints = [
     method: 'POST',
     path: '/api/workflows/full-text-to-3d',
     title: '完整默认链路',
-    note: '按「术语 -> prompt -> 单图 -> TripoSG raw.glb -> Hunyuan3D-Paint textured.glb -> Bio3D final.glb」创建完整任务。',
+    note: '按「术语 -> prompt -> 单图 -> TripoSG raw.glb -> Bio3D final.glb」创建稳定任务，先确保白模几何可用。',
   },
   {
     method: 'POST',
@@ -41,7 +41,13 @@ const endpoints = [
     method: 'POST',
     path: '/api/workflows/text-to-cell',
     title: '确认图生建模',
-    note: '提交已确认的 referenceId、模板和三维服务，后端调用本地 TripoSG + Hunyuan3D-Paint 工作流。',
+    note: '提交已确认的 referenceId、模板和三维服务，后端调用本地 TripoSG + Bio3D 工作流。',
+  },
+  {
+    method: 'POST',
+    path: '/api/jobs/:jobId/texture-enhance',
+    title: '混元贴图后处理',
+    note: '复用已完成任务的 raw GLB 与参考图；20G 低内存会先做受控 Hunyuan3D-Paint，超时或触发熔断时嵌入参考图生成轻量贴图 fallback。',
   },
   {
     method: 'GET',
@@ -81,7 +87,9 @@ export function LocalApiPanel() {
         <i />
         <span>本地网关参考图生成与确认</span>
         <i />
-        <span>TripoSG + 混元贴图 + Bio3D</span>
+        <span>TripoSG raw + Bio3D</span>
+        <i />
+        <span>混元贴图增强</span>
         <i />
         <span>下载缓存并展示</span>
       </div>
@@ -129,7 +137,7 @@ export function LocalApiPanel() {
         <p>
           后端读取 <strong>OPENAI_API_KEY</strong>、<strong>OPENAI_IMAGE_MODEL</strong>、<strong>COMFYUI_BASE_URL</strong>、
           <strong>LOCAL_IMAGE_GATEWAY_BASE_URL</strong>、<strong>LOCAL_IMAGE_GATEWAY_API_KEY</strong>、
-          <strong>COMFYUI_WORKFLOW_TEMPLATE</strong> 等配置。前端请求可带 <strong>imageProfile</strong>、
+          <strong>COMFYUI_WORKFLOW_TEMPLATE</strong>、<strong>COMFYUI_HY3DPAINT_EXISTING_MESH_WORKFLOW_TEMPLATE</strong> 等配置。前端请求可带 <strong>imageProfile</strong>、
           <strong>imageSize</strong>、<strong>imageQuality</strong> 控制参考图规格；生成结果统一写入本地缓存，再交给 3D 舞台加载。
         </p>
       </div>

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CellModel } from '../data/models';
+import { filterModelsForIndex } from '../lib/modelIndex';
 
 interface Props {
   models: CellModel[];
@@ -17,48 +18,9 @@ export function Sidebar({ models, activeId, onSelect, onOpenIndex, guideOpen = f
   const [query, setQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement | null>(null);
 
-  const normalizedQuery = query.trim().toLowerCase();
   const filteredModels = useMemo(() => {
-    if (!normalizedQuery) return orderModelsForIndex(models, activeId);
-
-    const matches = models
-      .map((model, index) => {
-        const fields = [
-          model.name,
-          model.subtitle,
-          model.category,
-          model.description,
-          model.size,
-          model.location,
-          model.visibleInLM,
-          model.source,
-          model.features.map((feature) => `${feature.name} ${feature.detail}`).join(' '),
-          model.concepts?.map((concept) => `${concept.term} ${concept.level} ${concept.explanation} ${concept.visualHint}`).join(' '),
-        ]
-          .filter(Boolean)
-          .map((field) => String(field).toLowerCase());
-        const searchableText = fields.join(' ');
-
-        if (!searchableText.includes(normalizedQuery)) {
-          return null;
-        }
-
-        const [name = '', subtitle = '', category = '', description = ''] = fields;
-        let rank = 40;
-        if (name === normalizedQuery) rank = 0;
-        else if (name.includes(normalizedQuery)) rank = 1;
-        else if (subtitle.includes(normalizedQuery)) rank = 2;
-        else if (category.includes(normalizedQuery)) rank = 3;
-        else if (description.includes(normalizedQuery)) rank = 4;
-
-        return { model, rank, index };
-      })
-      .filter((item): item is { model: CellModel; rank: number; index: number } => Boolean(item))
-      .sort((a, b) => a.rank - b.rank || a.index - b.index)
-      .map((item) => item.model);
-
-    return orderModelsForIndex(matches, activeId);
-  }, [activeId, models, normalizedQuery]);
+    return filterModelsForIndex(models, query);
+  }, [models, query]);
 
   useEffect(() => {
     if (!focusSignal) return;
@@ -215,7 +177,9 @@ function CellItem({
   const displayName = model.custom ? formatGeneratedModelName(model.name) : model.name;
   const statusLabel = model.custom ? 'AI 生成' : model.category;
   const sourceLabel = model.custom
-    ? model.source || model.generationStatus || '本地生成结果'
+    ? [model.source || model.generationStatus || '本地生成结果', model.indexGroupCount && model.indexGroupCount > 1 ? `最新 / 共 ${model.indexGroupCount} 版` : '']
+        .filter(Boolean)
+        .join(' · ')
     : model.subtitle;
 
   return (
@@ -226,6 +190,7 @@ function CellItem({
         onClick={onSelect}
         style={{ '--accent': model.accent } as React.CSSProperties}
         data-testid="specimen-list-item"
+        data-model-id={model.id}
       >
         {active && <span className="cell-current-mark">当前</span>}
         <div className="cell-thumb">
@@ -244,16 +209,6 @@ function CellItem({
       </button>
     </li>
   );
-}
-
-function orderModelsForIndex(models: CellModel[], activeId: string) {
-  return [...models].sort((a, b) => {
-    if (a.id === activeId) return -1;
-    if (b.id === activeId) return 1;
-    if (a.custom && !b.custom) return -1;
-    if (!a.custom && b.custom) return 1;
-    return 0;
-  });
 }
 
 function formatGeneratedModelName(name: string) {

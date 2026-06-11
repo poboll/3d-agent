@@ -1,10 +1,20 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
-import App from './App.tsx'
+import { installThreeConsoleFilter } from './lib/threeConsoleFilter'
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-)
+installThreeConsoleFilter()
+
+const root = createRoot(document.getElementById('root')!)
+
+async function bootstrap() {
+  const { default: App } = await import('./App.tsx')
+
+  root.render(
+    <StrictMode>
+      <App />
+    </StrictMode>,
+  )
+}
+
+void bootstrap()

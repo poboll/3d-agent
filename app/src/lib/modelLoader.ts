@@ -172,18 +172,30 @@ function brightenMeshMaterial(material: THREE.Material | THREE.Material[]) {
   for (const item of materials) {
     if (!item) continue;
     const standard = item as THREE.MeshStandardMaterial;
+    const hasTexture = Boolean(standard.map);
+    const hasVertexColors = Boolean(standard.vertexColors);
     if ('envMapIntensity' in standard) {
-      standard.envMapIntensity = Math.max(standard.envMapIntensity || 0, 1.72);
+      standard.envMapIntensity = hasTexture
+        ? Math.min(Math.max(standard.envMapIntensity || 0, 1.08), 1.32)
+        : Math.max(standard.envMapIntensity || 0, 1.72);
+    }
+    if (standard.map) {
+      standard.map.colorSpace = THREE.SRGBColorSpace;
+      standard.map.needsUpdate = true;
     }
     if ('color' in standard && standard.color instanceof THREE.Color) {
       const hsl = { h: 0, s: 0, l: 0 };
       standard.color.getHSL(hsl);
-      if (hsl.l < 0.42) {
+      if ((hasTexture || hasVertexColors) && hsl.s < 0.08 && hsl.l > 0.86) {
+        standard.color.setRGB(0.86, 0.84, 0.78);
+      } else if (hsl.l < 0.42) {
         standard.color.offsetHSL(0, -0.025, Math.min(0.22, 0.42 - hsl.l + 0.055));
       }
     }
     if ('roughness' in standard && typeof standard.roughness === 'number') {
-      standard.roughness = Math.min(Math.max(standard.roughness, 0.42), 0.78);
+      standard.roughness = hasTexture
+        ? Math.min(Math.max(standard.roughness, 0.34), 0.6)
+        : Math.min(Math.max(standard.roughness, 0.42), 0.78);
     }
     if ('metalness' in standard && typeof standard.metalness === 'number') {
       standard.metalness = Math.min(standard.metalness, 0.08);

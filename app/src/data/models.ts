@@ -36,6 +36,10 @@ export interface CellModel {
   generationStatus?: string;
   /** 生成模型对应的教学模板，用于恢复观察顺序、概念图解和分布说明 */
   templateId?: string;
+  /** 标本索引中同类生成模型的折叠数量，仅用于展示。 */
+  indexGroupCount?: number;
+  /** 标本索引折叠后保留的聚合检索文本。 */
+  indexSearchText?: string;
 }
 
 const BASE = import.meta.env.BASE_URL;

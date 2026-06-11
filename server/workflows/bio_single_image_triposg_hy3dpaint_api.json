@@ -13,9 +13,9 @@
         0
       ],
       "seed": 42,
-      "num_inference_steps": 30,
-      "guidance_scale": 7.0,
-      "faces": 30000,
+      "num_inference_steps": 12,
+      "guidance_scale": 5.5,
+      "faces": 10000,
       "output_prefix": "bio_single_raw"
     }
   },
@@ -42,8 +42,8 @@
         1
       ],
       "output_prefix": "bio_single_final",
-      "polish_materials": true,
-      "roughness": 0.86,
+      "polish_materials": false,
+      "roughness": 0.82,
       "metallic": 0.0,
       "write_stable_alias": true
     }
