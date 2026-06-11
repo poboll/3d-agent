@@ -39,7 +39,7 @@ export function MaAboutPanel() {
         <div>
           <span>04</span>
           <strong>图生 3D</strong>
-          <p>建模层接入本地 ComfyUI、TripoSG、Hunyuan3D-Paint 与 Bio3D 后处理，输出 final GLB 交给舞台展示。</p>
+          <p>建模层接入本地 ComfyUI、TripoSG 与 Bio3D 后处理，输出 final GLB 交给舞台展示。</p>
         </div>
         <div>
           <span>05</span>

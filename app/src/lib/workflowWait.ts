@@ -12,7 +12,7 @@ interface WorkflowWaitOptions {
 }
 
 const DEFAULT_IMAGE_PROFILE = 'gpt-image-2 / 1536x1536 / high / timeout 420s';
-const DEFAULT_MODEL_PROFILE = 'TripoSG + Hunyuan3D-Paint + Bio3D';
+const DEFAULT_MODEL_PROFILE = 'TripoSG + Bio3D';
 
 export function getWorkflowWaitHint(
   elapsedSeconds: number,
@@ -53,7 +53,7 @@ function buildNormalWaitHint(stage: WorkflowWaitStage, imageProfile: string, mod
     return `${imageProfile} 单图生成常见耗时 1-7 分钟；页面不会追加长队列，只同步当前任务。`;
   }
   if (stage === 'modeling') {
-    return `${modelProfile} 正在排队或贴图打包；完成后会自动进入标本列表。`;
+    return `${modelProfile} 正在排队、冷启动恢复或 GLB 打包；82% 附近通常是在远端写 raw/final GLB，完成后会自动进入标本列表。`;
   }
   if (stage === 'queue') {
     return '队列只展示关键任务摘要，后台继续轮询当前任务，避免面板一直向下增长。';
@@ -66,7 +66,7 @@ function buildRecoverableHint(stage: WorkflowWaitStage, imageProfile: string, mo
     return `${imageProfile} 仍在处理；可保持页面开启，也可稍后回到页面恢复最近任务。`;
   }
   if (stage === 'modeling') {
-    return `${modelProfile} 可能正在生成 raw.glb、textured.glb 或 final.glb；稍后点击同步状态即可恢复。`;
+    return `${modelProfile} 可能正在生成 raw.glb 或 final.glb；若队列仍包含任务请等待，若远端刚 OOM 重启，稍后同步或续接输出即可恢复。`;
   }
   if (stage === 'queue') {
     return '历史队列已折叠为关键任务，稍后可通过任务详情继续查看或复用描述。';
@@ -79,7 +79,7 @@ function buildLongWaitHint(stage: WorkflowWaitStage, imageProfile: string, model
     return `${imageProfile} 已超过 5 分钟；建议同步状态，并检查本地图片网关是否仍在返回。`;
   }
   if (stage === 'modeling') {
-    return `${modelProfile} 已等待较久；建议同步状态，必要时检查 3D 服务队列。`;
+    return `${modelProfile} 已等待较久；建议同步状态或诊断远端。若 history 丢失，系统会复用缓存参考图重新提交一次 3D。`;
   }
   if (stage === 'queue') {
     return '队列等待较久；建议同步状态或检查 3D 服务运行队列。';

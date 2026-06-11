@@ -1,0 +1,45 @@
+{
+  "1": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "bio_single_3d_ready_input.png"
+    }
+  },
+  "2": {
+    "class_type": "TripoSGImageTo3D",
+    "inputs": {
+      "image": [
+        "1",
+        0
+      ],
+      "seed": 42,
+      "num_inference_steps": 30,
+      "guidance_scale": 7.0,
+      "faces": 30000,
+      "output_prefix": "bio_single_raw"
+    }
+  },
+  "3": {
+    "class_type": "Bio3DPostProcessGLB",
+    "inputs": {
+      "model_3d": [
+        "2",
+        1
+      ],
+      "output_prefix": "bio_single_final",
+      "polish_materials": true,
+      "roughness": 0.86,
+      "metallic": 0.0,
+      "write_stable_alias": true
+    }
+  },
+  "4": {
+    "class_type": "Preview3D",
+    "inputs": {
+      "model_file": [
+        "3",
+        1
+      ]
+    }
+  }
+}

@@ -31,6 +31,8 @@ interface Props {
   diagnosingJobId: string | null;
   canResumeActiveJob: boolean;
   canDiagnoseActiveJob: boolean;
+  resumeShouldDiagnoseFirst: boolean;
+  resumeBlockedReason?: string | null;
   onSync: () => void;
   onResume: () => void;
   onDiagnose: () => void;
@@ -46,6 +48,8 @@ export function TaskWatchCard({
   diagnosingJobId,
   canResumeActiveJob,
   canDiagnoseActiveJob,
+  resumeShouldDiagnoseFirst,
+  resumeBlockedReason,
   onSync,
   onResume,
   onDiagnose,
@@ -56,46 +60,90 @@ export function TaskWatchCard({
     ? diagnostics
     : null;
   const isCompleted = activeJob?.status === 'completed' && Boolean(activeJob.result);
+  const isResumable = activeJob?.status === 'failed' && canResumeActiveJob;
+  const resumeDisabled = Boolean(syncingJobId || (isResumable && resumeShouldDiagnoseFirst));
   const resultItem = taskWatch.items.find((item) => item.label === '结果');
   const specItem = taskWatch.items.find((item) => item.label === '生成规格');
   const serviceItem = taskWatch.items.find((item) => item.label === '三维服务');
   const updatedItem = taskWatch.items.find((item) => item.label === '最近更新');
+  const liveItems = taskWatch.items.filter((item) => ['参考图', '三维服务', '结果'].includes(item.label));
+  const visibleItems = activeJob?.status === 'queued' || activeJob?.status === 'processing'
+    ? liveItems.length ? liveItems : taskWatch.items.slice(0, 3)
+    : taskWatch.items;
 
-  if (isCompleted) {
+  if (isCompleted || isResumable) {
     return (
-      <section className="task-watch-card compact ok" aria-label="长任务观察" data-testid="task-watch-card">
+      <section className={`task-watch-card compact ${isCompleted ? 'ok' : 'warn resumable'}`} aria-label="长任务观察" data-testid="task-watch-card">
         <div className="task-watch-compact-main">
           <div className="task-watch-compact-line">
             <span>{taskWatch.eyebrow}</span>
-            <strong>结果已入库</strong>
+            <strong>{isCompleted ? '结果已入库' : taskWatch.title}</strong>
             <em>{updatedItem?.value || '刚刚'}</em>
           </div>
           <div className="task-watch-compact-meta" aria-label="完成任务摘要">
             <span>
-              <small>模型</small>
-              <strong>{resultItem?.value || '已缓存'}</strong>
+              <small>{isCompleted ? '模型' : '远端'}</small>
+              <strong>{isCompleted ? resultItem?.value || '已缓存' : taskWatch.recoveryLabel || '可续接'}</strong>
             </span>
             <span>
-              <small>规格</small>
-              <strong>{specItem?.value || '参考图'}</strong>
+              <small>{isCompleted ? '规格' : '参考图'}</small>
+              <strong>{isCompleted ? specItem?.value || '参考图' : '已保留'}</strong>
             </span>
             <span>
-              <small>链路</small>
+              <small>{isCompleted ? '链路' : '三维'}</small>
               <strong>{serviceItem?.value || '本地 3D'}</strong>
             </span>
           </div>
         </div>
         <div className="task-watch-compact-actions">
-          <button type="button" onClick={onOpenModel} data-testid="open-active-job-model">
-            查看模型
-          </button>
-          <button type="button" onClick={onSync} disabled={Boolean(syncingJobId)} data-testid="sync-active-job">
-            {syncingJobId ? '同步中' : '同步'}
-          </button>
-          <button type="button" onClick={onToggleDetails} data-testid="toggle-active-job-detail">
-            详情
-          </button>
+          {isCompleted ? (
+            <>
+              <button type="button" onClick={onOpenModel} data-testid="open-active-job-model">
+                查看模型
+              </button>
+              <button type="button" onClick={onSync} disabled={Boolean(syncingJobId)} data-testid="sync-active-job">
+                {syncingJobId ? '同步中' : '同步'}
+              </button>
+              <button type="button" onClick={onToggleDetails} data-testid="toggle-active-job-detail">
+                详情
+              </button>
+            </>
+          ) : (
+            <>
+              <button type="button" onClick={onDiagnose} disabled={Boolean(diagnosingJobId) || !canDiagnoseActiveJob} data-testid="diagnose-active-job">
+                {diagnosingJobId ? '诊断中' : '诊断远端'}
+              </button>
+              <button
+                type="button"
+                onClick={onResume}
+                disabled={resumeDisabled}
+                title={resumeShouldDiagnoseFirst ? resumeBlockedReason || '远端暂不可观测，先诊断 queue / history。' : undefined}
+                data-testid="resume-active-job"
+              >
+                续接输出
+              </button>
+              <button type="button" onClick={onToggleDetails} data-testid="toggle-active-job-detail">
+                详情
+              </button>
+            </>
+          )}
         </div>
+        {!isCompleted && resumeShouldDiagnoseFirst && (
+          <div className="task-watch-diagnostics compact pending" data-testid="task-watch-resume-guard">
+            <span>续接保护</span>
+            <strong>先诊断远端</strong>
+            <em>{resumeBlockedReason || '远端暂不可观测，已保留 prompt_id；恢复后再拉取 GLB。'}</em>
+          </div>
+        )}
+        {diagnosticsForActiveJob && (
+          <div className={`task-watch-diagnostics compact ${diagnosticsForActiveJob.outputs.glbCount > 0 ? 'ok' : diagnosticsForActiveJob.history.found ? 'warn' : 'pending'}`} data-testid="task-watch-diagnostics">
+            <span>远端诊断</span>
+            <strong>
+              队列 {diagnosticsForActiveJob.queue.ok ? `${diagnosticsForActiveJob.queue.running}/${diagnosticsForActiveJob.queue.pending}` : '不可达'} · history {diagnosticsForActiveJob.history.found ? diagnosticsForActiveJob.history.status : '未返回'} · GLB {diagnosticsForActiveJob.outputs.glbCount}
+            </strong>
+            <em>{diagnosticsForActiveJob.recommendation}</em>
+          </div>
+        )}
       </section>
     );
   }
@@ -110,7 +158,13 @@ export function TaskWatchCard({
             {syncingJobId ? '同步中' : '同步状态'}
           </button>
           {canResumeActiveJob && (
-            <button type="button" onClick={onResume} disabled={Boolean(syncingJobId)} data-testid="resume-active-job">
+            <button
+              type="button"
+              onClick={onResume}
+              disabled={Boolean(syncingJobId || resumeShouldDiagnoseFirst)}
+              title={resumeShouldDiagnoseFirst ? resumeBlockedReason || '远端暂不可观测，先诊断 queue / history。' : undefined}
+              data-testid="resume-active-job"
+            >
               续接输出
             </button>
           )}
@@ -126,6 +180,10 @@ export function TaskWatchCard({
           )}
         </div>
       </div>
+      <div className="task-watch-live-summary" aria-label="后台任务摘要" data-testid="task-watch-live-summary">
+        <span>队列摘要</span>
+        <strong>固定显示当前关键任务；旧记录收纳，远端异常可诊断或续接。</strong>
+      </div>
       <div className="task-watch-rail" aria-label={`任务进度 ${taskWatch.progress}%`}>
         <span style={{ width: `${taskWatch.progress}%` }} />
       </div>
@@ -138,7 +196,7 @@ export function TaskWatchCard({
         ))}
       </div>
       <div className="task-watch-grid">
-        {taskWatch.items.map((item) => (
+        {visibleItems.map((item) => (
           <span className={item.state} key={item.label}>
             <small>{item.label}</small>
             <strong>{item.value}</strong>
@@ -149,14 +207,21 @@ export function TaskWatchCard({
       {taskWatch.recoveryLabel && taskWatch.recoveryHint && (
         <div className="task-watch-recovery" data-testid="task-watch-recovery">
           <span>{taskWatch.recoveryLabel}</span>
-          <strong>{taskWatch.recoveryHint}</strong>
+          <strong>{taskWatch.recoveryHint}；若 history 已清理，会复用缓存参考图重新提交 3D。</strong>
+        </div>
+      )}
+      {canResumeActiveJob && resumeShouldDiagnoseFirst && (
+        <div className="task-watch-diagnostics pending" data-testid="task-watch-resume-guard">
+          <span>续接保护</span>
+          <strong>先诊断远端</strong>
+          <em>{resumeBlockedReason || '远端暂不可观测，已保留 prompt_id；恢复后再拉取 GLB。'}</em>
         </div>
       )}
       {diagnosticsForActiveJob && (
         <div className={`task-watch-diagnostics ${diagnosticsForActiveJob.outputs.glbCount > 0 ? 'ok' : diagnosticsForActiveJob.history.found ? 'warn' : 'pending'}`} data-testid="task-watch-diagnostics">
           <span>远端诊断</span>
           <strong>
-            队列 {diagnosticsForActiveJob.queue.running}/{diagnosticsForActiveJob.queue.pending} · history {diagnosticsForActiveJob.history.found ? diagnosticsForActiveJob.history.status : '未返回'} · GLB {diagnosticsForActiveJob.outputs.glbCount}
+            队列 {diagnosticsForActiveJob.queue.ok ? `${diagnosticsForActiveJob.queue.running}/${diagnosticsForActiveJob.queue.pending}` : '不可达'} · history {diagnosticsForActiveJob.history.found ? diagnosticsForActiveJob.history.status : '未返回'} · GLB {diagnosticsForActiveJob.outputs.glbCount}
           </strong>
           <em>{diagnosticsForActiveJob.recommendation}</em>
         </div>
