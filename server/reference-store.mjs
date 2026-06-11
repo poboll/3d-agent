@@ -20,6 +20,7 @@ import {
   LOCAL_IMAGE_GATEWAY_REASONING_EFFORT,
   LOCAL_IMAGE_GATEWAY_RESPONSES_ENDPOINT,
   LOCAL_IMAGE_GATEWAY_TIMEOUT_MS,
+  LOCAL_GATEWAY_MODELS_CACHE_FILE,
   OPENAI_API_KEY,
   OPENAI_BASE_URL,
   OPENAI_DISABLE_RESPONSE_STORAGE,
@@ -51,13 +52,28 @@ import { chooseTemplateForPrompt, getTemplateDisplayName, normalizeImageProvider
 const PROMPT_TEMPLATE_PATH = path.resolve('server/workflows/bio_3d_ready_prompt_templates.json')
 const OPENAI_IMAGE_TIMEOUT_MS = 180000
 
+export const LOCAL_GATEWAY_STATUS_LIMITS = Object.freeze({
+  healthTimeoutMs: 3000,
+  modelsTimeoutMs: 3500,
+})
+
+const LOCAL_GATEWAY_IMAGE_FAILURE_TTL_MS = 30 * 60 * 1000
+const LOCAL_GATEWAY_MODELS_CACHE_TTL_MS = 10 * 60 * 1000
+let localGatewayImageFailure = null
+let localGatewayModelsCache = null
+
 export async function createReferenceImage(input = {}) {
   const prompt = normalizeReferencePrompt(input.prompt)
   const template = chooseTemplateForPrompt(prompt, input.template)
   const provider = normalizeImageProvider(input.provider)
   const imageOptions = normalizeImageGenerationOptions(input, provider)
   const promptOverride = normalizeImagePromptOverride(input.imagePromptOverride)
+  const forceImageRetry = Boolean(input.forceImageRetry)
   const notify = typeof input.onProgress === 'function' ? input.onProgress : null
+
+  if (provider === 'local-gateway') {
+    await assertLocalGatewayImageRouteReady({ ignoreRecentFailure: forceImageRetry })
+  }
 
   await notifyReferenceProgress(notify, {
     progress: 10,
@@ -125,7 +141,7 @@ export async function createReferenceImage(input = {}) {
 
   const imageResult =
     provider === 'local-gateway'
-      ? await requestLocalGatewayImage(polishedPromptPackage.imagePrompt, imageOptions)
+      ? await requestLocalGatewayImage(polishedPromptPackage.imagePrompt, imageOptions, { ignoreRecentFailure: forceImageRetry })
       : await requestOpenAiImage(polishedPromptPackage.imagePrompt, imageOptions)
   await notifyReferenceProgress(notify, {
     progress: 22,
@@ -251,6 +267,7 @@ export async function getLocalImageGatewayStatus({ check = false } = {}) {
     imageQuality: LOCAL_IMAGE_GATEWAY_IMAGE_QUALITY,
     timeoutMs: LOCAL_IMAGE_GATEWAY_TIMEOUT_MS,
     disableResponseStorage: LOCAL_IMAGE_GATEWAY_DISABLE_RESPONSE_STORAGE,
+    imageRoute: buildLocalGatewayImageRouteStatus({ lastImageError: getRecentLocalGatewayImageFailure() }),
   }
 
   if (!check) return status
@@ -258,20 +275,139 @@ export async function getLocalImageGatewayStatus({ check = false } = {}) {
   const health = await checkGatewayTextEndpoint(LOCAL_IMAGE_GATEWAY_HEALTH_ENDPOINT, {
     method: 'GET',
     headers: LOCAL_IMAGE_GATEWAY_CONFIGURED ? buildLocalGatewayHeaders({ json: false }) : {},
-    timeoutMs: 5000,
+    timeoutMs: LOCAL_GATEWAY_STATUS_LIMITS.healthTimeoutMs,
   })
   const models = LOCAL_IMAGE_GATEWAY_CONFIGURED
     ? await checkGatewayJsonEndpoint(LOCAL_IMAGE_GATEWAY_MODELS_ENDPOINT, {
         method: 'GET',
         headers: buildLocalGatewayHeaders({ json: false }),
-        timeoutMs: 12000,
+        timeoutMs: LOCAL_GATEWAY_STATUS_LIMITS.modelsTimeoutMs,
       })
     : { ok: false, status: 0, message: '缺少本地图片网关 API Key。' }
+
+  await recordLocalGatewayModelsCache(models)
+  const cachedModels = await readLocalGatewayModelsCache()
+  const routeModels = selectLocalGatewayRouteModels({
+    models,
+    cachedModels: health.ok ? cachedModels : null,
+  })
 
   return {
     ...status,
     health,
     models,
+    cachedModels: routeModels?.cached ? routeModels : undefined,
+    imageRoute: buildLocalGatewayImageRouteStatus({
+      models: routeModels,
+      lastImageError: getRecentLocalGatewayImageFailure(),
+    }),
+  }
+}
+
+export function buildLocalGatewayImageRouteStatus({
+  configured = LOCAL_IMAGE_GATEWAY_CONFIGURED,
+  imageModel = LOCAL_IMAGE_GATEWAY_IMAGE_MODEL,
+  imageModelFallbacks = LOCAL_IMAGE_GATEWAY_IMAGE_MODEL_FALLBACKS,
+  models = null,
+  lastImageError = null,
+} = {}) {
+  const requestedModels = uniqueImageModels([imageModel, ...imageModelFallbacks])
+  if (!configured) {
+    return {
+      ok: false,
+      state: 'not-configured',
+      status: 503,
+      message: '本地图片网关未配置 API Key。',
+      requestedModels,
+      matchedModels: [],
+    }
+  }
+  if (!models) {
+    return {
+      ok: null,
+      state: 'unchecked',
+      status: 0,
+      message: '已读取本地图片网关配置，图片模型路由等待同步。',
+      requestedModels,
+      matchedModels: [],
+    }
+  }
+  if (!models.ok) {
+    const recoverable = models.status === 504 || /超时|timeout/i.test(models.message || '')
+    return {
+      ok: recoverable ? null : false,
+      state: recoverable ? 'unverified' : 'models-error',
+      status: models.status || 0,
+      recoverable,
+      message: recoverable
+        ? '本地图片网关 health 可用，但 models 检查超时；生成前仍建议刷新确认图片上游。'
+        : models.message || '本地图片网关 models 暂不可用，无法确认图片模型路由。',
+      requestedModels,
+      matchedModels: [],
+    }
+  }
+
+  const availableModelIds = Array.isArray(models.modelIds)
+    ? models.modelIds.map((item) => String(item || '').trim()).filter(Boolean)
+    : []
+  if (!availableModelIds.length) {
+    return {
+      ok: null,
+      state: 'unlisted',
+      status: models.status || 200,
+      recoverable: true,
+      message: '本地图片网关已连接，但 models 列表为空；图片上游仍需用一次生成请求确认。',
+      requestedModels,
+      matchedModels: [],
+      availableModelIds,
+    }
+  }
+
+  const availableSet = new Set(availableModelIds)
+  const matchedModels = requestedModels.filter((model) => availableSet.has(model))
+  if (matchedModels.length) {
+    const recentFailure = normalizeRecentImageFailure(lastImageError)
+    if (recentFailure) {
+      const failureMessage = stripTrailingSentencePunctuation(recentFailure.message)
+      return {
+        ok: false,
+        state: 'image-upstream-error',
+        status: recentFailure.status || 502,
+        recoverable: true,
+        message: `图片模型路由已匹配（${matchedModels.join(' / ')}），但最近一次真实生图失败：${failureMessage}。短时间内暂停自动文生图，请先重试网关上游或上传图片继续图生 3D。`,
+        requestedModels,
+        matchedModels,
+        availableModelIds,
+        lastImageError: recentFailure,
+      }
+    }
+
+    return {
+      ok: true,
+      state: models.cached ? 'ready-cached' : 'ready',
+      status: models.status || 200,
+      message: models.cached
+        ? `图片模型路由近期已匹配：${matchedModels.join(' / ')}；本次 models 检查超时，暂用最近成功状态。`
+        : `图片模型路由已匹配：${matchedModels.join(' / ')}。`,
+      requestedModels,
+      matchedModels,
+      availableModelIds,
+      cached: Boolean(models.cached),
+      checkedAt: models.checkedAt,
+      ageMs: models.ageMs,
+      sourceStatus: models.sourceStatus,
+    }
+  }
+
+  return {
+    ok: false,
+    state: 'model-missing',
+    status: 424,
+    recoverable: true,
+    message: `48760 网关已连接，但当前 models 未暴露配置的图片模型（${requestedModels.join(' / ')}）；上游图片生成暂不可用，请在网关恢复图片模型后重试，或先上传图片继续图生 3D。`,
+    requestedModels,
+    matchedModels,
+    availableModelIds,
   }
 }
 
@@ -491,6 +627,29 @@ export function normalizeImageGenerationOptions(input = {}, provider = 'local-ga
   }
 }
 
+export function buildLocalGatewayImageAttemptPlan(input = {}) {
+  const requested = normalizeImageGenerationOptions(input, 'local-gateway')
+  const fallbackProfiles = requested.profile === 'detailed'
+    ? ['standard', 'fast']
+    : requested.profile === 'standard'
+      ? ['fast']
+      : []
+  const seen = new Set()
+  const plan = []
+
+  for (const candidate of [
+    requested,
+    ...fallbackProfiles.map((imageProfile) => normalizeImageGenerationOptions({ imageProfile }, 'local-gateway')),
+  ]) {
+    const key = `${candidate.size}/${candidate.quality}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    plan.push(candidate)
+  }
+
+  return plan
+}
+
 function getImageProfilePreset(profile) {
   const presets = {
     fast: {
@@ -648,8 +807,9 @@ async function requestOpenAiImageViaImagesApi(prompt, options = {}) {
   }
 }
 
-async function requestLocalGatewayImage(prompt, options = {}) {
-  const imageOptions = normalizeImageGenerationOptions(options, 'local-gateway')
+async function requestLocalGatewayImage(prompt, options = {}, { ignoreRecentFailure = false } = {}) {
+  const imageAttemptPlan = buildLocalGatewayImageAttemptPlan(options)
+  await assertLocalGatewayImageRouteReady({ ignoreRecentFailure })
   const models = uniqueImageModels([
     LOCAL_IMAGE_GATEWAY_IMAGE_MODEL,
     ...LOCAL_IMAGE_GATEWAY_IMAGE_MODEL_FALLBACKS,
@@ -657,25 +817,69 @@ async function requestLocalGatewayImage(prompt, options = {}) {
   const errors = []
   const attemptsPerModel = Math.max(1, LOCAL_IMAGE_GATEWAY_IMAGE_RETRIES)
 
-  for (const model of models) {
-    for (let attempt = 1; attempt <= attemptsPerModel; attempt += 1) {
-      try {
-        return await requestLocalGatewayImageWithModel(prompt, model, imageOptions)
-      } catch (error) {
-        const reason = `${model}#${attempt}: ${error.message || '生成失败'}`
-        errors.push(reason)
-        if (!isRetryableImageGatewayError(error)) throw error
-        if (attempt < attemptsPerModel) {
-          await delay(Math.min(1500 * attempt, 4000))
+  for (const plannedImageOptions of imageAttemptPlan) {
+    for (const model of models) {
+      for (let attempt = 1; attempt <= attemptsPerModel; attempt += 1) {
+        try {
+          const result = await requestLocalGatewayImageWithModel(prompt, model, plannedImageOptions)
+          clearLocalGatewayImageFailure()
+          return result
+        } catch (error) {
+          const reason = `${model}#${attempt}@${plannedImageOptions.profile}/${plannedImageOptions.size}/${plannedImageOptions.quality}: ${error.message || '生成失败'}`
+          errors.push(reason)
+          if (!isRetryableImageGatewayError(error)) {
+            recordLocalGatewayImageFailure(error, { model, attempts: errors })
+            throw error
+          }
+          if (shouldSkipRemainingModelAttempts(error)) break
+          if (attempt < attemptsPerModel) {
+            await delay(Math.min(1500 * attempt, 4000))
+          }
         }
       }
     }
   }
 
-  throw Object.assign(new Error(`本地图片网关未返回可用图片。${errors.join('；')}`), {
+  const error = Object.assign(new Error(`本地图片网关未返回可用图片。${errors.join('；')}`), {
     status: 502,
     detail: { attempts: errors },
   })
+  recordLocalGatewayImageFailure(error, { attempts: errors })
+  throw error
+}
+
+export async function assertLocalGatewayImageRouteReady({ ignoreRecentFailure = false } = {}) {
+  const models = await checkGatewayJsonEndpoint(LOCAL_IMAGE_GATEWAY_MODELS_ENDPOINT, {
+    method: 'GET',
+    headers: buildLocalGatewayHeaders({ json: false }),
+    timeoutMs: LOCAL_GATEWAY_STATUS_LIMITS.modelsTimeoutMs,
+  })
+  await recordLocalGatewayModelsCache(models)
+  const imageRoute = buildLocalGatewayImageRouteStatus({
+    models: selectLocalGatewayRouteModels({ models, cachedModels: await readLocalGatewayModelsCache() }),
+    lastImageError: ignoreRecentFailure ? null : getRecentLocalGatewayImageFailure(),
+  })
+  if (imageRoute.ok === false) {
+    throw Object.assign(new Error(imageRoute.message), {
+      status: imageRoute.status || 424,
+      recoverable: Boolean(imageRoute.recoverable),
+      code: `LOCAL_IMAGE_GATEWAY_${String(imageRoute.state || 'UNAVAILABLE').toUpperCase().replace(/[^A-Z0-9]+/g, '_')}`,
+      detail: { imageRoute },
+    })
+  }
+}
+
+export function selectLocalGatewayRouteModels({ models, cachedModels } = {}) {
+  if (models?.ok) return models
+  const recoverable =
+    Number(models?.status) === 504 || /超时|timeout|timed? out/i.test(String(models?.message || ''))
+  if (!recoverable || !cachedModels?.ok) return models
+  return {
+    ...cachedModels,
+    cached: true,
+    sourceStatus: Number(models?.status) || 0,
+    sourceMessage: models?.message || '',
+  }
 }
 
 async function requestLocalGatewayImageWithModel(prompt, model, imageOptions) {
@@ -814,6 +1018,161 @@ function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+function recordLocalGatewayImageFailure(error, { model = error?.model, attempts = [] } = {}) {
+  localGatewayImageFailure = {
+    at: new Date().toISOString(),
+    status: Number(error?.status) || 0,
+    model: model || '',
+    message: summarizeLocalGatewayImageFailure(error, attempts),
+    attempts: attempts.map((item) => sanitizeGatewayFailureMessage(item)).slice(-8),
+  }
+}
+
+export function normalizeLocalGatewayModelsCacheRecord(models, { now = Date.now() } = {}) {
+  const modelIds = uniqueImageModels(Array.isArray(models?.modelIds) ? models.modelIds : [])
+  if (!models?.ok || !modelIds.length) return null
+  return {
+    ok: true,
+    status: Number(models.status) || 200,
+    message: 'ok',
+    modelIds,
+    checkedAt: new Date(now).toISOString(),
+    checkedAtMs: now,
+  }
+}
+
+export function publicLocalGatewayModelsCacheRecord(
+  record,
+  { now = Date.now(), ttlMs = LOCAL_GATEWAY_MODELS_CACHE_TTL_MS } = {}
+) {
+  const modelIds = uniqueImageModels(Array.isArray(record?.modelIds) ? record.modelIds : [])
+  if (!modelIds.length) return null
+  const checkedAtMs = Number(record?.checkedAtMs) || Date.parse(record?.checkedAt || '')
+  const ageMs = now - checkedAtMs
+  if (!Number.isFinite(ageMs) || ageMs < 0 || ageMs > ttlMs) return null
+  return {
+    ok: true,
+    status: Number(record?.status) || 200,
+    message: 'ok',
+    modelIds,
+    checkedAt: record?.checkedAt || new Date(checkedAtMs).toISOString(),
+    ageMs,
+  }
+}
+
+async function recordLocalGatewayModelsCache(models) {
+  const record = normalizeLocalGatewayModelsCacheRecord(models)
+  if (!record) return
+  localGatewayModelsCache = record
+  try {
+    await writeLocalGatewayModelsCache(record)
+  } catch {
+    // Keep the in-memory route evidence even if the local cache file is temporarily unwritable.
+  }
+}
+
+async function readLocalGatewayModelsCache({ now = Date.now() } = {}) {
+  const inMemory = publicLocalGatewayModelsCacheRecord(localGatewayModelsCache, { now })
+  if (inMemory) return inMemory
+
+  try {
+    const raw = await readFile(LOCAL_GATEWAY_MODELS_CACHE_FILE, 'utf8')
+    const parsed = JSON.parse(raw)
+    const stored = parsed?.models || parsed
+    const fromDisk = publicLocalGatewayModelsCacheRecord(stored, { now })
+    if (!fromDisk) return null
+    localGatewayModelsCache = {
+      ok: true,
+      status: fromDisk.status,
+      message: 'ok',
+      modelIds: [...fromDisk.modelIds],
+      checkedAt: fromDisk.checkedAt,
+      checkedAtMs: Date.parse(fromDisk.checkedAt),
+    }
+    return fromDisk
+  } catch (error) {
+    if (error.code === 'ENOENT') return null
+    return null
+  }
+}
+
+async function writeLocalGatewayModelsCache(record) {
+  await mkdir(WORKFLOW_STORE_DIR, { recursive: true })
+  const tmpPath = path.join(
+    WORKFLOW_STORE_DIR,
+    `local-gateway-models-cache-${Date.now()}-${randomUUID().slice(0, 8)}.tmp`
+  )
+  await writeFile(tmpPath, JSON.stringify({ models: record }, null, 2))
+  await rename(tmpPath, LOCAL_GATEWAY_MODELS_CACHE_FILE)
+}
+
+function clearLocalGatewayImageFailure() {
+  localGatewayImageFailure = null
+}
+
+function getRecentLocalGatewayImageFailure(now = Date.now()) {
+  if (!localGatewayImageFailure?.at) return null
+  const createdAt = Date.parse(localGatewayImageFailure.at)
+  if (!Number.isFinite(createdAt) || now - createdAt > LOCAL_GATEWAY_IMAGE_FAILURE_TTL_MS) {
+    clearLocalGatewayImageFailure()
+    return null
+  }
+  return {
+    ...localGatewayImageFailure,
+    retryAfterMs: Math.max(0, LOCAL_GATEWAY_IMAGE_FAILURE_TTL_MS - (now - createdAt)),
+  }
+}
+
+function normalizeRecentImageFailure(value) {
+  if (!value?.message) return null
+  return {
+    at: value.at || new Date().toISOString(),
+    status: Number(value.status) || 0,
+    model: value.model || '',
+    message: sanitizeGatewayFailureMessage(value.message),
+    attempts: Array.isArray(value.attempts)
+      ? value.attempts.map((item) => sanitizeGatewayFailureMessage(item)).slice(-8)
+      : [],
+    retryAfterMs: Number(value.retryAfterMs) || 0,
+  }
+}
+
+function sanitizeGatewayFailureMessage(value) {
+  return String(value || '')
+    .replace(/\s*\[request_id=[^\]]+\]/gi, '')
+    .replace(/Bearer\s+[A-Za-z0-9._~+/=-]+/gi, 'Bearer [redacted]')
+    .replace(/[A-Za-z0-9._%+-]+:[A-Za-z0-9._~+/=-]+@/g, '[redacted]@')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 320)
+}
+
+function stripTrailingSentencePunctuation(value) {
+  return String(value || '').replace(/[。.!！]+$/g, '').trim()
+}
+
+export function summarizeLocalGatewayImageFailure(error, attempts = []) {
+  const cleanedAttempts = attempts.map((item) => sanitizeGatewayFailureMessage(item)).filter(Boolean)
+  const raw = sanitizeGatewayFailureMessage(error?.message || cleanedAttempts.join('；') || '图片上游生成失败。')
+  const modelNames = [
+    ...new Set(cleanedAttempts.map((item) => item.match(/^([^#：:]+)#\d+/)?.[1]).filter(Boolean)),
+  ]
+  const modelLabel = modelNames.length ? modelNames.join(' / ') : '配置的图片模型'
+  const status = Number(error?.status) || 0
+
+  if (/upstream_error|temporarily unavailable/i.test(raw)) {
+    return `${modelLabel} 均返回 upstream_error${status ? ` / ${status}` : ''}，图片上游暂不可用。`
+  }
+  if (status === 429) return `${modelLabel} 返回 429 限流，需等待图片上游恢复额度。`
+  if (status === 504 || /timeout|超时/i.test(raw)) return `${modelLabel} 图片生成超时，已暂停自动重试。`
+  return raw || '图片上游生成失败。'
+}
+
+function shouldSkipRemainingModelAttempts(error) {
+  const message = String(error?.message || '')
+  return Number(error?.status) === 502 && /upstream_error|temporarily unavailable/i.test(message)
+}
+
 async function requestOpenAiResponse(body, { timeoutMs = OPENAI_IMAGE_TIMEOUT_MS } = {}) {
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), timeoutMs)
@@ -900,9 +1259,7 @@ async function checkGatewayJsonEndpoint(endpoint, { method, headers, timeoutMs }
   try {
     const response = await fetch(endpoint, { method, headers, signal: controller.signal })
     const payload = await readOpenAiPayload(response)
-    const modelIds = Array.isArray(payload?.data)
-      ? payload.data.map((item) => item?.id).filter(Boolean).slice(0, 12)
-      : []
+    const modelIds = extractGatewayModelIds(payload)
     return {
       ok: response.ok,
       status: response.status,
@@ -918,6 +1275,13 @@ async function checkGatewayJsonEndpoint(endpoint, { method, headers, timeoutMs }
   } finally {
     clearTimeout(timeout)
   }
+}
+
+export function extractGatewayModelIds(payload) {
+  if (!Array.isArray(payload?.data)) return []
+  return payload.data
+    .map((item) => String(item?.id || '').trim())
+    .filter(Boolean)
 }
 
 function extractOpenAiErrorMessage(payload, fallback) {

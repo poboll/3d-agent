@@ -19,6 +19,12 @@ interface DemoModelPayload {
   referenceImageUrl?: string;
   rawModelUrl?: string;
   texturedModelUrl?: string;
+  fallbackModelUrl?: string;
+  textureMode?: string;
+  requestedTextureMode?: string;
+  effectiveTextureMode?: string;
+  textureFallbackReason?: string;
+  forceTextureFallback?: boolean;
 }
 
 interface LocalModelPayload {
@@ -61,14 +67,28 @@ export interface WorkflowJob {
   template: string;
   imagePromptOverride?: string;
   imageProvider?: string;
+  forceImageRetry?: boolean;
   referenceId?: string;
   referenceImageUrl?: string;
   reference?: ReferenceImagePayload | null;
   workflowMode?: 'image-to-3d' | 'full-text-to-3d' | string;
+  sourceJobId?: string;
+  sourceModelUrl?: string;
   imageProfile?: string;
   imageSize?: string;
   imageQuality?: string;
+  textureMode?: string;
+  requestedTextureMode?: string;
+  effectiveTextureMode?: string;
+  textureFallbackReason?: string;
   providerJobId?: string;
+  sourceProviderJobId?: string;
+  lastProviderJobId?: string;
+  recoveredProviderJobId?: string;
+  rawMeshServerPath?: string;
+  rawModelUrl?: string;
+  restartFromReferenceAttempted?: boolean;
+  resumeError?: string;
   status: WorkflowStatus;
   stage: string;
   progress: number;
@@ -129,9 +149,32 @@ export interface ProviderStatusPayload {
       baseUrl: string;
       promptModel?: string;
       imageModel?: string;
+      imageModelFallbacks?: string[];
       imageSize?: string;
       imageQuality?: string;
       timeoutMs?: number;
+      imageRoute?: {
+        ok: boolean | null;
+        state: string;
+        status?: number;
+        recoverable?: boolean;
+        message: string;
+        requestedModels?: string[];
+        matchedModels?: string[];
+        availableModelIds?: string[];
+        cached?: boolean;
+        checkedAt?: string;
+        ageMs?: number;
+        sourceStatus?: number;
+        lastImageError?: {
+          at?: string;
+          status?: number;
+          model?: string;
+          message: string;
+          attempts?: string[];
+          retryAfterMs?: number;
+        };
+      };
       health?: {
         ok: boolean;
         status: number;
@@ -142,6 +185,14 @@ export interface ProviderStatusPayload {
         status: number;
         message: string;
         modelIds?: string[];
+      };
+      cachedModels?: {
+        ok: boolean;
+        status: number;
+        message: string;
+        modelIds?: string[];
+        checkedAt?: string;
+        ageMs?: number;
       };
     };
     openai?: {
@@ -162,8 +213,75 @@ export interface ProviderStatusPayload {
     selfhostTriposg?: {
       configured: boolean;
       baseUrl: string;
+      resourceGuard?: {
+        enabled?: boolean;
+        minRamFreeGb?: number;
+        minVramFreeGb?: number;
+        runtimeMinRamFreeGb?: number;
+        runtimeMinVramFreeGb?: number;
+        runtimeGuardGracePolls?: number;
+        steps?: number;
+        faces?: number;
+        guidanceScale?: number;
+        maxLocalPending?: number;
+        blockWhenRemoteBusy?: boolean;
+      };
+      texture?: {
+        enabled?: boolean;
+        workflowTemplate?: string;
+        existingMeshWorkflowTemplate?: string;
+        minRamFreeGb?: number;
+        minTotalRamGb?: number;
+        lowMemoryTotalRamGb?: number;
+        lowMemoryRemoteEnabled?: boolean;
+        fullRetryOnTimeout?: boolean;
+        fullWorkflowFirst?: boolean;
+        minVramFreeGb?: number;
+        runtimeMinRamFreeGb?: number;
+        runtimeMinVramFreeGb?: number;
+        runtimeGuardGracePolls?: number;
+        runtimeBackoffCount?: number;
+        runtimeBackoffMs?: number;
+        abortOnUnobservable?: boolean;
+        pollIntervalMs?: number;
+        steps?: number;
+        faces?: number;
+        guidanceScale?: number;
+        fullWorkflowSteps?: number;
+        fullWorkflowFaces?: number;
+        fullWorkflowGuidanceScale?: number;
+        stableSteps?: number;
+        stableFaces?: number;
+        stableGuidanceScale?: number;
+        autoFallback?: boolean;
+        staleHistoryLimit?: number;
+        unobservableRecoveryLimit?: number;
+      };
+      runtime?: {
+        running?: number;
+        pending?: number;
+        maxPending?: number;
+        blockWhenRemoteBusy?: boolean;
+        runningJobId?: string;
+        pendingJobIds?: string[];
+      };
       status?: {
         ok?: boolean;
+        state?: 'ready' | 'cold_starting' | 'unreachable' | 'error' | string;
+        recoverable?: boolean;
+        message?: string;
+        error?: string;
+        gpu?: Array<{
+          name?: string;
+          type?: string;
+          vramTotal?: number;
+          vramFree?: number;
+        }>;
+        ram?: {
+          total?: number;
+          free?: number;
+          available?: number;
+        } | null;
         queue?: {
           running?: number;
           pending?: number;
@@ -177,6 +295,114 @@ export interface ProviderStatusPayload {
       configured: boolean;
     };
   };
+}
+
+export interface TextureArtifactStatusPayload {
+  ok: boolean;
+  checked: number;
+  failed: number;
+  generatedAt: string;
+  summary: string;
+  artifacts: Array<{
+    jobId: string;
+    workflowMode?: string;
+    textureMode?: string;
+    requestedTextureMode?: string;
+    effectiveTextureMode?: string;
+    textureFallbackReason?: string;
+    modelUrl?: string;
+    ok: boolean;
+    reason?: string;
+    message?: string;
+    error?: string;
+    model?: {
+      url?: string;
+      bytes?: number;
+      materials?: number;
+      textures?: number;
+      images?: number;
+      usedMaterials?: number;
+      usedNonWhiteMaterials?: number;
+      texturedUsedMaterials?: number;
+    };
+  }>;
+}
+
+export interface TextureStabilitySummaryPayload {
+  ok: boolean;
+  dryRun?: boolean;
+  requestedRuns: number;
+  completedRuns: number;
+  coloredRuns: number;
+  hunyuanRuns: number;
+  fallbackColorRuns: number;
+  failedRuns: number;
+  textureMode?: string;
+  sourceJobId?: string;
+  lastJobId?: string;
+  lastModelUrl?: string;
+  resourceGate?: string;
+  resourceMessage?: string;
+  reportPath?: string;
+}
+
+export interface TextureStabilityStatusPayload {
+  ok: boolean;
+  running: boolean;
+  generatedAt: string;
+  message: string;
+  summary: TextureStabilitySummaryPayload | null;
+  latestConsecutive?: {
+    generatedAt?: string;
+    summary: TextureStabilitySummaryPayload | null;
+    report?: TextureStabilityStatusPayload['report'] | null;
+  } | null;
+  report: {
+    createdAt?: string;
+    finishedAt?: string;
+    error?: string;
+    errorCode?: string;
+    options?: {
+      runs?: number;
+      textureMode?: string;
+      dryRun?: boolean;
+      timeoutMinutes?: number;
+      pollMs?: number;
+      cooldownMs?: number;
+      drainTimeoutMs?: number;
+      minRamRecoveryGiB?: number;
+    };
+    sourceJob?: {
+      id?: string;
+      rawModelUrl?: string;
+      modelUrl?: string;
+      updatedAt?: string;
+    } | null;
+    runs?: Array<{
+      runNumber?: number;
+      jobId?: string;
+      status?: string;
+      error?: string;
+      completedJob?: {
+        id?: string;
+        effectiveTextureMode?: string;
+        modelUrl?: string;
+      };
+      usableColoredModel?: {
+        ok?: boolean;
+        reason?: string;
+        message?: string;
+      };
+      resourceBefore?: {
+        ramFreeGiB?: number;
+        vramFreeGiB?: number;
+      };
+      resourceAfter?: {
+        ramFreeGiB?: number;
+        vramFreeGiB?: number;
+      };
+    }>;
+  } | null;
 }
 
 export function apiUrl(path: string) {
@@ -221,7 +447,9 @@ export async function createReferenceImage(input: {
   imageProfile?: string;
   imageSize?: string;
   imageQuality?: string;
+  textureMode?: string;
   imagePromptOverride?: string;
+  forceImageRetry?: boolean;
 }): Promise<ReferenceImagePayload> {
   const response = await fetch(apiUrl('/api/references/text-to-image'), {
     method: 'POST',
@@ -285,6 +513,7 @@ export async function createTextToCellJob(input: {
   imageSize?: string;
   imageQuality?: string;
   referenceId?: string;
+  textureMode?: string;
 }): Promise<WorkflowJob> {
   const response = await fetch(apiUrl('/api/workflows/text-to-cell'), {
     method: 'POST',
@@ -306,6 +535,8 @@ export async function createFullTextTo3dJob(input: {
   imageSize?: string;
   imageQuality?: string;
   imagePromptOverride?: string;
+  forceImageRetry?: boolean;
+  textureMode?: string;
 }): Promise<{ reference: ReferenceImagePayload | null; job: WorkflowJob }> {
   const response = await fetch(apiUrl('/api/workflows/full-text-to-3d'), {
     method: 'POST',
@@ -339,6 +570,19 @@ export async function resumeWorkflowJob(jobId: string): Promise<WorkflowJob> {
   return normalizeWorkflowJob(payload.job);
 }
 
+export async function createTextureEnhancementJob(
+  jobId: string,
+  options: { textureMode?: 'hunyuan' | 'fallback-color'; forceFallback?: boolean } = {},
+): Promise<WorkflowJob> {
+  const response = await fetch(apiUrl(`/api/jobs/${encodeURIComponent(jobId)}/texture-enhance`), {
+    method: 'POST',
+    headers: Object.keys(options).length ? { 'Content-Type': 'application/json' } : undefined,
+    body: Object.keys(options).length ? JSON.stringify(options) : undefined,
+  });
+  const payload = await readApiResponse<{ job: WorkflowJob }>(response);
+  return normalizeWorkflowJob(payload.job);
+}
+
 export async function fetchWorkflowDiagnostics(jobId: string): Promise<WorkflowDiagnosticsPayload> {
   const response = await fetch(apiUrl(`/api/jobs/${encodeURIComponent(jobId)}/diagnostics`));
   const payload = await readApiResponse<{ diagnostics: WorkflowDiagnosticsPayload }>(response);
@@ -354,6 +598,46 @@ export async function fetchWorkflowJobs(limit = 12): Promise<WorkflowJob[]> {
 export async function fetchProviderStatus(check = false): Promise<ProviderStatusPayload> {
   const response = await fetch(apiUrl(`/api/providers/status${check ? '?check=1' : ''}`));
   return readApiResponse<ProviderStatusPayload>(response);
+}
+
+export async function fetchTextureArtifactStatus(limit = 3): Promise<TextureArtifactStatusPayload> {
+  const response = await fetch(apiUrl(`/api/texture-artifacts?limit=${limit}`));
+  const payload = await readApiResponse<TextureArtifactStatusPayload>(response);
+  return {
+    ...payload,
+    artifacts: payload.artifacts.map((artifact) => ({
+      ...artifact,
+      modelUrl: artifact.modelUrl ? apiUrl(artifact.modelUrl) : artifact.modelUrl,
+      model: artifact.model ? {
+        ...artifact.model,
+        url: artifact.model.url ? apiUrl(artifact.model.url) : artifact.model.url,
+      } : artifact.model,
+    })),
+  };
+}
+
+export async function fetchTextureStabilityStatus(): Promise<TextureStabilityStatusPayload> {
+  const response = await fetch(apiUrl('/api/texture-stability/latest'));
+  const payload = await readApiResponse<TextureStabilityStatusPayload>(response);
+  return normalizeTextureStabilityStatus(payload);
+}
+
+export async function runTextureStabilityCheck(input: {
+  runs?: number;
+  textureMode?: 'fallback-color' | 'hunyuan';
+  dryRun?: boolean;
+  allowHunyuan?: boolean;
+  allowHeavy?: boolean;
+  timeoutMinutes?: number;
+  cooldownMs?: number;
+} = {}): Promise<TextureStabilityStatusPayload> {
+  const response = await fetch(apiUrl('/api/texture-stability/run'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+  const payload = await readApiResponse<TextureStabilityStatusPayload>(response);
+  return normalizeTextureStabilityStatus(payload);
 }
 
 export function workflowJobToCellModel(job: WorkflowJob): CellModel | null {
@@ -397,6 +681,47 @@ function toCellModel(item: DemoModelPayload): CellModel {
   };
 }
 
+function normalizeTextureStabilityStatus(payload: TextureStabilityStatusPayload): TextureStabilityStatusPayload {
+  const summary = normalizeTextureStabilitySummary(payload.summary);
+  const latestConsecutive = payload.latestConsecutive ? {
+    ...payload.latestConsecutive,
+    summary: normalizeTextureStabilitySummary(payload.latestConsecutive.summary),
+    report: normalizeTextureStabilityReport(payload.latestConsecutive.report || null),
+  } : payload.latestConsecutive;
+  return {
+    ...payload,
+    summary,
+    latestConsecutive,
+    report: normalizeTextureStabilityReport(payload.report),
+  };
+}
+
+function normalizeTextureStabilitySummary(summary: TextureStabilitySummaryPayload | null | undefined): TextureStabilitySummaryPayload | null {
+  return summary ? {
+    ...summary,
+    lastModelUrl: summary.lastModelUrl ? apiUrl(summary.lastModelUrl) : summary.lastModelUrl,
+  } : null;
+}
+
+function normalizeTextureStabilityReport(report: TextureStabilityStatusPayload['report'] | null | undefined): TextureStabilityStatusPayload['report'] {
+  if (!report) return null;
+  return {
+    ...report,
+    sourceJob: report.sourceJob ? {
+      ...report.sourceJob,
+      rawModelUrl: report.sourceJob.rawModelUrl ? apiUrl(report.sourceJob.rawModelUrl) : report.sourceJob.rawModelUrl,
+      modelUrl: report.sourceJob.modelUrl ? apiUrl(report.sourceJob.modelUrl) : report.sourceJob.modelUrl,
+    } : report.sourceJob,
+    runs: report.runs?.map((run) => ({
+      ...run,
+      completedJob: run.completedJob ? {
+        ...run.completedJob,
+        modelUrl: run.completedJob.modelUrl ? apiUrl(run.completedJob.modelUrl) : run.completedJob.modelUrl,
+      } : run.completedJob,
+    })),
+  };
+}
+
 function normalizeWorkflowJob(job: WorkflowJob): WorkflowJob {
   return {
     ...job,
@@ -407,6 +732,8 @@ function normalizeWorkflowJob(job: WorkflowJob): WorkflowJob {
         }
       : job.reference,
     referenceImageUrl: job.referenceImageUrl ? apiUrl(job.referenceImageUrl) : job.referenceImageUrl,
+    rawModelUrl: job.rawModelUrl ? apiUrl(job.rawModelUrl) : job.rawModelUrl,
+    sourceModelUrl: job.sourceModelUrl ? apiUrl(job.sourceModelUrl) : job.sourceModelUrl,
     result: job.result
       ? {
           ...job.result,
@@ -414,6 +741,7 @@ function normalizeWorkflowJob(job: WorkflowJob): WorkflowJob {
           referenceImageUrl: job.result.referenceImageUrl ? apiUrl(job.result.referenceImageUrl) : job.result.referenceImageUrl,
           rawModelUrl: job.result.rawModelUrl ? apiUrl(job.result.rawModelUrl) : job.result.rawModelUrl,
           texturedModelUrl: job.result.texturedModelUrl ? apiUrl(job.result.texturedModelUrl) : job.result.texturedModelUrl,
+          fallbackModelUrl: job.result.fallbackModelUrl ? apiUrl(job.result.fallbackModelUrl) : job.result.fallbackModelUrl,
         }
       : job.result,
   };

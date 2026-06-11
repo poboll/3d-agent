@@ -9,6 +9,8 @@
     "build": "npm --prefix app run build",
     "test:api": "node --test test/*.test.mjs",
     "smoke:workflow": "node scripts/smoke-workflow.mjs",
-    "smoke:ui": "node scripts/smoke-ui.mjs"
+    "smoke:ui": "node scripts/smoke-ui.mjs",
+    "smoke:texture-artifacts": "node scripts/texture-artifact-check.mjs",
+    "smoke:texture-stability": "node scripts/texture-stability-check.mjs"
   }
 }

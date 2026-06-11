@@ -17,19 +17,70 @@ import {
   UPLOAD_TRASH_DIR,
   UPLOAD_WORK_DIR,
   WORKFLOW_STORE_DIR,
+  COMFYUI_FACES,
+  COMFYUI_HISTORY_CACHE_LIMIT,
+  COMFYUI_GUIDANCE_SCALE,
+  COMFYUI_HY3DPAINT_ENABLED,
+  COMFYUI_HY3DPAINT_FACES,
+  COMFYUI_HY3DPAINT_FULL_WORKFLOW_FACES,
+  COMFYUI_HY3DPAINT_FULL_WORKFLOW_FIRST,
+  COMFYUI_HY3DPAINT_FULL_WORKFLOW_GUIDANCE_SCALE,
+  COMFYUI_HY3DPAINT_FULL_WORKFLOW_STEPS,
+  COMFYUI_HY3DPAINT_FULL_RETRY_ON_TIMEOUT,
+  COMFYUI_HY3DPAINT_GUIDANCE_SCALE,
+  COMFYUI_HY3DPAINT_AUTO_FALLBACK,
+  COMFYUI_HY3DPAINT_EXISTING_MESH_WORKFLOW_TEMPLATE,
+  COMFYUI_HY3DPAINT_LOW_MEMORY_REMOTE_ENABLED,
+  COMFYUI_HY3DPAINT_LOW_MEMORY_TOTAL_RAM_GB,
+  COMFYUI_HY3DPAINT_MIN_RAM_FREE_GB,
+  COMFYUI_HY3DPAINT_MIN_TOTAL_RAM_GB,
+  COMFYUI_HY3DPAINT_MIN_VRAM_FREE_GB,
+  COMFYUI_HY3DPAINT_ABORT_ON_UNOBSERVABLE,
+  COMFYUI_HY3DPAINT_POLL_INTERVAL_MS,
+  COMFYUI_HY3DPAINT_RUNTIME_GUARD_GRACE_POLLS,
+  COMFYUI_HY3DPAINT_RUNTIME_FALLBACK_BACKOFF_COUNT,
+  COMFYUI_HY3DPAINT_RUNTIME_FALLBACK_BACKOFF_MS,
+  COMFYUI_HY3DPAINT_RUNTIME_MIN_RAM_FREE_GB,
+  COMFYUI_HY3DPAINT_RUNTIME_MIN_VRAM_FREE_GB,
+  COMFYUI_HY3DPAINT_STALE_HISTORY_LIMIT,
+  COMFYUI_HY3DPAINT_STEPS,
+  COMFYUI_HY3DPAINT_STABLE_STEPS,
+  COMFYUI_HY3DPAINT_STABLE_FACES,
+  COMFYUI_HY3DPAINT_STABLE_GUIDANCE_SCALE,
+  COMFYUI_HY3DPAINT_UNOBSERVABLE_RECOVERY_LIMIT,
+  COMFYUI_HY3DPAINT_WORKFLOW_TEMPLATE,
+  COMFYUI_BLOCK_WHEN_REMOTE_BUSY,
+  COMFYUI_LOCAL_QUEUE_MAX_PENDING,
+  COMFYUI_MIN_RAM_FREE_GB,
+  COMFYUI_MIN_VRAM_FREE_GB,
+  COMFYUI_PREFLIGHT_FREE_BEFORE_GUARD,
+  COMFYUI_RESOURCE_GUARD,
+  COMFYUI_STEPS,
 } from './server/config.mjs'
 import { readJsonBody, sendJson, setCorsHeaders } from './server/http-utils.mjs'
-import { createWorkflowJob, getWorkflowJob, listRecoverableWorkflowJobs, listWorkflowJobs } from './server/job-store.mjs'
+import {
+  WORKFLOW_STORE_RETENTION,
+  createTextureEnhancementJob,
+  createWorkflowJob,
+  getWorkflowJob,
+  listRecoverableWorkflowJobs,
+  listWorkflowJobs,
+} from './server/job-store.mjs'
 import { getDemoModels, importLocalModel, serveDemoModel, serveLocalModel } from './server/model-store.mjs'
 import {
+  getWorkflowRuntimeStatus,
   resumeSelfhostWorkflowJob,
   resumeWorkflowJob,
   startFullTextTo3dWorkflow,
+  startTextureEnhancementJob,
   startWorkflowJob,
 } from './server/workflow-runner.mjs'
 import { appendAnalyticsEvents } from './server/analytics-store.mjs'
 import { diagnoseComfyUiJob, getComfyUiStatus } from './server/comfyui-provider.mjs'
+import { getTextureArtifactStatus } from './server/texture-artifacts.mjs'
+import { readLatestConsecutiveStabilityReport, readLatestStabilityReport, runTextureStabilityCheck } from './scripts/texture-stability-check.mjs'
 import {
+  assertLocalGatewayImageRouteReady,
   createReferenceImage,
   getLocalImageGatewayStatus,
   getReferenceImageStatus,
@@ -38,6 +89,8 @@ import {
   previewReferencePrompt,
   serveReferenceImage,
 } from './server/reference-store.mjs'
+
+let textureStabilityRunPromise = null
 
 const server = http.createServer(async (request, response) => {
   try {
@@ -64,8 +117,10 @@ const server = http.createServer(async (request, response) => {
         referenceTrashDir: REFERENCE_TRASH_DIR,
         cellforgeModelDir: CELLFORGE_MODEL_DIR,
         workflowStoreDir: WORKFLOW_STORE_DIR,
+        workflowStoreRetention: WORKFLOW_STORE_RETENTION,
         comfyuiBaseUrl: COMFYUI_BASE_URL,
         comfyuiWorkflowTemplate: COMFYUI_WORKFLOW_TEMPLATE,
+        runtime: getWorkflowRuntimeStatus(),
         providers: {
           localCache: true,
           localGlb: true,
@@ -117,6 +172,50 @@ const server = http.createServer(async (request, response) => {
             configured: true,
             baseUrl: COMFYUI_BASE_URL,
             workflowTemplate: COMFYUI_WORKFLOW_TEMPLATE,
+            texture: {
+              enabled: COMFYUI_HY3DPAINT_ENABLED,
+              workflowTemplate: COMFYUI_HY3DPAINT_WORKFLOW_TEMPLATE,
+              existingMeshWorkflowTemplate: COMFYUI_HY3DPAINT_EXISTING_MESH_WORKFLOW_TEMPLATE,
+              minRamFreeGb: COMFYUI_HY3DPAINT_MIN_RAM_FREE_GB,
+              minTotalRamGb: COMFYUI_HY3DPAINT_MIN_TOTAL_RAM_GB,
+              lowMemoryTotalRamGb: COMFYUI_HY3DPAINT_LOW_MEMORY_TOTAL_RAM_GB,
+              lowMemoryRemoteEnabled: COMFYUI_HY3DPAINT_LOW_MEMORY_REMOTE_ENABLED,
+              fullRetryOnTimeout: COMFYUI_HY3DPAINT_FULL_RETRY_ON_TIMEOUT,
+              fullWorkflowFirst: COMFYUI_HY3DPAINT_FULL_WORKFLOW_FIRST,
+              minVramFreeGb: COMFYUI_HY3DPAINT_MIN_VRAM_FREE_GB,
+              runtimeMinRamFreeGb: COMFYUI_HY3DPAINT_RUNTIME_MIN_RAM_FREE_GB,
+              runtimeMinVramFreeGb: COMFYUI_HY3DPAINT_RUNTIME_MIN_VRAM_FREE_GB,
+              runtimeGuardGracePolls: COMFYUI_HY3DPAINT_RUNTIME_GUARD_GRACE_POLLS,
+              runtimeBackoffCount: COMFYUI_HY3DPAINT_RUNTIME_FALLBACK_BACKOFF_COUNT,
+              runtimeBackoffMs: COMFYUI_HY3DPAINT_RUNTIME_FALLBACK_BACKOFF_MS,
+              abortOnUnobservable: COMFYUI_HY3DPAINT_ABORT_ON_UNOBSERVABLE,
+              pollIntervalMs: COMFYUI_HY3DPAINT_POLL_INTERVAL_MS,
+              steps: COMFYUI_HY3DPAINT_STEPS,
+              faces: COMFYUI_HY3DPAINT_FACES,
+              guidanceScale: COMFYUI_HY3DPAINT_GUIDANCE_SCALE,
+              fullWorkflowSteps: COMFYUI_HY3DPAINT_FULL_WORKFLOW_STEPS,
+              fullWorkflowFaces: COMFYUI_HY3DPAINT_FULL_WORKFLOW_FACES,
+              fullWorkflowGuidanceScale: COMFYUI_HY3DPAINT_FULL_WORKFLOW_GUIDANCE_SCALE,
+              stableSteps: COMFYUI_HY3DPAINT_STABLE_STEPS,
+              stableFaces: COMFYUI_HY3DPAINT_STABLE_FACES,
+              stableGuidanceScale: COMFYUI_HY3DPAINT_STABLE_GUIDANCE_SCALE,
+              autoFallback: COMFYUI_HY3DPAINT_AUTO_FALLBACK,
+              staleHistoryLimit: COMFYUI_HY3DPAINT_STALE_HISTORY_LIMIT,
+              unobservableRecoveryLimit: COMFYUI_HY3DPAINT_UNOBSERVABLE_RECOVERY_LIMIT,
+            },
+            resourceGuard: {
+              enabled: COMFYUI_RESOURCE_GUARD,
+              minRamFreeGb: COMFYUI_MIN_RAM_FREE_GB,
+              minVramFreeGb: COMFYUI_MIN_VRAM_FREE_GB,
+              steps: COMFYUI_STEPS,
+              faces: COMFYUI_FACES,
+              guidanceScale: COMFYUI_GUIDANCE_SCALE,
+              maxLocalPending: COMFYUI_LOCAL_QUEUE_MAX_PENDING,
+              blockWhenRemoteBusy: COMFYUI_BLOCK_WHEN_REMOTE_BUSY,
+              preflightFreeBeforeGuard: COMFYUI_PREFLIGHT_FREE_BEFORE_GUARD,
+              historyCacheLimit: COMFYUI_HISTORY_CACHE_LIMIT,
+            },
+            runtime: getWorkflowRuntimeStatus().selfhost,
             status: selfhostStatus,
           },
           localCache: { configured: true },
@@ -162,6 +261,10 @@ const server = http.createServer(async (request, response) => {
     if (request.method === 'POST' && url.pathname === '/api/workflows/full-text-to-3d') {
       const input = await readJsonBody(request)
       const sourcePrompt = String(input.prompt || '')
+      const requestedImageProvider = input.imageProvider || (LOCAL_IMAGE_GATEWAY_CONFIGURED ? 'local-gateway' : 'openai')
+      if (requestedImageProvider === 'local-gateway') {
+        await assertLocalGatewayImageRouteReady({ ignoreRecentFailure: Boolean(input.forceImageRetry) })
+      }
       const job = await createWorkflowJob({
         prompt: sourcePrompt.length >= 6 ? sourcePrompt : `${sourcePrompt} 3D-ready 生物教学模型`,
         provider: input.provider || 'selfhost-triposg',
@@ -170,6 +273,8 @@ const server = http.createServer(async (request, response) => {
         imageSize: input.imageSize,
         imageQuality: input.imageQuality,
         imagePromptOverride: input.imagePromptOverride,
+        forceImageRetry: input.forceImageRetry,
+        textureMode: input.textureMode,
         template: input.template,
         workflowMode: 'full-text-to-3d',
         deferReference: true,
@@ -189,6 +294,45 @@ const server = http.createServer(async (request, response) => {
       return
     }
 
+    if (request.method === 'GET' && url.pathname === '/api/texture-artifacts') {
+      sendJson(response, 200, await getTextureArtifactStatus({
+        limit: url.searchParams.get('limit') || 3,
+        jobId: url.searchParams.get('job') || '',
+      }))
+      return
+    }
+
+    if (request.method === 'GET' && url.pathname === '/api/texture-stability/latest') {
+      const latestReport = await readLatestStabilityReport()
+      const latestConsecutiveReport = await readLatestConsecutiveStabilityReport()
+      sendJson(response, 200, buildTextureStabilityPayload(latestReport, {
+        latestConsecutiveReport,
+        running: Boolean(textureStabilityRunPromise),
+      }))
+      return
+    }
+
+    if (request.method === 'POST' && url.pathname === '/api/texture-stability/run') {
+      if (textureStabilityRunPromise) {
+        sendJson(response, 202, buildTextureStabilityPayload(await readLatestStabilityReport(), {
+          latestConsecutiveReport: await readLatestConsecutiveStabilityReport(),
+          running: true,
+          message: '已有连续贴图验证正在运行；为保护 20GB 服务器，新的验证请求已被串行等待。',
+        }))
+        return
+      }
+
+      const options = normalizeTextureStabilityRequest(await readJsonBody(request))
+      textureStabilityRunPromise = runTextureStabilityCheck(options)
+      try {
+        const report = await textureStabilityRunPromise
+        sendJson(response, 200, buildTextureStabilityPayload(report))
+      } finally {
+        textureStabilityRunPromise = null
+      }
+      return
+    }
+
     if (request.method === 'POST' && /^\/api\/jobs\/[^/]+\/resume$/.test(url.pathname)) {
       const jobId = decodeURIComponent(url.pathname.replace(/^\/api\/jobs\//, '').replace(/\/resume$/, ''))
       const job = await getWorkflowJob(jobId)
@@ -199,6 +343,21 @@ const server = http.createServer(async (request, response) => {
         message: result.resumed
           ? '已开始续接本地三维输出。'
           : '该任务当前不能续接，请重新生成参考图或重新建模。',
+      })
+      return
+    }
+
+    if (request.method === 'POST' && /^\/api\/jobs\/[^/]+\/texture-enhance$/.test(url.pathname)) {
+      const jobId = decodeURIComponent(url.pathname.replace(/^\/api\/jobs\//, '').replace(/\/texture-enhance$/, ''))
+      const sourceJob = await getWorkflowJob(jobId)
+      const input = await readJsonBody(request)
+      const job = await createTextureEnhancementJob(sourceJob, input)
+      startTextureEnhancementJob(job)
+      sendJson(response, 202, {
+        job,
+        message: job.forceTextureFallback
+          ? '已开始原参考图轻量贴图：复用来源任务 raw GLB，不提交远端混元重任务。'
+          : '已开始混元贴图后处理：复用来源任务 raw GLB，不重新执行 TripoSG。',
       })
       return
     }
@@ -253,4 +412,58 @@ async function recoverInterruptedJobs() {
   } catch (error) {
     console.error(`Workflow recovery failed: ${error.message || error}`)
   }
+}
+
+function buildTextureStabilityPayload(report, overrides = {}) {
+  const summary = report?.summary || null
+  const latestConsecutiveSummary = overrides.latestConsecutiveReport?.summary || null
+  const message = overrides.message || (summary
+    ? summary.dryRun
+      ? summary.ok
+        ? '贴图链路只读预检通过：来源 raw GLB、参考图和资源闸门可用，未提交贴图任务。'
+        : report?.error || summary.resourceMessage || '贴图链路只读预检未通过，请先处理资源闸门。'
+      : summary.ok
+        ? `连续贴图验证通过：${summary.coloredRuns}/${summary.requestedRuns} 次均产出非白模彩色 GLB。`
+        : report?.error || `连续贴图验证未通过：${summary.failedRuns}/${summary.requestedRuns} 次需要复查。`
+    : '暂无连续贴图验证报告。')
+  return {
+    ok: Boolean(summary?.ok),
+    running: Boolean(overrides.running),
+    generatedAt: report?.finishedAt || report?.createdAt || '',
+    summary,
+    report: report || null,
+    latestConsecutive: latestConsecutiveSummary
+      ? {
+          generatedAt: overrides.latestConsecutiveReport?.finishedAt || overrides.latestConsecutiveReport?.createdAt || '',
+          summary: latestConsecutiveSummary,
+          report: overrides.latestConsecutiveReport,
+        }
+      : null,
+    message,
+  }
+}
+
+function normalizeTextureStabilityRequest(input = {}) {
+  const requestedMode = String(input.textureMode || '').trim()
+  const allowHeavyHunyuan = input.allowHunyuan === true || input.allowHeavy === true
+  const textureMode = requestedMode === 'hunyuan' && allowHeavyHunyuan ? 'hunyuan' : 'fallback-color'
+  const maxRuns = textureMode === 'hunyuan' ? 1 : 3
+  return {
+    runs: clampNumber(input.runs, 1, maxRuns, maxRuns),
+    textureMode,
+    timeoutMinutes: textureMode === 'hunyuan'
+      ? clampNumber(input.timeoutMinutes, 10, 80, 75)
+      : clampNumber(input.timeoutMinutes, 1, 10, 5),
+    pollMs: clampNumber(input.pollMs, 1000, 10000, 1000),
+    cooldownMs: clampNumber(input.cooldownMs, 0, 10000, 1000),
+    drainTimeoutMs: clampNumber(input.drainTimeoutMs, 30000, 180000, 60000),
+    minRamRecoveryGiB: clampNumber(input.minRamRecoveryGiB, 14, 20, 16.5),
+    dryRun: input.dryRun === true,
+  }
+}
+
+function clampNumber(value, min, max, fallback) {
+  const number = Number(value)
+  if (!Number.isFinite(number)) return fallback
+  return Math.min(max, Math.max(min, number))
 }

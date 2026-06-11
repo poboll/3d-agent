@@ -48,6 +48,13 @@ export function normalizeImageProfile(value) {
   return ['fast', 'standard', 'detailed'].includes(profile) ? profile : 'standard'
 }
 
+export function normalizeTextureMode(value) {
+  const mode = String(value || 'stable').trim()
+  if (mode === 'hunyuan') return 'hunyuan'
+  if (mode === 'fallback-color') return 'fallback-color'
+  return 'stable'
+}
+
 export function estimateGenerationCost(provider) {
   if (provider === 'tencent-hunyuan') return HUNYUAN_3D_MODEL_COST_CNY
   return 0
@@ -101,7 +108,13 @@ export function isRecoverableWorkflowJob(job, { now = Date.now(), maxAgeMs = 3 *
 }
 
 export function isResumableSelfhostWorkflowJob(job, { now = Date.now(), maxAgeMs = 24 * 60 * 60 * 1000 } = {}) {
-  if (!job || !RESUMABLE_SELFHOST_WORKFLOW_STATUSES.includes(job.status)) return false
+  const completedFallbackTexture = Boolean(
+    job?.status === 'completed' &&
+    job?.provider === 'selfhost-triposg' &&
+    job?.workflowMode === 'texture-enhance' &&
+    (job?.effectiveTextureMode === 'fallback-color' || job?.result?.effectiveTextureMode === 'fallback-color')
+  )
+  if (!job || (!RESUMABLE_SELFHOST_WORKFLOW_STATUSES.includes(job.status) && !completedFallbackTexture)) return false
   if (job.provider !== 'selfhost-triposg' || !job.providerJobId) return false
   if (!job.id || !job.prompt || !job.template) return false
   const updatedAt = Date.parse(job.updatedAt || job.createdAt || '')
@@ -121,14 +134,29 @@ export function publicJob(job) {
     progress: job.progress,
     costEstimateCny: job.costEstimateCny,
     imageProvider: job.imageProvider,
+    forceImageRetry: job.forceImageRetry,
     referenceId: job.referenceId,
     referenceImageUrl: job.referenceImageUrl,
     reference: job.reference,
     workflowMode: job.workflowMode,
+    sourceJobId: job.sourceJobId,
+    sourceModelUrl: job.sourceModelUrl,
     imageProfile: job.imageProfile,
     imageSize: job.imageSize,
     imageQuality: job.imageQuality,
+    textureMode: job.textureMode,
+    requestedTextureMode: job.requestedTextureMode,
+    effectiveTextureMode: job.effectiveTextureMode,
+    textureFallbackReason: job.textureFallbackReason,
+    forceTextureFallback: job.forceTextureFallback,
     providerJobId: job.providerJobId,
+    sourceProviderJobId: job.sourceProviderJobId,
+    lastProviderJobId: job.lastProviderJobId,
+    recoveredProviderJobId: job.recoveredProviderJobId,
+    rawMeshServerPath: job.rawMeshServerPath,
+    rawModelUrl: job.rawModelUrl,
+    restartFromReferenceAttempted: job.restartFromReferenceAttempted,
+    resumeError: job.resumeError,
     createdAt: job.createdAt,
     updatedAt: job.updatedAt,
     error: job.error,

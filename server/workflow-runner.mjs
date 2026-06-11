@@ -2,6 +2,11 @@ import { copyFile, mkdir, readdir, stat } from 'node:fs/promises'
 import path from 'node:path'
 import {
   CELLFORGE_MODEL_DIR,
+  COMFYUI_BLOCK_WHEN_REMOTE_BUSY,
+  COMFYUI_DRAIN_AFTER_JOB_POLL_MS,
+  COMFYUI_DRAIN_AFTER_JOB_TIMEOUT_MS,
+  COMFYUI_PREFLIGHT_FREE_BEFORE_GUARD,
+  COMFYUI_LOCAL_QUEUE_MAX_PENDING,
   DEFAULT_IMAGE_PROVIDER,
   DEMO_MODELS,
   LOCAL_MODEL_DIR,
@@ -11,10 +16,71 @@ import {
 import { sanitizeModelId } from './model-store.mjs'
 import { getTemplateDisplayName, isResumableSelfhostWorkflowJob } from './workflow-utils.mjs'
 import { updateWorkflowJob } from './job-store.mjs'
-import { generateComfyUiModel, resumeComfyUiModel } from './comfyui-provider.mjs'
+import {
+  buildColorFallbackModel,
+  enhanceComfyUiModelTexture,
+  evaluateComfyTextureSubmissionGuard,
+  freeComfyUiMemory,
+  generateComfyUiModel,
+  getComfyUiStatus,
+  resumeComfyUiModel,
+} from './comfyui-provider.mjs'
 import { createReferenceImage } from './reference-store.mjs'
 
 const inMemoryJobs = new Set()
+const selfhostQueueState = {
+  runningJobId: '',
+  queuedJobIds: [],
+}
+let selfhostQueueTail = Promise.resolve()
+
+export function isTextureResourceFallbackReason(reason = '') {
+  const text = String(reason || '')
+  return [
+    '不会提交 Hunyuan3D-Paint',
+    '默认不提交远端贴图',
+    '低内存模式',
+    'low-memory-remote-disabled',
+    '资源保护',
+    '运行熔断线',
+    '主动中断',
+  ].some((keyword) => text.includes(keyword))
+}
+
+export function buildTextureCompletionStage(result = {}, mode = 'full') {
+  const effectiveMode = result.effectiveTextureMode || result.textureMode
+  const fallbackReason = result.textureFallbackReason || ''
+  if (effectiveMode === 'hunyuan') {
+    return mode === 'enhance'
+      ? '混元贴图后处理已完成，全彩模型已写入缓存并加入标本索引。'
+      : '图生 3D 与混元贴图后处理已完成，全彩模型已写入缓存并加入标本索引。'
+  }
+  if (effectiveMode === 'fallback-color') {
+    if (/运行熔断线|主动中断/.test(fallbackReason)) {
+      return '混元贴图已提交但触发运行硬熔断，已中断远端贴图并生成 Bio3D 轻量贴图 fallback，避免 OOM。'
+    }
+    return isTextureResourceFallbackReason(fallbackReason)
+      ? '20G 资源保护已按预期跳过远端混元贴图重任务，已生成 Bio3D 轻量贴图 fallback 并写入标本索引。'
+      : '混元贴图未产出 textured GLB，已自动生成 Bio3D 轻量贴图 fallback 并写入标本索引。'
+  }
+  return mode === 'enhance'
+    ? '混元贴图未完整返回，已保留可用几何模型并写入标本索引。'
+    : '图生 3D 已完成，混元贴图未完整返回，当前展示稳定几何模型。'
+}
+
+export function getWorkflowRuntimeStatus() {
+  return {
+    inMemoryJobs: inMemoryJobs.size,
+    selfhost: {
+      running: selfhostQueueState.runningJobId ? 1 : 0,
+      pending: selfhostQueueState.queuedJobIds.length,
+      maxPending: COMFYUI_LOCAL_QUEUE_MAX_PENDING,
+      blockWhenRemoteBusy: COMFYUI_BLOCK_WHEN_REMOTE_BUSY,
+      runningJobId: selfhostQueueState.runningJobId || undefined,
+      pendingJobIds: selfhostQueueState.queuedJobIds.slice(0, 4),
+    },
+  }
+}
 
 export function startWorkflowJob(job) {
   if (inMemoryJobs.has(job.id)) return
@@ -23,15 +89,27 @@ export function startWorkflowJob(job) {
   void executeWorkflowJob(job).catch((error) => {
     return updateWorkflowJob(
       job.id,
-      {
-        status: 'failed',
-        progress: 100,
-        stage: '生成任务失败。',
-        error: error.message || '本地生成工作流执行失败。',
-      },
+      buildWorkflowFailurePatch(job, error, '本地生成工作流执行失败。'),
       'failed'
     )
   }).finally(() => inMemoryJobs.delete(job.id))
+}
+
+export function startTextureEnhancementJob(job) {
+  if (inMemoryJobs.has(job.id)) return
+  inMemoryJobs.add(job.id)
+
+  void runTextureEnhancementWorkflow(job).catch((error) => {
+    return updateWorkflowJob(
+      job.id,
+      buildWorkflowFailurePatch(job, error, '混元贴图后处理失败，原稳定几何模型仍可继续使用。', '混元贴图后处理暂未完成。'),
+      'texture-enhance-failed'
+    )
+  }).finally(() => inMemoryJobs.delete(job.id))
+}
+
+function isFallbackOnlyTextureJob(job = {}) {
+  return job.forceTextureFallback || job.textureMode === 'fallback-color' || job.requestedTextureMode === 'fallback-color'
 }
 
 export function startFullTextTo3dWorkflow(job) {
@@ -41,33 +119,26 @@ export function startFullTextTo3dWorkflow(job) {
   void runFullTextTo3dWorkflow(job).catch((error) => {
     return updateWorkflowJob(
       job.id,
-      {
-        status: 'failed',
-        progress: 100,
-        stage: '完整生成链路失败。',
-        error: error.message || '参考图生成或三维建模失败。',
-      },
+      buildWorkflowFailurePatch(job, error, '参考图生成或三维建模失败。', '完整生成链路失败。'),
       'full-workflow-failed'
     )
   }).finally(() => inMemoryJobs.delete(job.id))
 }
 
 export async function resumeWorkflowJob(job) {
-  if (!job || job.status === 'completed' || job.status === 'failed') return { resumed: false, reason: 'not-recoverable' }
+  if (!job || (job.status === 'completed' && !isResumableSelfhostWorkflowJob(job)) || job.status === 'failed') return { resumed: false, reason: 'not-recoverable' }
   if (inMemoryJobs.has(job.id)) return { resumed: false, reason: 'already-running' }
 
   if (job.provider === 'selfhost-triposg' && job.providerJobId) {
     inMemoryJobs.add(job.id)
     void runResumedSelfHostedWorkflow(job)
       .catch((error) => {
+        if (canRestartSelfhostAfterMissingHistory(job, error)) {
+          return restartSelfhostFromCachedReference(job, error, 'auto-recover-selfhost-restart')
+        }
         return updateWorkflowJob(
           job.id,
-          {
-            status: 'failed',
-            progress: 100,
-            stage: '续接本地三维任务失败。',
-            error: error.message || '无法根据 ComfyUI prompt_id 续接任务。',
-          },
+          buildWorkflowFailurePatch(job, error, '无法根据 ComfyUI prompt_id 续接任务。', '续接本地三维任务失败。'),
           'resume-selfhost-failed'
         )
       })
@@ -114,22 +185,73 @@ export async function resumeSelfhostWorkflowJob(job) {
   )
 
   inMemoryJobs.add(nextJob.id)
-  void runResumedSelfHostedWorkflow(nextJob)
-    .catch((error) => {
-      return updateWorkflowJob(
-        nextJob.id,
-        {
-          status: 'failed',
-          progress: 100,
-          stage: '手动续接本地三维任务失败。',
-          error: error.message || '无法根据 ComfyUI prompt_id 续接任务。',
-        },
-        'manual-resume-selfhost-failed'
-      )
+    void runResumedSelfHostedWorkflow(nextJob)
+      .catch((error) => {
+        if (canRestartSelfhostAfterMissingHistory(nextJob, error)) {
+          return restartSelfhostFromCachedReference(nextJob, error)
+        }
+        return updateWorkflowJob(
+          nextJob.id,
+          buildWorkflowFailurePatch(
+            nextJob,
+            error,
+            '无法根据 ComfyUI prompt_id 续接任务。',
+            nextJob.providerJobId ? '手动续接暂未拿到 GLB，任务仍可稍后继续诊断或续接。' : '手动续接本地三维任务失败。'
+          ),
+          'manual-resume-selfhost-failed'
+        )
     })
     .finally(() => inMemoryJobs.delete(nextJob.id))
 
   return { resumed: true, reason: 'selfhost-prompt-id', job: nextJob }
+}
+
+async function restartSelfhostFromCachedReference(job, resumeError, eventPrefix = 'manual-resume-selfhost-restart') {
+  const fallbackJob = await updateWorkflowJob(
+    job.id,
+    {
+      status: 'processing',
+      progress: Math.max(job.progress || 0, 60),
+      stage: '远端 history 已清理，正在复用已确认参考图重新提交本地 3D；不会重新生成参考图。',
+      error: undefined,
+      // Keep the last prompt_id visible until ComfyUI accepts a new one; this preserves diagnostics if the remote is still cold-starting.
+      lastProviderJobId: job.providerJobId,
+      restartFromReferenceAttempted: true,
+      resumeError: resumeError.message || 'history missing',
+    },
+    `${eventPrefix}-from-reference`
+  )
+
+  try {
+    return await runSelfHostedWorkflow(fallbackJob)
+  } catch (error) {
+    return updateWorkflowJob(
+      fallbackJob.id,
+      buildWorkflowFailurePatch(fallbackJob, error, '重新提交本地三维任务失败。', '重新提交本地 3D 暂未完成。'),
+      `${eventPrefix}-failed`
+    )
+  }
+}
+
+export function canRestartSelfhostAfterMissingHistory(job, error) {
+  if (!job?.referenceId || job.provider !== 'selfhost-triposg') return false
+  if (job.restartFromReferenceAttempted) return false
+  return /history.*(暂未发现|没有返回|暂未返回|missing|清理)|队列已为空|未发现 GLB|history 已返回，但暂未发现 GLB/i.test(error?.message || '')
+}
+
+function buildWorkflowFailurePatch(job, error, fallbackError, fallbackStage = '生成任务失败。') {
+  const isRecoverableSelfhost =
+    job?.provider === 'selfhost-triposg' &&
+    (error?.recoverable || /ComfyUI|history|队列|超时|timeout|续接|GLB/i.test(error?.message || ''))
+
+  return {
+    status: 'failed',
+    progress: isRecoverableSelfhost ? Math.max(job?.progress || 0, 88) : 100,
+    stage: isRecoverableSelfhost
+      ? '远端三维输出暂未完成，本地任务已保留 prompt_id，可稍后诊断或续接。'
+      : fallbackStage,
+    error: error?.message || fallbackError,
+  }
 }
 
 async function runFullTextTo3dWorkflow(job) {
@@ -151,6 +273,7 @@ async function runFullTextTo3dWorkflow(job) {
     imageSize: job.imageSize,
     imageQuality: job.imageQuality,
     imagePromptOverride: job.imagePromptOverride,
+    forceImageRetry: job.forceImageRetry,
     onProgress: async ({ progress, stage, eventName, patch = {} }) => {
       await updateWorkflowJob(
         job.id,
@@ -177,6 +300,7 @@ async function runFullTextTo3dWorkflow(job) {
       imageProfile: reference.imageProfile || job.imageProfile,
       imageSize: reference.imageSize || job.imageSize,
       imageQuality: reference.imageQuality || job.imageQuality,
+      textureMode: job.textureMode || 'stable',
     },
     'full-workflow-reference-ready'
   )
@@ -204,35 +328,163 @@ async function executeWorkflowJob(job) {
 }
 
 async function runSelfHostedWorkflow(job) {
-  await updateWorkflowJob(
-    job.id,
-    {
-      status: 'processing',
-      progress: Math.max(job.progress || 0, 28),
-      stage: '参考图已确认，正在准备本地 TripoSG + Hunyuan3D-Paint 工作流。',
-    },
-    'selfhost-3d-started'
-  )
+  return runExclusiveSelfhost3d(job, async (currentJob) => {
+    if (currentJob.textureMode === 'hunyuan') {
+      return runTwoStageTextureWorkflow(currentJob)
+    }
 
-  const result = await generateComfyUiModel(job, async ({ progress, stage, eventName, patch = {} }) => {
     await updateWorkflowJob(
-      job.id,
+      currentJob.id,
       {
         status: 'processing',
-        progress,
+        progress: Math.max(currentJob.progress || 0, 28),
+        stage: '已进入本地 3D 执行槽，正在准备 TripoSG + Bio3D 稳定工作流。',
+      },
+      'selfhost-3d-started'
+    )
+
+    const result = await generateComfyUiModel(currentJob, async ({ progress, stage, eventName, patch = {} }) => {
+      await updateWorkflowJob(
+        currentJob.id,
+        {
+          status: 'processing',
+          progress,
+          stage,
+          ...patch,
+        },
+        eventName
+      )
+    })
+
+    const completedStage = result.textureFallbackReason
+      ? '混元贴图资源保护已生效，本次已安全降级为稳定几何版并写入标本索引。'
+      : result.textureMode === 'hunyuan'
+        ? '本地图生 3D 贴图增强已完成，模型已写入缓存并加入标本索引。'
+        : '本地图生 3D 稳定几何版已完成，模型已写入缓存并加入标本索引。'
+
+    await updateWorkflowJob(
+      currentJob.id,
+      {
+        status: 'completed',
+        progress: 100,
+        stage: completedStage,
+        textureMode: result.textureMode || currentJob.textureMode,
+        effectiveTextureMode: result.textureMode || currentJob.textureMode,
+        requestedTextureMode: result.requestedTextureMode || currentJob.requestedTextureMode,
+        textureFallbackReason: result.textureFallbackReason,
+        result,
+      },
+      'completed'
+    )
+  })
+}
+
+async function runTwoStageTextureWorkflow(currentJob) {
+  await updateWorkflowJob(
+    currentJob.id,
+    {
+      status: 'processing',
+      progress: Math.max(currentJob.progress || 0, 28),
+      stage: '已进入本地 3D 执行槽，将先生成低面数稳定 raw/final GLB，再单独执行混元贴图后处理，降低 20GB 服务器内存压力。',
+      requestedTextureMode: 'hunyuan',
+      effectiveTextureMode: 'stable',
+    },
+    'selfhost-3d-two-stage-started'
+  )
+
+  const stableJob = {
+    ...currentJob,
+    textureMode: 'stable',
+    requestedTextureMode: 'hunyuan',
+    effectiveTextureMode: 'stable',
+  }
+  const stableResult = await generateComfyUiModel(stableJob, async ({ progress, stage, eventName, patch = {} }) => {
+    await updateWorkflowJob(
+      currentJob.id,
+      {
+        status: 'processing',
+        progress: Math.min(78, Math.max(currentJob.progress || 0, progress)),
         stage,
         ...patch,
+        requestedTextureMode: 'hunyuan',
+        effectiveTextureMode: 'stable',
+        textureMode: 'stable',
       },
       eventName
     )
   })
 
   await updateWorkflowJob(
-    job.id,
+    currentJob.id,
     {
-      status: 'completed',
-      progress: 100,
-      stage: '本地图生 3D 已完成，模型已写入缓存并加入标本索引。',
+      status: 'processing',
+      progress: 82,
+      stage: '低面数稳定图生 3D 已缓存，正在复用 raw GLB 进行混元贴图后处理；若贴图超时或触发熔断会自动生成轻量贴图 fallback。',
+      result: stableResult,
+      rawModelUrl: stableResult.rawModelUrl,
+      rawMeshServerPath: stableResult.rawMeshServerPath,
+      providerJobId: stableResult.providerJobId,
+      sourceProviderJobId: stableResult.providerJobId,
+      requestedTextureMode: 'hunyuan',
+      effectiveTextureMode: 'stable',
+      textureMode: 'hunyuan',
+    },
+    'selfhost-3d-stable-stage-completed'
+  )
+
+  const textureJob = {
+    ...currentJob,
+    result: stableResult,
+    rawModelUrl: stableResult.rawModelUrl,
+    rawMeshServerPath: stableResult.rawMeshServerPath,
+    sourceModelUrl: stableResult.sourceModelUrl || stableResult.fallbackModelUrl || stableResult.modelUrl,
+    workflowMode: 'texture-enhance',
+    sourceJobId: currentJob.id,
+    sourceProviderJobId: stableResult.providerJobId,
+    textureMode: 'hunyuan',
+    requestedTextureMode: 'hunyuan',
+    effectiveTextureMode: 'hunyuan',
+  }
+  const reportTextureProgress = async ({ progress, stage, eventName, patch = {} }) => {
+    const mappedProgress = Math.min(96, Math.max(82, Math.round(82 + Math.max(0, progress - 34) * 0.24)))
+    await updateWorkflowJob(
+      currentJob.id,
+      {
+        status: 'processing',
+        progress: mappedProgress,
+        stage,
+        ...patch,
+        result: stableResult,
+        requestedTextureMode: 'hunyuan',
+      },
+      eventName
+    )
+  }
+
+  let result
+  try {
+    result = await runTextureEnhancementOrFallback(textureJob, reportTextureProgress, {
+      startProgress: 84,
+      fallbackStage: '混元贴图资源仍不安全：本次不会提交 Hunyuan3D-Paint，正在直接生成 Bio3D 轻量贴图 fallback。',
+    })
+  } catch (error) {
+    result = await buildColorFallbackModel(textureJob, error, reportTextureProgress)
+  }
+
+    await updateWorkflowJob(
+      currentJob.id,
+      {
+        status: 'completed',
+        progress: 100,
+        stage: buildTextureCompletionStage(result, 'full'),
+      textureMode: result.textureMode || result.effectiveTextureMode || 'hunyuan',
+      effectiveTextureMode: result.effectiveTextureMode || result.textureMode || 'stable',
+      requestedTextureMode: result.requestedTextureMode || 'hunyuan',
+      textureFallbackReason: result.textureFallbackReason,
+      providerJobId: result.providerJobId || stableResult.providerJobId,
+      sourceProviderJobId: stableResult.providerJobId,
+      rawMeshServerPath: result.rawMeshServerPath || stableResult.rawMeshServerPath,
+      rawModelUrl: result.rawModelUrl || stableResult.rawModelUrl,
       result,
     },
     'completed'
@@ -240,29 +492,287 @@ async function runSelfHostedWorkflow(job) {
 }
 
 async function runResumedSelfHostedWorkflow(job) {
-  const result = await resumeComfyUiModel(job, async ({ progress, stage, eventName, patch = {} }) => {
+  return runExclusiveSelfhost3d(job, async (currentJob) => {
+    const result = await resumeComfyUiModel(currentJob, async ({ progress, stage, eventName, patch = {} }) => {
+      await updateWorkflowJob(
+        currentJob.id,
+        {
+          status: 'processing',
+          progress,
+          stage,
+          ...patch,
+        },
+        eventName
+      )
+    })
+
+    await updateWorkflowJob(
+      currentJob.id,
+      {
+        status: 'completed',
+        progress: 100,
+        stage: buildTextureCompletionStage(result, currentJob.workflowMode === 'texture-enhance' ? 'enhance' : 'full'),
+        textureMode: result.textureMode || currentJob.textureMode,
+        requestedTextureMode: result.requestedTextureMode || currentJob.requestedTextureMode,
+        effectiveTextureMode: result.effectiveTextureMode || result.textureMode || currentJob.effectiveTextureMode,
+        textureFallbackReason: result.textureFallbackReason,
+        rawModelUrl: result.rawModelUrl || currentJob.rawModelUrl,
+        rawMeshServerPath: result.rawMeshServerPath || currentJob.rawMeshServerPath,
+        result,
+      },
+      'resume-selfhost-completed'
+    )
+  }, { blockRemoteBusy: false })
+}
+
+async function runTextureEnhancementWorkflow(job) {
+  const fallbackOnly = isFallbackOnlyTextureJob(job)
+  return runExclusiveSelfhost3d(job, async (currentJob) => {
+    await updateWorkflowJob(
+      currentJob.id,
+      {
+        status: 'processing',
+        progress: Math.max(currentJob.progress || 0, 30),
+        stage: fallbackOnly
+          ? '已进入本地 3D 执行槽，正在把确认参考图嵌入稳定 raw GLB，生成可复现轻量贴图版。'
+          : '已进入本地 3D 执行槽，正在复用稳定 raw GLB 进行混元贴图后处理。',
+        textureMode: fallbackOnly ? 'fallback-color' : 'hunyuan',
+        requestedTextureMode: fallbackOnly ? 'fallback-color' : 'hunyuan',
+        effectiveTextureMode: fallbackOnly ? 'fallback-color' : 'hunyuan',
+      },
+      'selfhost-3d-texture-started'
+    )
+
+    const reportProgress = async ({ progress, stage, eventName, patch = {} }) => {
+      await updateWorkflowJob(
+        currentJob.id,
+        {
+          status: 'processing',
+          progress,
+          stage,
+          ...patch,
+        },
+        eventName
+      )
+    }
+
+    let result
+    try {
+      result = await runTextureEnhancementOrFallback(currentJob, reportProgress, {
+        startProgress: Math.max(currentJob.progress || 0, 36),
+        fallbackStage: '混元贴图资源保护已生效：本次不会提交 Hunyuan3D-Paint，正在复用当前稳定 GLB 生成 Bio3D 轻量贴图 fallback。',
+      })
+    } catch (error) {
+      result = await buildColorFallbackModel(currentJob, error, reportProgress)
+    }
+
+    await updateWorkflowJob(
+      currentJob.id,
+      {
+        status: 'completed',
+        progress: 100,
+        stage: buildTextureCompletionStage(result, 'enhance'),
+        textureMode: result.textureMode || result.effectiveTextureMode || 'hunyuan',
+        effectiveTextureMode: result.effectiveTextureMode || result.textureMode || 'hunyuan',
+        requestedTextureMode: result.requestedTextureMode || (fallbackOnly ? 'fallback-color' : 'hunyuan'),
+        result,
+      },
+      'texture-enhance-completed'
+    )
+  }, { blockRemoteBusy: !fallbackOnly, skipRemoteCleanup: fallbackOnly })
+}
+
+async function runTextureEnhancementOrFallback(job, reportProgress, options = {}) {
+  if (isFallbackOnlyTextureJob(job)) {
+    const fallbackReason = Object.assign(
+      new Error('连续稳定验证默认不提交远端贴图重任务，直接把确认参考图嵌入稳定 Bio3D final。'),
+      {
+        status: 200,
+        recoverable: true,
+        code: 'BIO3D_FORCE_COLOR_FALLBACK',
+      }
+    )
+    await reportProgress?.({
+      progress: options.startProgress ?? 84,
+      stage: '连续稳定验证正在执行原参考图轻量贴图：跳过 Hunyuan3D-Paint，避免 20G 环境被贴图重任务挤爆。',
+      eventName: 'selfhost-3d-texture-forced-fallback',
+      patch: {
+        textureMode: 'fallback-color',
+        requestedTextureMode: 'fallback-color',
+        effectiveTextureMode: 'fallback-color',
+        textureFallbackReason: fallbackReason.message,
+      },
+    })
+    return buildColorFallbackModel(job, fallbackReason, reportProgress)
+  }
+
+  let status = await getComfyUiStatus()
+  let guard = evaluateComfyTextureSubmissionGuard(status)
+  if (
+    !guard.ok &&
+    COMFYUI_PREFLIGHT_FREE_BEFORE_GUARD &&
+    (guard.reason === 'ram-low' || guard.reason === 'vram-low')
+  ) {
+    await reportProgress?.({
+      progress: Math.max(36, (options.startProgress ?? 84) - 2),
+      stage: `${guard.message}；正在先释放 ComfyUI 缓存并复查一次，仍不安全才转轻量贴图 fallback。`,
+      eventName: 'selfhost-3d-texture-preflight-free',
+    })
+    await freeComfyUiMemory()
+    status = await getComfyUiStatus()
+    guard = evaluateComfyTextureSubmissionGuard(status)
+  }
+  if (!guard.ok && guard.autoFallback) {
+    const guardError = Object.assign(new Error(guard.message), {
+      status: 503,
+      recoverable: true,
+      code: 'COMFYUI_HY3DPAINT_PREFLIGHT_FALLBACK',
+      detail: guard,
+    })
+    await reportProgress?.({
+      progress: options.startProgress ?? 84,
+      stage: options.fallbackStage || guard.message,
+      eventName: 'selfhost-3d-texture-preflight-fallback',
+      patch: {
+        textureMode: 'fallback-color',
+        requestedTextureMode: 'hunyuan',
+        effectiveTextureMode: 'fallback-color',
+        textureFallbackReason: guard.message,
+      },
+    })
+    return buildColorFallbackModel(job, guardError, reportProgress)
+  }
+  return enhanceComfyUiModelTexture(job, reportProgress)
+}
+
+async function runExclusiveSelfhost3d(job, work, options = {}) {
+  const { blockRemoteBusy = COMFYUI_BLOCK_WHEN_REMOTE_BUSY, skipRemoteCleanup = false } = options
+  const jobsAhead = (selfhostQueueState.runningJobId ? 1 : 0) + selfhostQueueState.queuedJobIds.length
+  if (selfhostQueueState.queuedJobIds.length >= COMFYUI_LOCAL_QUEUE_MAX_PENDING) {
+    const message = `本地 3D 保护队列已满：当前已有 ${selfhostQueueState.queuedJobIds.length} 个等待任务。请等待当前建模完成后再提交，避免远端 ComfyUI 再次 OOM。`
     await updateWorkflowJob(
       job.id,
       {
-        status: 'processing',
-        progress,
-        stage,
-        ...patch,
+        status: 'failed',
+        progress: Math.max(job.progress || 0, 30),
+        stage: '本地 3D 保护队列已满，任务已安全拦截。',
+        error: message,
       },
-      eventName
+      'selfhost-3d-local-queue-limited'
     )
+    throw Object.assign(new Error(message), {
+      status: 429,
+      recoverable: true,
+      code: 'COMFYUI_LOCAL_QUEUE_FULL',
+    })
+  }
+
+  selfhostQueueState.queuedJobIds.push(job.id)
+  let currentJob = job
+
+  if (jobsAhead > 0) {
+    currentJob = await updateWorkflowJob(
+      job.id,
+      {
+        status: 'processing',
+        progress: Math.max(job.progress || 0, 26),
+        stage: `本地 3D 保护队列已接收，前面还有 ${jobsAhead} 个三维任务；系统会按顺序提交，避免远端 GPU 因并发 OOM。`,
+      },
+      'selfhost-3d-local-queue'
+    )
+  }
+
+  const execution = selfhostQueueTail.catch(() => {}).then(async () => {
+    selfhostQueueState.queuedJobIds = selfhostQueueState.queuedJobIds.filter((id) => id !== job.id)
+    selfhostQueueState.runningJobId = job.id
+    try {
+      if (jobsAhead > 0) {
+        currentJob = await updateWorkflowJob(
+          job.id,
+          {
+            status: 'processing',
+            progress: Math.max(currentJob.progress || 0, 28),
+            stage: '已获得本地 3D 执行槽，开始提交远端 ComfyUI 工作流。',
+          },
+          'selfhost-3d-local-slot-acquired'
+        )
+      }
+      if (blockRemoteBusy) {
+        await ensureRemoteQueueIsIdle(job.id)
+      }
+      return await work(currentJob)
+    } finally {
+      if (!skipRemoteCleanup) {
+        const cleanup = await freeComfyUiMemory()
+        if (cleanup?.ok) {
+          console.log(`ComfyUI memory release requested after ${job.id}.`)
+        } else if (cleanup && !cleanup.skipped) {
+          console.warn(`ComfyUI memory release skipped/failed after ${job.id}: ${cleanup.message || cleanup.reason || 'unknown'}`)
+        }
+        const drain = await waitForRemoteQueueDrain(job.id)
+        if (drain?.ok) {
+          console.log(`ComfyUI queue drained after ${job.id}.`)
+        } else {
+          console.warn(`ComfyUI queue drain timed out after ${job.id}: ${drain?.message || 'unknown'}`)
+        }
+      }
+      if (selfhostQueueState.runningJobId === job.id) selfhostQueueState.runningJobId = ''
+    }
   })
 
-  await updateWorkflowJob(
-    job.id,
-    {
-      status: 'completed',
-      progress: 100,
-      stage: '本地图生 3D 已续接完成，模型已写入缓存并加入标本索引。',
-      result,
-    },
-    'resume-selfhost-completed'
-  )
+  selfhostQueueTail = execution.catch(() => {})
+  return execution
+}
+
+async function ensureRemoteQueueIsIdle(jobId) {
+  const status = await getComfyUiStatus()
+  const running = status?.status?.queue?.running ?? status?.queue?.running ?? 0
+  const pending = status?.status?.queue?.pending ?? status?.queue?.pending ?? 0
+  if (!status?.ok || running > 0 || pending > 0) {
+    const message = status?.ok
+      ? `远端 ComfyUI 队列仍有 ${running} 个运行 / ${pending} 个等待任务，已暂停提交新的 3D 重任务。`
+      : status?.message || '远端 ComfyUI 暂未恢复，已暂停提交新的 3D 重任务。'
+    const blockedStage = status?.ok
+      ? '远端 3D 队列繁忙，任务已安全拦截。'
+      : '远端 3D 服务暂不可观测，任务已保留可续接。'
+    const blockedEvent = status?.ok ? 'selfhost-3d-remote-queue-busy' : 'selfhost-3d-remote-unobservable'
+    await updateWorkflowJob(
+      jobId,
+      {
+        status: 'failed',
+        progress: 88,
+        stage: blockedStage,
+        error: `${message} 请稍后使用“诊断远端 / 续接输出”，不要重复堆积建模任务。`,
+      },
+      blockedEvent
+    )
+    throw Object.assign(new Error(message), {
+      status: 503,
+      recoverable: true,
+      code: status?.ok ? 'COMFYUI_REMOTE_QUEUE_BUSY' : 'COMFYUI_REMOTE_UNOBSERVABLE',
+      detail: status,
+    })
+  }
+}
+
+async function waitForRemoteQueueDrain(jobId) {
+  const deadline = Date.now() + COMFYUI_DRAIN_AFTER_JOB_TIMEOUT_MS
+  let lastSummary = null
+  while (Date.now() < deadline) {
+    const status = await getComfyUiStatus()
+    const running = status?.status?.queue?.running ?? status?.queue?.running ?? 0
+    const pending = status?.status?.queue?.pending ?? status?.queue?.pending ?? 0
+    lastSummary = { ok: Boolean(status?.ok), running, pending, message: status?.message }
+    if (status?.ok && running === 0 && pending === 0) return { ok: true, ...lastSummary }
+    await delay(COMFYUI_DRAIN_AFTER_JOB_POLL_MS)
+  }
+  return {
+    ok: false,
+    ...lastSummary,
+    message: lastSummary?.ok
+      ? `远端队列仍有 ${lastSummary.running} 个运行 / ${lastSummary.pending} 个等待。`
+      : lastSummary?.message || `等待远端队列清空超时：${jobId}`,
+  }
 }
 
 async function runLocalDemoWorkflow(job) {

@@ -1,0 +1,43 @@
+{
+  "1": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "bio_existing_mesh_texture_reference.png"
+    }
+  },
+  "2": {
+    "class_type": "Hunyuan3DPaintExistingMesh",
+    "inputs": {
+      "model_3d": "/home/kk/projects/3d/ComfyUI/output/3d/bio_existing_raw.glb",
+      "image": [
+        "1",
+        0
+      ],
+      "output_prefix": "bio_existing_hy3dpaint_textured",
+      "recenter": true
+    }
+  },
+  "3": {
+    "class_type": "Bio3DPostProcessGLB",
+    "inputs": {
+      "model_3d": [
+        "2",
+        1
+      ],
+      "output_prefix": "bio_existing_final",
+      "polish_materials": false,
+      "roughness": 0.82,
+      "metallic": 0.0,
+      "write_stable_alias": true
+    }
+  },
+  "4": {
+    "class_type": "Preview3D",
+    "inputs": {
+      "model_file": [
+        "3",
+        1
+      ]
+    }
+  }
+}

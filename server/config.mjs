@@ -18,8 +18,13 @@ export const WORKFLOW_JOBS_FILE = path.join(WORKFLOW_STORE_DIR, 'jobs.json')
 export const WORKFLOW_EVENTS_FILE = path.join(WORKFLOW_STORE_DIR, 'job-events.jsonl')
 export const REFERENCE_STORE_FILE = path.join(WORKFLOW_STORE_DIR, 'references.json')
 export const ANALYTICS_EVENTS_FILE = path.join(WORKFLOW_STORE_DIR, 'analytics-events.jsonl')
+export const LOCAL_GATEWAY_MODELS_CACHE_FILE = path.join(WORKFLOW_STORE_DIR, 'local-gateway-models-cache.json')
+export const WORKFLOW_JOB_RETENTION_LIMIT = Number(process.env.WORKFLOW_JOB_RETENTION_LIMIT || 80)
+export const WORKFLOW_EVENT_RETENTION_LIMIT = Number(process.env.WORKFLOW_EVENT_RETENTION_LIMIT || 800)
+export const WORKFLOW_EVENT_COMPACT_INTERVAL = Number(process.env.WORKFLOW_EVENT_COMPACT_INTERVAL || 40)
 export const MOCK_WORKFLOW_STEP_DELAY = Number(process.env.MOCK_WORKFLOW_STEP_DELAY || 650)
 export const HUNYUAN_3D_MODEL_COST_CNY = Number(process.env.HUNYUAN_3D_MODEL_COST_CNY || 1)
+export const BIO3D_COLOR_FALLBACK_ENABLED = process.env.BIO3D_COLOR_FALLBACK_ENABLED !== 'false'
 export const OPENAI_API_KEY = process.env.OPENAI_API_KEY || ''
 export const OPENAI_BASE_URL = (process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/+$/, '')
 export const OPENAI_ORGANIZATION = process.env.OPENAI_ORGANIZATION || ''
@@ -69,13 +74,82 @@ export const LOCAL_IMAGE_GATEWAY_CONFIGURED = Boolean(LOCAL_IMAGE_GATEWAY_API_KE
 export const COMFYUI_BASE_URL = (process.env.COMFYUI_BASE_URL || 'http://47.242.195.8:8010').replace(/\/+$/, '')
 export const COMFYUI_OUTPUT_PREFIX = process.env.COMFYUI_OUTPUT_PREFIX || '/home/kk/projects/3d/ComfyUI/output/'
 export const COMFYUI_WORKFLOW_TEMPLATE = path.resolve(
-  process.env.COMFYUI_WORKFLOW_TEMPLATE || 'server/workflows/bio_single_image_triposg_hy3dpaint_api.json'
+  process.env.COMFYUI_WORKFLOW_TEMPLATE || 'server/workflows/bio_single_image_triposg_bio3d_api.json'
 )
 export const COMFYUI_TIMEOUT_MS = Number(process.env.COMFYUI_TIMEOUT_MS || 2 * 60 * 60 * 1000)
 export const COMFYUI_POLL_INTERVAL_MS = Number(process.env.COMFYUI_POLL_INTERVAL_MS || 15 * 1000)
-export const COMFYUI_STEPS = Number(process.env.COMFYUI_STEPS || 30)
-export const COMFYUI_FACES = Number(process.env.COMFYUI_FACES || 30000)
-export const COMFYUI_GUIDANCE_SCALE = Number(process.env.COMFYUI_GUIDANCE_SCALE || 7)
+export const COMFYUI_STEPS = Number(process.env.COMFYUI_STEPS || 16)
+export const COMFYUI_FACES = Number(process.env.COMFYUI_FACES || 12000)
+export const COMFYUI_GUIDANCE_SCALE = Number(process.env.COMFYUI_GUIDANCE_SCALE || 6)
+export const COMFYUI_HY3DPAINT_ENABLED = process.env.COMFYUI_HY3DPAINT_ENABLED !== 'false'
+export const COMFYUI_HY3DPAINT_WORKFLOW_TEMPLATE = path.resolve(
+  process.env.COMFYUI_HY3DPAINT_WORKFLOW_TEMPLATE || 'server/workflows/bio_single_image_triposg_hy3dpaint_api.json'
+)
+export const COMFYUI_HY3DPAINT_EXISTING_MESH_WORKFLOW_TEMPLATE = path.resolve(
+  process.env.COMFYUI_HY3DPAINT_EXISTING_MESH_WORKFLOW_TEMPLATE || 'server/workflows/bio_existing_mesh_hy3dpaint_postprocess_api.json'
+)
+export const COMFYUI_HY3DPAINT_TIMEOUT_MS = Number(process.env.COMFYUI_HY3DPAINT_TIMEOUT_MS || 3 * 60 * 60 * 1000)
+export const COMFYUI_HY3DPAINT_STEPS = Number(process.env.COMFYUI_HY3DPAINT_STEPS || 10)
+export const COMFYUI_HY3DPAINT_FACES = Number(process.env.COMFYUI_HY3DPAINT_FACES || 3000)
+export const COMFYUI_HY3DPAINT_GUIDANCE_SCALE = Number(process.env.COMFYUI_HY3DPAINT_GUIDANCE_SCALE || 4)
+export const COMFYUI_HY3DPAINT_FULL_WORKFLOW_FIRST =
+  process.env.COMFYUI_HY3DPAINT_FULL_WORKFLOW_FIRST === 'true'
+export const COMFYUI_HY3DPAINT_FULL_WORKFLOW_STEPS = Number(
+  process.env.COMFYUI_HY3DPAINT_FULL_WORKFLOW_STEPS || 12
+)
+export const COMFYUI_HY3DPAINT_FULL_WORKFLOW_FACES = Number(
+  process.env.COMFYUI_HY3DPAINT_FULL_WORKFLOW_FACES || 6000
+)
+export const COMFYUI_HY3DPAINT_FULL_WORKFLOW_GUIDANCE_SCALE = Number(
+  process.env.COMFYUI_HY3DPAINT_FULL_WORKFLOW_GUIDANCE_SCALE || 5
+)
+export const COMFYUI_HY3DPAINT_STABLE_STEPS = Number(process.env.COMFYUI_HY3DPAINT_STABLE_STEPS || 12)
+export const COMFYUI_HY3DPAINT_STABLE_FACES = Number(process.env.COMFYUI_HY3DPAINT_STABLE_FACES || 3000)
+export const COMFYUI_HY3DPAINT_STABLE_GUIDANCE_SCALE = Number(process.env.COMFYUI_HY3DPAINT_STABLE_GUIDANCE_SCALE || 5)
+export const COMFYUI_HY3DPAINT_MIN_RAM_FREE_GB = Number(process.env.COMFYUI_HY3DPAINT_MIN_RAM_FREE_GB || 16.5)
+export const COMFYUI_HY3DPAINT_MIN_VRAM_FREE_GB = Number(process.env.COMFYUI_HY3DPAINT_MIN_VRAM_FREE_GB || 14)
+export const COMFYUI_HY3DPAINT_MIN_TOTAL_RAM_GB = Number(process.env.COMFYUI_HY3DPAINT_MIN_TOTAL_RAM_GB || 19)
+export const COMFYUI_HY3DPAINT_LOW_MEMORY_TOTAL_RAM_GB = Number(process.env.COMFYUI_HY3DPAINT_LOW_MEMORY_TOTAL_RAM_GB || 24)
+export const COMFYUI_HY3DPAINT_LOW_MEMORY_REMOTE_ENABLED =
+  process.env.COMFYUI_HY3DPAINT_LOW_MEMORY_REMOTE_ENABLED !== 'false'
+export const COMFYUI_HY3DPAINT_AUTO_FALLBACK = process.env.COMFYUI_HY3DPAINT_AUTO_FALLBACK !== 'false'
+export const COMFYUI_HY3DPAINT_FULL_RETRY_ON_TIMEOUT =
+  process.env.COMFYUI_HY3DPAINT_FULL_RETRY_ON_TIMEOUT === 'true'
+export const COMFYUI_HY3DPAINT_UNOBSERVABLE_RECOVERY_LIMIT = Number(
+  process.env.COMFYUI_HY3DPAINT_UNOBSERVABLE_RECOVERY_LIMIT || 48
+)
+export const COMFYUI_HY3DPAINT_STALE_HISTORY_LIMIT = Number(
+  process.env.COMFYUI_HY3DPAINT_STALE_HISTORY_LIMIT || 80
+)
+export const COMFYUI_HY3DPAINT_RUNTIME_MIN_RAM_FREE_GB = Number(
+  process.env.COMFYUI_HY3DPAINT_RUNTIME_MIN_RAM_FREE_GB || 5.5
+)
+export const COMFYUI_HY3DPAINT_RUNTIME_MIN_VRAM_FREE_GB = Number(
+  process.env.COMFYUI_HY3DPAINT_RUNTIME_MIN_VRAM_FREE_GB || 8
+)
+export const COMFYUI_HY3DPAINT_RUNTIME_GUARD_GRACE_POLLS = Number(
+  process.env.COMFYUI_HY3DPAINT_RUNTIME_GUARD_GRACE_POLLS || 1
+)
+export const COMFYUI_HY3DPAINT_RUNTIME_FALLBACK_BACKOFF_COUNT = Number(
+  process.env.COMFYUI_HY3DPAINT_RUNTIME_FALLBACK_BACKOFF_COUNT || 2
+)
+export const COMFYUI_HY3DPAINT_RUNTIME_FALLBACK_BACKOFF_MS = Number(
+  process.env.COMFYUI_HY3DPAINT_RUNTIME_FALLBACK_BACKOFF_MS || 3 * 60 * 60 * 1000
+)
+export const COMFYUI_HY3DPAINT_POLL_INTERVAL_MS = Number(process.env.COMFYUI_HY3DPAINT_POLL_INTERVAL_MS || 5000)
+export const COMFYUI_HY3DPAINT_ABORT_ON_UNOBSERVABLE =
+  process.env.COMFYUI_HY3DPAINT_ABORT_ON_UNOBSERVABLE === 'true'
+export const COMFYUI_RESOURCE_GUARD = process.env.COMFYUI_RESOURCE_GUARD !== 'false'
+export const COMFYUI_MIN_RAM_FREE_GB = Number(process.env.COMFYUI_MIN_RAM_FREE_GB || 10)
+export const COMFYUI_MIN_VRAM_FREE_GB = Number(process.env.COMFYUI_MIN_VRAM_FREE_GB || 6)
+export const COMFYUI_LOCAL_QUEUE_MAX_PENDING = Number(process.env.COMFYUI_LOCAL_QUEUE_MAX_PENDING || 1)
+export const COMFYUI_BLOCK_WHEN_REMOTE_BUSY = process.env.COMFYUI_BLOCK_WHEN_REMOTE_BUSY !== 'false'
+export const COMFYUI_FREE_AFTER_JOB = process.env.COMFYUI_FREE_AFTER_JOB !== 'false'
+export const COMFYUI_FREE_TIMEOUT_MS = Number(process.env.COMFYUI_FREE_TIMEOUT_MS || 12000)
+export const COMFYUI_DRAIN_AFTER_JOB_TIMEOUT_MS = Number(process.env.COMFYUI_DRAIN_AFTER_JOB_TIMEOUT_MS || 90000)
+export const COMFYUI_DRAIN_AFTER_JOB_POLL_MS = Number(process.env.COMFYUI_DRAIN_AFTER_JOB_POLL_MS || 5000)
+export const COMFYUI_PREFLIGHT_FREE_BEFORE_GUARD = process.env.COMFYUI_PREFLIGHT_FREE_BEFORE_GUARD !== 'false'
+export const COMFYUI_HISTORY_CACHE_LIMIT = Number(process.env.COMFYUI_HISTORY_CACHE_LIMIT || 60)
 export const TENCENT_HUNYUAN_CONFIGURED = Boolean(
   process.env.TENCENT_SECRET_ID && process.env.TENCENT_SECRET_KEY && process.env.TENCENT_HUNYUAN_3D_ENDPOINT
 )
