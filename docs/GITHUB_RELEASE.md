@@ -53,21 +53,24 @@ git diff --check
 
 Confirm that no API keys, temporary screenshots, generated GLB outputs, run logs, or workflow-store files are staged.
 
-## README Screenshot
+## README Screenshots
 
-The curated screenshot is stored at:
-
-```text
-docs/assets/screenshots/3d-agent-workbench-desktop.png
-```
-
-It was captured with Google Chrome/CDP from:
+The curated README screenshots are stored at:
 
 ```text
-http://127.0.0.1:<frontend-port>/?capture=readme#workbench
+docs/assets/screenshots/3d-agent-local-api-chrome.png
+docs/assets/screenshots/3d-agent-workbench-chrome.png
+docs/assets/screenshots/3d-agent-flow-guide-chrome.png
+docs/assets/screenshots/3d-agent-specimen-index-chrome.png
 ```
 
-The release capture currently uses a 1440x1100 Chrome desktop viewport, matching the original desktop QA ratio while README capture mode keeps the 3D stage visually stable without creating a headless WebGL context.
+They were captured from the real foreground Google Chrome window while the local app was running at:
+
+```text
+http://127.0.0.1:5173
+```
+
+The release capture currently uses the approved foreground Chrome window and produces 2456x1856 Retina PNGs. This keeps the README aligned with the layout the user actually reviewed, including the flow-guide overlay state.
 
 ## Verification
 
@@ -75,6 +78,7 @@ Run:
 
 ```bash
 npm run test:api
+npm --prefix app run lint
 npm run build
 git diff --check
 ```

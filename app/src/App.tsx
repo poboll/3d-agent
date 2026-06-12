@@ -248,9 +248,9 @@ function App() {
 
   useEffect(() => {
     const latestId = resolveLatestGeneratedModelIdForActive(allModels, activeId);
-    if (latestId && latestId !== activeId) {
-      setActiveId(latestId);
-    }
+    if (!latestId || latestId === activeId) return undefined;
+    const timer = window.setTimeout(() => setActiveId(latestId), 0);
+    return () => window.clearTimeout(timer);
   }, [activeId, allModels]);
 
   useEffect(() => {

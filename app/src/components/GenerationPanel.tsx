@@ -152,7 +152,11 @@ export function GenerationPanel({
   const reportedFullReferenceIds = useRef<Set<string>>(new Set());
   const reportedCompletedJobIds = useRef<Set<string>>(new Set());
   const restoredLatestJobRef = useRef(false);
-  const [status, setStatus] = useState('先得到一张可确认的参考图，再进入图生 3D 建模。');
+  const [status, setStatus] = useState(() => (
+    captureMode
+      ? '展示模式已隐藏历史任务和调试监控；真实生成仍会按 48760 图片网关、单队列和内存闸门执行。'
+      : '先得到一张可确认的参考图，再进入图生 3D 建模。'
+  ));
   const [busy, setBusy] = useState(false);
   const [prompt, setPrompt] = useState('植物细胞 3D 教学模型，突出叶绿体、细胞壁和大型液泡');
   const [imageProvider, setImageProvider] = useState('local-gateway');
@@ -163,16 +167,26 @@ export function GenerationPanel({
   const [referenceImage, setReferenceImage] = useState<ReferenceImage | null>(null);
   const [referenceAccepted, setReferenceAccepted] = useState(false);
   const [promptPreview, setPromptPreview] = useState<PromptPreviewPayload | null>(null);
-  const [providerStatus, setProviderStatus] = useState<ProviderStatusPayload | null>(null);
-  const [providerStatusLoading, setProviderStatusLoading] = useState(true);
+  const [providerStatus, setProviderStatus] = useState<ProviderStatusPayload | null>(() => (
+    captureMode ? CAPTURE_PROVIDER_STATUS : null
+  ));
+  const [providerStatusLoading, setProviderStatusLoading] = useState(() => !captureMode);
   const [textureArtifactStatus, setTextureArtifactStatus] = useState<TextureArtifactStatusPayload | null>(null);
-  const [textureArtifactLoading, setTextureArtifactLoading] = useState(true);
-  const [textureArtifactFeedback, setTextureArtifactFeedback] = useState('只读检查现有 GLB，不占用 3D 队列。');
+  const [textureArtifactLoading, setTextureArtifactLoading] = useState(() => !captureMode);
+  const [textureArtifactFeedback, setTextureArtifactFeedback] = useState(() => (
+    captureMode
+      ? '展示模式：贴图产物检查会在真实运行时只读执行。'
+      : '只读检查现有 GLB，不占用 3D 队列。'
+  ));
   const [textureStabilityStatus, setTextureStabilityStatus] = useState<TextureStabilityStatusPayload | null>(null);
-  const [textureStabilityLoading, setTextureStabilityLoading] = useState(true);
+  const [textureStabilityLoading, setTextureStabilityLoading] = useState(() => !captureMode);
   const [textureStabilityRunning, setTextureStabilityRunning] = useState(false);
   const [textureStabilityRunMode, setTextureStabilityRunMode] = useState<'dry-run' | 'fallback-long-check' | null>(null);
-  const [textureStabilityFeedback, setTextureStabilityFeedback] = useState('先只读预检 raw GLB 与资源闸门，不提交远端混元重任务。');
+  const [textureStabilityFeedback, setTextureStabilityFeedback] = useState(() => (
+    captureMode
+      ? '展示模式：长测入口保留，真实运行时按串行与低内存保护执行。'
+      : '先只读预检 raw GLB 与资源闸门，不提交远端混元重任务。'
+  ));
   const [activeJob, setActiveJob] = useState<WorkflowJob | null>(null);
   const [jobHistory, setJobHistory] = useState<WorkflowJob[]>([]);
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -298,17 +312,6 @@ export function GenerationPanel({
   useEffect(() => {
     if (captureMode) {
       restoredLatestJobRef.current = true;
-      setProviderStatus(CAPTURE_PROVIDER_STATUS);
-      setProviderStatusLoading(false);
-      setTextureArtifactStatus(null);
-      setTextureArtifactLoading(false);
-      setTextureArtifactFeedback('展示模式：贴图产物检查会在真实运行时只读执行。');
-      setTextureStabilityStatus(null);
-      setTextureStabilityLoading(false);
-      setTextureStabilityRunning(false);
-      setTextureStabilityFeedback('展示模式：长测入口保留，真实运行时按串行与低内存保护执行。');
-      setJobHistory([]);
-      setStatus('展示模式已隐藏历史任务和调试监控；真实生成仍会按 48760 图片网关、单队列和内存闸门执行。');
       return;
     }
 
@@ -424,15 +427,18 @@ export function GenerationPanel({
 
   useEffect(() => {
     if (providerStatusLoading || textureMode !== 'hunyuan' || !providerStatus) return;
-    setStatus((current) => {
-      if (
-        current.includes('正在同步 ComfyUI 资源状态') ||
-        current.includes('正在检查混元贴图资源')
-      ) {
-        return buildHy3dTextureRunMessage(providerStatus);
-      }
-      return current;
-    });
+    const timer = window.setTimeout(() => {
+      setStatus((current) => {
+        if (
+          current.includes('正在同步 ComfyUI 资源状态') ||
+          current.includes('正在检查混元贴图资源')
+        ) {
+          return buildHy3dTextureRunMessage(providerStatus);
+        }
+        return current;
+      });
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [providerStatus, providerStatusLoading, textureMode]);
 
   useEffect(() => {
