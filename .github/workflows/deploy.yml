@@ -1,25 +1,35 @@
-name: Deploy to GitHub Pages
+name: Build, Deploy, and Release
 
 on:
   push:
     branches: [main]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [main]
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Optional release tag, for example v0.1.0'
+        required: false
+        type: string
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
 concurrency:
-  group: pages
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   build:
+    name: Build and verify
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: app
+    outputs:
+      release_tag: ${{ steps.release-meta.outputs.release_tag }}
+      should_release: ${{ steps.release-meta.outputs.should_release }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,32 +37,95 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: npm
           cache-dependency-path: app/package-lock.json
 
       - name: Install dependencies
+        working-directory: app
         run: npm ci
 
-      - name: Build
-        # 构建时使用 /<仓库名>/ 作为站点根，兼容 user.github.io/<repo>/ 部署形态。
-        # 如果你部署到自定义域名或 user.github.io 根仓库，把 VITE_BASE 改成 "/" 即可。
+      - name: Lint
+        working-directory: app
+        run: npm run lint
+
+      - name: Test API utilities
+        run: npm run test:api
+
+      - name: Build web app
+        working-directory: app
         run: |
           REPO_NAME="${GITHUB_REPOSITORY#*/}"
           VITE_BASE="/${REPO_NAME}/" npm run build
           touch dist/.nojekyll
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-        with:
-          enablement: true
+      - name: Resolve release metadata
+        id: release-meta
+        shell: bash
+        env:
+          INPUT_RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+            echo "release_tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          elif [[ -n "${INPUT_RELEASE_TAG}" ]]; then
+            if [[ ! "${INPUT_RELEASE_TAG}" =~ ^v[0-9A-Za-z._-]+$ ]]; then
+              echo "release_tag must start with v and contain only letters, numbers, dots, underscores, or hyphens." >&2
+              exit 1
+            fi
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+            echo "release_tag=${INPUT_RELEASE_TAG}" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+            echo "release_tag=" >> "$GITHUB_OUTPUT"
+          fi
 
-      - name: Upload artifact
+      - name: Stage release bundle
+        shell: bash
+        run: |
+          rm -rf release/3d-agent
+          mkdir -p release/3d-agent/app-dist
+          git archive --format=tar HEAD | tar -x -C release/3d-agent
+          cp -R app/dist/. release/3d-agent/app-dist/
+          rm -rf \
+            release/3d-agent/.git \
+            release/3d-agent/app/node_modules \
+            release/3d-agent/app/dist \
+            release/3d-agent/.generated-models \
+            release/3d-agent/.reference-cache \
+            release/3d-agent/.reference-work \
+            release/3d-agent/.reference-trash \
+            release/3d-agent/.upload-cache \
+            release/3d-agent/.upload-work \
+            release/3d-agent/.upload-trash \
+            release/3d-agent/.workflow-store \
+            release/3d-agent/.run-logs
+          test ! -f release/3d-agent/.env.local
+
+      - name: Package release bundle
+        shell: bash
+        run: |
+          cd release
+          zip -qr 3d-agent-source-and-web.zip 3d-agent
+          tar -czf 3d-agent-source-and-web.tar.gz 3d-agent
+
+      - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: app/dist
 
-  deploy:
+      - name: Upload release bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: 3d-agent-release-bundle
+          path: |
+            release/3d-agent-source-and-web.zip
+            release/3d-agent-source-and-web.tar.gz
+          if-no-files-found: error
+
+  deploy-pages:
+    name: Deploy GitHub Pages
+    if: github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
     environment:
@@ -62,3 +135,26 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  release:
+    name: Publish GitHub Release
+    if: needs.build.outputs.should_release == 'true'
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download release bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: 3d-agent-release-bundle
+          path: release
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.build.outputs.release_tag }}
+          target_commitish: ${{ github.sha }}
+          name: 3D Agent ${{ needs.build.outputs.release_tag }}
+          generate_release_notes: true
+          files: |
+            release/3d-agent-source-and-web.zip
+            release/3d-agent-source-and-web.tar.gz

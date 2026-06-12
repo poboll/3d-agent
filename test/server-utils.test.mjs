@@ -335,7 +335,7 @@ describe('LearningCell fusion API utilities', () => {
 
   it('normalizes transient ComfyUI network failures for recovery', () => {
     const fetchError = new TypeError('fetch failed')
-    const normalized = normalizeComfyFetchError(fetchError, '查询 ComfyUI 任务历史', 'http://47.242.195.8:8010/history/abc?client=secret')
+    const normalized = normalizeComfyFetchError(fetchError, '查询 ComfyUI 任务历史', 'http://127.0.0.1:8188/history/abc?client=redacted')
 
     assert.equal(isTransientComfyError(fetchError), true)
     assert.match(normalized.message, /查询 ComfyUI 任务历史失败/)
@@ -343,13 +343,13 @@ describe('LearningCell fusion API utilities', () => {
     assert.match(normalized.message, /续接输出/)
     assert.equal(normalized.recoverable, true)
     const timeout = Object.assign(new Error('aborted'), { name: 'AbortError' })
-    const timeoutError = normalizeComfyFetchError(timeout, '查询 ComfyUI 任务历史', 'http://47.242.195.8:8010/history/timeout-id')
+    const timeoutError = normalizeComfyFetchError(timeout, '查询 ComfyUI 任务历史', 'http://127.0.0.1:8188/history/timeout-id')
     assert.match(timeoutError.message, /任务历史超时/)
     assert.match(timeoutError.message, /续接输出/)
     assert.equal(timeoutError.recoverable, true)
     assert.equal(isTransientComfyError(timeoutError), true)
-    assert.equal(normalized.endpoint, 'http://47.242.195.8:8010/history/abc')
-    assert.equal(scrubComfyEndpoint('http://47.242.195.8:8010/view?filename=model.glb&token=secret'), 'http://47.242.195.8:8010/view')
+    assert.equal(normalized.endpoint, 'http://127.0.0.1:8188/history/abc')
+    assert.equal(scrubComfyEndpoint('http://127.0.0.1:8188/view?filename=model.glb&token=redacted'), 'http://127.0.0.1:8188/view')
   })
 
   it('classifies ComfyUI cold start and unreachable states for resumable jobs', () => {
@@ -360,7 +360,7 @@ describe('LearningCell fusion API utilities', () => {
     assert.equal(coldStart.recoverable, true)
     assert.match(coldStart.message, /冷启动|OOM/)
 
-    const refused = Object.assign(new Error('connect ECONNREFUSED 47.242.195.8:8010'), { code: 'ECONNREFUSED' })
+    const refused = Object.assign(new Error('connect ECONNREFUSED 127.0.0.1:8188'), { code: 'ECONNREFUSED' })
     const unreachable = classifyComfyServiceError(refused)
     assert.equal(unreachable.state, 'unreachable')
     assert.equal(unreachable.recoverable, true)
@@ -407,7 +407,7 @@ describe('LearningCell fusion API utilities', () => {
           ['execution_error', {
             exception_message: [
               'Hunyuan3D-Paint timed out.',
-              '/home/kk/projects/3d/ComfyUI/output/3d/fake_painted.glb',
+              '/opt/comfyui/output/3d/fake_painted.glb',
             ].join(' '),
           }],
         ],
@@ -415,7 +415,7 @@ describe('LearningCell fusion API utilities', () => {
       outputs: {
         2: {
           text: [
-            'TripoSG GLB saved: /home/kk/projects/3d/ComfyUI/output/3d/real_raw.glb',
+            'TripoSG GLB saved: /opt/comfyui/output/3d/real_raw.glb',
           ],
         },
       },
@@ -449,8 +449,8 @@ describe('LearningCell fusion API utilities', () => {
             node_type: 'Hunyuan3DPaintExistingMesh',
             exception_message: [
               'Hunyuan3D-Paint timed out before producing textured GLB.',
-              'Command: /home/kk/projects/3d/bin/run_hy3dpaint_3080.sh',
-              '--output /home/kk/projects/3d/ComfyUI/output/3d/learningcell-job_painted_20260525.glb',
+              'Command: /opt/comfyui/bin/run_hy3dpaint_3080.sh',
+              '--output /opt/comfyui/output/3d/learningcell-job_painted_20260525.glb',
             ].join(' '),
           }],
         ],
@@ -458,7 +458,7 @@ describe('LearningCell fusion API utilities', () => {
       outputs: {
         2: {
           text: [
-            'TripoSG GLB saved: /home/kk/projects/3d/ComfyUI/output/3d/learningcell-job_raw_20260525.glb',
+            'TripoSG GLB saved: /opt/comfyui/output/3d/learningcell-job_raw_20260525.glb',
           ],
         },
       },
@@ -495,7 +495,7 @@ describe('LearningCell fusion API utilities', () => {
       outputs: {
         2: {
           text: [
-            'Hunyuan3D-Paint textured GLB saved: /home/kk/projects/3d/ComfyUI/output/3d/learningcell-job_painted_20260526-203841.glb',
+            'Hunyuan3D-Paint textured GLB saved: /opt/comfyui/output/3d/learningcell-job_painted_20260526-203841.glb',
           ],
         },
       },
@@ -748,13 +748,13 @@ describe('LearningCell fusion API utilities', () => {
       id: 'job-backoff-source',
       sourceJobId: 'job-backoff-source',
       rawModelUrl: '/api/3d/local-model/raw-backoff.glb',
-      rawMeshServerPath: '/home/kk/projects/3d/ComfyUI/output/3d/raw-backoff.glb',
+      rawMeshServerPath: '/opt/comfyui/output/3d/raw-backoff.glb',
     }
     const pendingJob = {
       id: 'job-backoff-next',
       sourceJobId: 'job-backoff-source',
       rawModelUrl: '/api/3d/local-model/raw-backoff.glb',
-      rawMeshServerPath: '/home/kk/projects/3d/ComfyUI/output/3d/raw-backoff.glb',
+      rawMeshServerPath: '/opt/comfyui/output/3d/raw-backoff.glb',
     }
 
     try {
@@ -1320,10 +1320,10 @@ describe('LearningCell fusion API utilities', () => {
 
   it('summarizes local image upstream failures without leaking long request ids', () => {
     const summary = summarizeLocalGatewayImageFailure(
-      Object.assign(new Error('本地图片网关未返回可用图片。gpt-image-2#1: type=upstream_error Upstream service temporarily unavailable [request_id=secret-1]'), { status: 502 }),
+      Object.assign(new Error('本地图片网关未返回可用图片。gpt-image-2#1: type=upstream_error Upstream service temporarily unavailable [request_id=request-id-1]'), { status: 502 }),
       [
-        'gpt-image-2#1: type=upstream_error Upstream service temporarily unavailable [request_id=secret-1]',
-        'gpt-image-1.5#1: type=upstream_error Upstream service temporarily unavailable [request_id=secret-2]',
+        'gpt-image-2#1: type=upstream_error Upstream service temporarily unavailable [request_id=request-id-1]',
+        'gpt-image-1.5#1: type=upstream_error Upstream service temporarily unavailable [request_id=request-id-2]',
       ],
     )
 
@@ -1797,7 +1797,7 @@ describe('LearningCell fusion API utilities', () => {
       stage: '已完成稳定几何版。',
       progress: 100,
       providerJobId: 'source-prompt-id',
-      rawMeshServerPath: '/home/kk/projects/3d/ComfyUI/output/3d/source.glb',
+      rawMeshServerPath: '/opt/comfyui/output/3d/source.glb',
       result: {
         modelUrl: '/api/3d/local-model/generated-source.glb',
         rawModelUrl: '/api/3d/local-model/raw-source.glb',
@@ -1896,7 +1896,7 @@ describe('LearningCell fusion API utilities', () => {
     const status = {
       model3d: {
         selfhostTriposg: {
-          baseUrl: 'http://47.242.195.8:8010',
+          baseUrl: 'http://127.0.0.1:8188',
           runtime: { running: 0, pending: 0 },
           texture: { minRamFreeGb: 16.5, minVramFreeGb: 14, steps: 10, faces: 3000 },
           status: {
@@ -2489,7 +2489,7 @@ function makeProviderStatus() {
       },
       openai: {
         configured: true,
-        baseUrl: 'https://api.anhesea.top:9443/v1',
+        baseUrl: 'https://api.openai.com/v1',
         imageModel: 'gpt-5.5',
         imageToolModel: 'gpt-image-2',
         imageSize: '1536x1536',
@@ -2500,7 +2500,7 @@ function makeProviderStatus() {
     model3d: {
       selfhostTriposg: {
         configured: true,
-        baseUrl: 'http://47.242.195.8:8010',
+        baseUrl: 'http://127.0.0.1:8188',
         resourceGuard: {
           enabled: true,
           minRamFreeGb: 10,
