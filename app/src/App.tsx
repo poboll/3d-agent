@@ -7,12 +7,12 @@ import { MaAboutPanel } from './components/MaAboutPanel';
 import { LocalApiPanel } from './components/LocalApiPanel';
 import type { CellModel } from './data/models';
 import { trackEvent } from './lib/analytics';
+import { GENERATED_MODEL_LIMIT, compactGeneratedModelsForIndex, mergeGeneratedModelsStable, resolveCompactGeneratedModelId, resolveLatestGeneratedModelIdForActive, selectNewestGeneratedModel, uniqueGeneratedModels, upsertGeneratedModelStable } from './lib/generatedModels';
 import './app.css';
 
 const GENERATED_MODELS_STORAGE_KEY = 'learning-cell-generated-models';
 const ACTIVE_MODEL_STORAGE_KEY = 'learning-cell-active-model';
 const GUIDE_STORAGE_KEY = 'ma-cell-workflow-guide-seen';
-const GENERATED_MODEL_LIMIT = 16;
 
 type Route = 'workbench' | 'about' | 'api';
 
@@ -37,7 +37,7 @@ const GUIDE_STEPS = [
   },
   {
     title: '第三步：图生 3D 建模',
-    body: '确认图片后再调用本地 TripoSG 与 Hunyuan3D-Paint 工作流，生成结果会下载并缓存到模型索引。',
+    body: '确认图片后再调用本地 TripoSG 与 Bio3D 稳定工作流，生成结果会下载并缓存到模型索引。',
     targetId: 'workflow-actions',
     targetLabel: '图生建模按钮',
   },
@@ -75,25 +75,6 @@ function readStoredActiveId() {
   } catch {
     return '';
   }
-}
-
-function getGeneratedModelKey(model: CellModel) {
-  if (model.custom) {
-    return model.modelUrl || model.id || [model.name, model.source || model.subtitle, model.templateId || inferTemplateFromModel(model)].join('|');
-  }
-  return model.modelUrl || model.id;
-}
-
-function uniqueGeneratedModels(models: CellModel[]) {
-  const seen = new Set<string>();
-  const unique: CellModel[] = [];
-  for (const model of models) {
-    const key = getGeneratedModelKey(model);
-    if (seen.has(key)) continue;
-    seen.add(key);
-    unique.push(model);
-  }
-  return unique.slice(0, GENERATED_MODEL_LIMIT);
 }
 
 function hydrateGeneratedModel(model: CellModel): CellModel {
@@ -207,15 +188,21 @@ function buildGuideFrame(target: HTMLElement, targetId: string): GuideFrame {
 }
 
 function App() {
-  const [generatedModels, setGeneratedModels] = useState<CellModel[]>(readStoredGeneratedModels);
-  const [activeId, setActiveId] = useState<string>(() => readStoredActiveId() || DEFAULT_MODEL_ID);
-  const shouldPreferLatestGeneratedRef = useRef(!readStoredActiveId());
-  const [route, setRoute] = useState<Route>(() => (shouldShowInitialGuide() ? 'workbench' : getRouteFromHash()));
-  const [guideOpen, setGuideOpen] = useState(shouldShowInitialGuide);
+  const captureMode = useMemo(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('capture') === 'readme';
+  }, []);
+  const [generatedModels, setGeneratedModels] = useState<CellModel[]>(() => (captureMode ? [] : readStoredGeneratedModels()));
+  const [activeId, setActiveId] = useState<string>(() => (captureMode ? DEFAULT_MODEL_ID : readStoredActiveId() || DEFAULT_MODEL_ID));
+  const shouldPreferLatestGeneratedRef = useRef(!captureMode && !readStoredActiveId());
+  const [route, setRoute] = useState<Route>(() => (captureMode || shouldShowInitialGuide() ? 'workbench' : getRouteFromHash()));
+  const [guideOpen, setGuideOpen] = useState(() => !captureMode && shouldShowInitialGuide());
   const [guideStep, setGuideStep] = useState(0);
   const [guideFrame, setGuideFrame] = useState<GuideFrame | null>(null);
   const [indexFocusSignal, setIndexFocusSignal] = useState(0);
   const allModels = useMemo(() => [...MODELS, ...generatedModels], [generatedModels]);
+  const indexModels = useMemo(() => compactGeneratedModelsForIndex(allModels), [allModels]);
+  const indexActiveId = useMemo(() => resolveCompactGeneratedModelId(allModels, activeId), [activeId, allModels]);
   const activeModel = useMemo(
     () => allModels.find((m) => m.id === activeId) ?? MODELS[0],
     [activeId, allModels]
@@ -232,6 +219,7 @@ function App() {
   }, [allModels]);
 
   useEffect(() => {
+    if (captureMode) return;
     const syncRoute = () => {
       const nextRoute = getRouteFromHash();
       setRoute(nextRoute);
@@ -242,19 +230,28 @@ function App() {
 
     window.addEventListener('hashchange', syncRoute);
     return () => window.removeEventListener('hashchange', syncRoute);
-  }, []);
+  }, [captureMode]);
 
   useEffect(() => {
+    if (captureMode) return;
     localStorage.setItem(GENERATED_MODELS_STORAGE_KEY, JSON.stringify(uniqueGeneratedModels(generatedModels)));
-  }, [generatedModels]);
+  }, [captureMode, generatedModels]);
 
   useEffect(() => {
+    if (captureMode) return;
     try {
       localStorage.setItem(ACTIVE_MODEL_STORAGE_KEY, activeId);
     } catch {
       // Ignore storage failures; model selection still works for the current session.
     }
-  }, [activeId]);
+  }, [activeId, captureMode]);
+
+  useEffect(() => {
+    const latestId = resolveLatestGeneratedModelIdForActive(allModels, activeId);
+    if (latestId && latestId !== activeId) {
+      setActiveId(latestId);
+    }
+  }, [activeId, allModels]);
 
   useEffect(() => {
     if (!guideOpen) return;
@@ -315,25 +312,24 @@ function App() {
 
   const handleModelsLoaded = useCallback((models: CellModel[]) => {
     const hydratedModels = models.map(hydrateGeneratedModel);
-    const shouldActivateLatest = shouldPreferLatestGeneratedRef.current && hydratedModels[0] && activeId === DEFAULT_MODEL_ID;
+    const latestGeneratedModel = selectNewestGeneratedModel(hydratedModels);
+    const shouldActivateLatest = shouldPreferLatestGeneratedRef.current && latestGeneratedModel && activeId === DEFAULT_MODEL_ID;
     if (shouldPreferLatestGeneratedRef.current) {
       shouldPreferLatestGeneratedRef.current = false;
     }
     setGeneratedModels((current) => {
-      return uniqueGeneratedModels([...hydratedModels, ...current]);
+      return mergeGeneratedModelsStable(current, hydratedModels, GENERATED_MODEL_LIMIT);
     });
-    if (shouldActivateLatest) {
-      setActiveId(hydratedModels[0].id);
-    }
+    if (shouldActivateLatest && latestGeneratedModel) setActiveId(latestGeneratedModel.id);
   }, [activeId]);
 
   const handleModelCreated = useCallback((model: CellModel) => {
     const hydrated = hydrateGeneratedModel(model);
-    const key = getGeneratedModelKey(hydrated);
-    setGeneratedModels((current) => uniqueGeneratedModels([hydrated, ...current.filter((item) => getGeneratedModelKey(item) !== key)]));
+    setGeneratedModels((current) => upsertGeneratedModelStable(current, hydrated, GENERATED_MODEL_LIMIT));
   }, []);
 
   const openGuide = () => {
+    if (captureMode) return;
     setRoute('workbench');
     window.location.hash = '#workbench';
     setGuideStep(0);
@@ -355,7 +351,7 @@ function App() {
   };
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell${captureMode ? ' app-shell--capture' : ''}`}>
       <header className="topbar">
         <a className="topbar-kicker" href="#workbench" aria-label="返回工作台">
           N° 07 · 细胞植物工坊 · 2026
@@ -394,6 +390,7 @@ function App() {
         <main className="layout" id="workbench">
           <aside className="control-rail" id="generate">
             <GenerationPanel
+              captureMode={captureMode}
               generatedModels={generatedModels}
               onModelsLoaded={handleModelsLoaded}
               onModelCreated={handleModelCreated}
@@ -410,8 +407,8 @@ function App() {
           </section>
 
           <Sidebar
-            models={allModels}
-            activeId={activeId}
+            models={indexModels}
+            activeId={indexActiveId}
             onSelect={selectModel}
             onOpenIndex={focusSpecimenIndex}
             guideOpen={guideOpen}

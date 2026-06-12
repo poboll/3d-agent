@@ -4,6 +4,9 @@ import { getModelTemplate } from '../data/models';
 import {
   createFullTextTo3dJob,
   createReferenceImage,
+  createTextureEnhancementJob,
+  fetchTextureArtifactStatus,
+  fetchTextureStabilityStatus,
   fetchProviderStatus,
   createTextToCellJob,
   fetchDemoGeneratedModels,
@@ -12,11 +15,12 @@ import {
   fetchWorkflowJobs,
   previewReferencePrompt,
   resumeWorkflowJob,
+  runTextureStabilityCheck,
   uploadLocalModel,
   uploadReferenceImage,
   workflowJobToCellModel,
 } from '../services/fusionApi';
-import type { PromptPreviewPayload, ProviderStatusPayload, ReferenceImagePayload, WorkflowDiagnosticsPayload, WorkflowJob } from '../services/fusionApi';
+import type { PromptPreviewPayload, ProviderStatusPayload, ReferenceImagePayload, TextureArtifactStatusPayload, TextureStabilityStatusPayload, WorkflowDiagnosticsPayload, WorkflowJob } from '../services/fusionApi';
 import { trackEvent } from '../lib/analytics';
 import { buildJobHistorySummary } from '../lib/jobHistory';
 import { buildGenerationTimeline } from '../lib/workflowTimeline';
@@ -24,18 +28,120 @@ import { getWorkflowWaitHint } from '../lib/workflowWait';
 import { buildWorkflowPhaseBoard } from '../lib/workflowPhaseBoard';
 import { buildWorkflowNextAction } from '../lib/workflowNextAction';
 import { buildWorkflowPreflight } from '../lib/workflowPreflight';
+import { buildChainReadiness, buildModelRoleRail, buildRuntimeRail, buildTextureArtifactHealth, buildTextureResourcePlan, buildTextureResultStatus, buildTextureStabilityHealth, buildWorkflowGuardSummary } from '../lib/workflowRuntime';
+import { selectNewestGeneratedModel } from '../lib/generatedModels';
+import { buildReferenceQualityGate } from '../lib/referenceQualityGate';
 import { TaskWatchCard, type TaskWatchViewModel } from './TaskWatchCard';
 
 interface Props {
   id?: string;
+  captureMode?: boolean;
   generatedModels: CellModel[];
   onModelsLoaded: (models: CellModel[]) => void;
   onModelCreated: (model: CellModel) => void;
   onSelect: (id: string) => void;
 }
 
+const CAPTURE_GIB = 1024 ** 3;
+
+const CAPTURE_PROVIDER_STATUS: ProviderStatusPayload = {
+  image: {
+    localGateway: {
+      configured: true,
+      baseUrl: 'http://127.0.0.1:48760',
+      promptModel: 'gpt-5.5',
+      imageModel: 'gpt-image-2',
+      imageSize: '1536x1536',
+      imageQuality: 'high',
+      timeoutMs: 420_000,
+      health: {
+        ok: true,
+        status: 200,
+        message: 'capture-ready',
+      },
+      models: {
+        ok: true,
+        status: 200,
+        message: 'capture-ready',
+        modelIds: ['gpt-image-2'],
+      },
+      imageRoute: {
+        ok: true,
+        state: 'ready',
+        status: 200,
+        message: '48760 本地图片网关展示为可用状态。',
+      },
+    },
+    openai: {
+      configured: false,
+      baseUrl: '',
+    },
+  },
+  model3d: {
+    selfhostTriposg: {
+      configured: true,
+      baseUrl: 'http://47.242.195.8:8010',
+      resourceGuard: {
+        enabled: true,
+        minRamFreeGb: 10,
+        minVramFreeGb: 6,
+        runtimeMinRamFreeGb: 5.5,
+        runtimeMinVramFreeGb: 8,
+        maxLocalPending: 1,
+        blockWhenRemoteBusy: true,
+      },
+      texture: {
+        enabled: true,
+        minTotalRamGb: 24,
+        lowMemoryTotalRamGb: 24,
+        lowMemoryRemoteEnabled: false,
+        minRamFreeGb: 18,
+        minVramFreeGb: 14,
+        runtimeMinRamFreeGb: 5.5,
+        runtimeMinVramFreeGb: 8,
+        steps: 12,
+        faces: 10000,
+        autoFallback: true,
+      },
+      runtime: {
+        running: 0,
+        pending: 0,
+        maxPending: 1,
+        blockWhenRemoteBusy: true,
+      },
+      status: {
+        ok: true,
+        state: 'ready',
+        message: '3D 服务展示为就绪，重任务仍受单队列和内存闸门保护。',
+        ram: {
+          total: 20 * CAPTURE_GIB,
+          available: 13 * CAPTURE_GIB,
+          free: 13 * CAPTURE_GIB,
+        },
+        gpu: [{
+          name: 'RTX 3090',
+          type: 'cuda',
+          vramTotal: 24 * CAPTURE_GIB,
+          vramFree: 18 * CAPTURE_GIB,
+        }],
+        queue: {
+          running: 0,
+          pending: 0,
+        },
+      },
+    },
+    localCache: {
+      configured: true,
+    },
+    tencentHunyuan: {
+      configured: false,
+    },
+  },
+};
+
 export function GenerationPanel({
   id,
+  captureMode = false,
   generatedModels,
   onModelsLoaded,
   onModelCreated,
@@ -52,12 +158,21 @@ export function GenerationPanel({
   const [imageProvider, setImageProvider] = useState('local-gateway');
   const [imageProfile, setImageProfile] = useState('standard');
   const [modelProvider, setModelProvider] = useState('selfhost-triposg');
+  const [textureMode, setTextureMode] = useState<'stable' | 'hunyuan'>('hunyuan');
   const [template, setTemplate] = useState('plant-cell');
   const [referenceImage, setReferenceImage] = useState<ReferenceImage | null>(null);
   const [referenceAccepted, setReferenceAccepted] = useState(false);
   const [promptPreview, setPromptPreview] = useState<PromptPreviewPayload | null>(null);
   const [providerStatus, setProviderStatus] = useState<ProviderStatusPayload | null>(null);
   const [providerStatusLoading, setProviderStatusLoading] = useState(true);
+  const [textureArtifactStatus, setTextureArtifactStatus] = useState<TextureArtifactStatusPayload | null>(null);
+  const [textureArtifactLoading, setTextureArtifactLoading] = useState(true);
+  const [textureArtifactFeedback, setTextureArtifactFeedback] = useState('只读检查现有 GLB，不占用 3D 队列。');
+  const [textureStabilityStatus, setTextureStabilityStatus] = useState<TextureStabilityStatusPayload | null>(null);
+  const [textureStabilityLoading, setTextureStabilityLoading] = useState(true);
+  const [textureStabilityRunning, setTextureStabilityRunning] = useState(false);
+  const [textureStabilityRunMode, setTextureStabilityRunMode] = useState<'dry-run' | 'fallback-long-check' | null>(null);
+  const [textureStabilityFeedback, setTextureStabilityFeedback] = useState('先只读预检 raw GLB 与资源闸门，不提交远端混元重任务。');
   const [activeJob, setActiveJob] = useState<WorkflowJob | null>(null);
   const [jobHistory, setJobHistory] = useState<WorkflowJob[]>([]);
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -80,6 +195,30 @@ export function GenerationPanel({
     confirmedPrompt?.sourcePrompt.trim() === prompt.trim() &&
     confirmedPrompt?.template === template &&
     normalizeUiImageProvider(confirmedPrompt?.provider || imageProvider) === imageProvider;
+
+  const loadTextureArtifactStatus = useCallback(async () => {
+    setTextureArtifactLoading(true);
+    try {
+      const payload = await fetchTextureArtifactStatus(3);
+      setTextureArtifactStatus(payload);
+      setTextureArtifactFeedback(buildTextureArtifactFeedback(payload));
+      return payload;
+    } catch {
+      setTextureArtifactStatus(null);
+      setTextureArtifactFeedback('贴图产物检查失败：请确认任务记录和 GLB 缓存仍可读取。');
+      return null;
+    } finally {
+      setTextureArtifactLoading(false);
+    }
+  }, []);
+
+  const applyTextureStabilityStatus = useCallback((payload: TextureStabilityStatusPayload) => {
+    setTextureStabilityStatus(payload);
+    setTextureStabilityRunning(Boolean(payload.running));
+    setTextureStabilityFeedback(payload.running
+      ? '服务端已有连续验证正在运行：按钮已锁定，等待当前 3 次轻量贴图验证完成。'
+      : buildTextureStabilityFeedback(payload));
+  }, []);
 
   const applyWorkflowJobUpdate = useCallback((
     job: WorkflowJob,
@@ -130,20 +269,24 @@ export function GenerationPanel({
           modelId: model.id,
         });
       }
+      if (job.provider === 'selfhost-triposg') void loadTextureArtifactStatus();
     }
 
     if (job.status === 'failed') {
+      const failedMessage = isSelfhostJobResumable(job)
+        ? '远端三维输出暂未完成；已保留 ComfyUI prompt_id，请先诊断远端，恢复后再续接输出。'
+        : job.error || job.stage || '生成任务失败。';
       setBusy(false);
       setOperationStartedAt(null);
-      setStatus(job.error || job.stage || '生成任务失败。');
+      setStatus(failedMessage);
       trackEvent('workflow_job_failed', {
         jobId: job.id,
         template: job.template,
         provider: job.provider,
-        message: job.error || job.stage,
+        message: failedMessage,
       });
     }
-  }, [onModelCreated, onSelect]);
+  }, [loadTextureArtifactStatus, onModelCreated, onSelect]);
 
   useEffect(() => {
     const shouldTick = busy || activeJob?.status === 'queued' || activeJob?.status === 'processing';
@@ -153,6 +296,22 @@ export function GenerationPanel({
   }, [activeJob?.status, busy]);
 
   useEffect(() => {
+    if (captureMode) {
+      restoredLatestJobRef.current = true;
+      setProviderStatus(CAPTURE_PROVIDER_STATUS);
+      setProviderStatusLoading(false);
+      setTextureArtifactStatus(null);
+      setTextureArtifactLoading(false);
+      setTextureArtifactFeedback('展示模式：贴图产物检查会在真实运行时只读执行。');
+      setTextureStabilityStatus(null);
+      setTextureStabilityLoading(false);
+      setTextureStabilityRunning(false);
+      setTextureStabilityFeedback('展示模式：长测入口保留，真实运行时按串行与低内存保护执行。');
+      setJobHistory([]);
+      setStatus('展示模式已隐藏历史任务和调试监控；真实生成仍会按 48760 图片网关、单队列和内存闸门执行。');
+      return;
+    }
+
     let cancelled = false;
     fetchProviderStatus(false)
       .then((statusPayload) => {
@@ -181,13 +340,12 @@ export function GenerationPanel({
           onModelsLoaded(completedModels);
         }
         if (!restoredLatestJobRef.current) {
-          const latestInspectableJob =
-            jobs.find((job) => isLiveWorkflowJob(job)) ||
-            jobs.find((job) => job.status === 'completed' && job.reference);
+          const latestInspectableJob = selectLatestInspectableJob(jobs);
           if (latestInspectableJob?.reference) {
             restoredLatestJobRef.current = true;
+            const resumable = isSelfhostJobResumable(latestInspectableJob);
             setActiveJob(latestInspectableJob);
-            setDetailsOpen(isLiveWorkflowJob(latestInspectableJob));
+            setDetailsOpen(isLiveWorkflowJob(latestInspectableJob) || resumable);
             setReferenceImage(toReferenceImage(latestInspectableJob.reference, false));
             setReferenceAccepted(Boolean(latestInspectableJob.referenceId));
             setPromptPreview({
@@ -201,6 +359,8 @@ export function GenerationPanel({
             setStatus(
               isLiveWorkflowJob(latestInspectableJob)
                 ? `已恢复正在处理的任务：${latestInspectableJob.stage}`
+                : resumable
+                  ? '已恢复远端三维任务：参考图和 ComfyUI prompt_id 均已保留，请先诊断远端。'
                 : '已恢复最近完成任务：参考图、建模结果与标本索引均可继续查看。'
             );
           } else if (latestInspectableJob) {
@@ -215,10 +375,65 @@ export function GenerationPanel({
       .catch(() => {
         if (!cancelled) setJobHistory([]);
       });
+
+    fetchTextureArtifactStatus(3)
+      .then((payload) => {
+        if (!cancelled) {
+          setTextureArtifactStatus(payload);
+          setTextureArtifactFeedback(buildTextureArtifactFeedback(payload));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setTextureArtifactStatus(null);
+      })
+      .finally(() => {
+        if (!cancelled) setTextureArtifactLoading(false);
+      });
+
+    fetchTextureStabilityStatus()
+      .then((payload) => {
+        if (!cancelled) {
+          applyTextureStabilityStatus(payload);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setTextureStabilityStatus(null);
+      })
+      .finally(() => {
+        if (!cancelled) setTextureStabilityLoading(false);
+      });
     return () => {
       cancelled = true;
     };
-  }, [onModelsLoaded]);
+  }, [applyTextureStabilityStatus, captureMode, onModelsLoaded]);
+
+  useEffect(() => {
+    if (!textureStabilityStatus?.running) return undefined;
+    const timer = window.setInterval(() => {
+      fetchTextureStabilityStatus()
+        .then((payload) => {
+          applyTextureStabilityStatus(payload);
+          if (!payload.running && payload.summary) void loadTextureArtifactStatus();
+        })
+        .catch(() => {
+          setTextureStabilityFeedback('连续验证状态刷新失败：稍后会再次同步。');
+        });
+    }, 2500);
+    return () => window.clearInterval(timer);
+  }, [applyTextureStabilityStatus, loadTextureArtifactStatus, textureStabilityStatus?.running]);
+
+  useEffect(() => {
+    if (providerStatusLoading || textureMode !== 'hunyuan' || !providerStatus) return;
+    setStatus((current) => {
+      if (
+        current.includes('正在同步 ComfyUI 资源状态') ||
+        current.includes('正在检查混元贴图资源')
+      ) {
+        return buildHy3dTextureRunMessage(providerStatus);
+      }
+      return current;
+    });
+  }, [providerStatus, providerStatusLoading, textureMode]);
 
   useEffect(() => {
     if (!activeJob || activeJob.status === 'completed' || activeJob.status === 'failed') return;
@@ -254,9 +469,133 @@ export function GenerationPanel({
       const modelReady = isModel3dReady(statusPayload);
       setStatus(imageReady && modelReady
         ? '链路预检完成：图片网关与 3D 服务均可用。'
-        : '链路预检完成：仍有节点需要复查，请查看预检卡片。');
+        : `链路预检完成：${!imageReady ? buildImageProviderBlockedMessage(statusPayload, imageProvider) : buildModel3dBlockedMessage(statusPayload)}`);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : '链路预检失败。');
+    } finally {
+      setProviderStatusLoading(false);
+    }
+  };
+
+  const handleRefreshTextureArtifacts = async () => {
+    setStatus('正在只读检查最近贴图 GLB；这不会提交混元贴图任务，也不会占用 3D 队列。');
+    const payload = await loadTextureArtifactStatus();
+    if (!payload) {
+      setStatus('贴图产物检查失败：请确认本地 API 仍可读取任务记录和 GLB 缓存。');
+      return;
+    }
+    if (payload.checked <= 0) {
+      setStatus('贴图产物检查完成：还没有可检查的 selfhost 贴图产物。');
+      return;
+    }
+    setStatus(payload.ok
+      ? `贴图产物检查完成：最近 ${payload.checked} 个产物均通过 active material 检查。`
+      : `贴图产物检查完成：${payload.failed}/${payload.checked} 个产物存在白模风险，请优先复查最新任务。`);
+  };
+
+  const handleRunTextureStability = async () => {
+    if (textureStabilityRunning) return;
+    setTextureStabilityRunning(true);
+    setTextureStabilityRunMode('dry-run');
+    setTextureStabilityFeedback('正在只读预检：读取来源 raw GLB、参考图和资源闸门，不提交贴图任务。');
+    setStatus('正在只读预检“白模 raw GLB → 原参考图贴图”链路；本次不会提交 3D 或混元贴图重任务。');
+    trackEvent('workflow_texture_stability_run', {
+      runs: 0,
+      textureMode: 'fallback-color',
+      dryRun: true,
+      source: 'generation-panel',
+    });
+    try {
+      const payload = await runTextureStabilityCheck({ runs: 1, textureMode: 'fallback-color', dryRun: true });
+      applyTextureStabilityStatus(payload);
+      await loadTextureArtifactStatus();
+      setStatus(payload.summary?.dryRun && payload.summary.ok
+        ? '贴图链路只读预检通过：raw GLB、参考图和资源闸门可用；需要长测时再运行连续贴图任务。'
+        : payload.summary?.ok
+        ? `连续贴图验证通过：${payload.summary.coloredRuns}/${payload.summary.requestedRuns} 次均产出非白模彩色 GLB。`
+        : payload.message || '连续贴图验证未完全通过，请查看报告摘要。');
+    } catch (error) {
+      setTextureStabilityFeedback(error instanceof Error ? error.message : '连续验证启动失败。');
+      setStatus(error instanceof Error ? error.message : '连续贴图验证启动失败。');
+    } finally {
+      const latest = await fetchTextureStabilityStatus().catch(() => null);
+      if (latest) applyTextureStabilityStatus(latest);
+      else setTextureStabilityRunning(false);
+      setTextureStabilityRunMode(null);
+    }
+  };
+
+  const handleRunTextureFallbackLongCheck = async () => {
+    if (textureStabilityRunning) return;
+    setTextureStabilityRunning(true);
+    setTextureStabilityRunMode('fallback-long-check');
+    setTextureStabilityFeedback('正在运行轻量长测：串行复用 raw GLB 生成 3 次参考图贴图 fallback，不调用远端 Hunyuan3D-Paint。');
+    setStatus('正在连续验证“白模 raw GLB → 原参考图轻量贴图”链路；本次只走 fallback-color，保持串行和低内存保护。');
+    trackEvent('workflow_texture_stability_run', {
+      runs: 3,
+      textureMode: 'fallback-color',
+      dryRun: false,
+      allowHunyuan: false,
+      source: 'generation-panel-long-check',
+    });
+    try {
+      const payload = await runTextureStabilityCheck({
+        runs: 3,
+        textureMode: 'fallback-color',
+        dryRun: false,
+        allowHunyuan: false,
+        timeoutMinutes: 5,
+        cooldownMs: 1000,
+      });
+      applyTextureStabilityStatus(payload);
+      await loadTextureArtifactStatus();
+      setStatus(payload.summary?.ok
+        ? `轻量贴图长测通过：${payload.summary.coloredRuns}/${payload.summary.requestedRuns} 次均产出非白模 fallback GLB，未调用混元重任务。`
+        : payload.message || '轻量贴图长测未完全通过，请查看报告摘要和失败轮次。');
+    } catch (error) {
+      setTextureStabilityFeedback(error instanceof Error ? error.message : '轻量贴图长测启动失败。');
+      setStatus(error instanceof Error ? error.message : '轻量贴图长测启动失败。');
+    } finally {
+      const latest = await fetchTextureStabilityStatus().catch(() => null);
+      if (latest) applyTextureStabilityStatus(latest);
+      else setTextureStabilityRunning(false);
+      setTextureStabilityRunMode(null);
+    }
+  };
+
+  const handleTextureModeChange = async (mode: 'stable' | 'hunyuan') => {
+    setTextureMode(mode);
+
+    if (mode === 'stable') {
+      setStatus('已切回稳定几何优先：优先产出可查看 GLB，可在资源充足时再做贴图增强。');
+      return;
+    }
+
+    if (modelProvider !== 'selfhost-triposg') {
+      setStatus('混元贴图增强只在自部署 TripoSG 链路中启用；当前 3D provider 会继续使用稳定几何。');
+      return;
+    }
+
+    if (providerStatusLoading) {
+      setStatus('正在同步 ComfyUI 资源状态；未确认前不会提交 Hunyuan3D-Paint。');
+      return;
+    }
+
+    const selfhost = providerStatus?.model3d.selfhostTriposg;
+    const needsDeepStatus = !selfhost?.status || !selfhost?.texture;
+    if (!needsDeepStatus) {
+      setStatus(buildHy3dTextureRunMessage(providerStatus));
+      return;
+    }
+
+    setProviderStatusLoading(true);
+    setStatus('正在检查混元贴图资源与 ComfyUI 队列；未通过资源保护前不会提交 Hunyuan3D-Paint。');
+    try {
+      const statusPayload = await fetchProviderStatus(true);
+      setProviderStatus(statusPayload);
+      setStatus(buildHy3dTextureRunMessage(statusPayload));
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : '混元贴图资源检查失败，当前仍可使用稳定几何链路。');
     } finally {
       setProviderStatusLoading(false);
     }
@@ -369,6 +708,17 @@ export function GenerationPanel({
       setStatus('请先输入生物结构描述，或上传一张参考图。');
       return;
     }
+    const forceImageRetry = canForceRetryImageProvider(providerStatus, nextImageProvider);
+    if (!isImageProviderReady(providerStatus, nextImageProvider) && !forceImageRetry) {
+      setStatus(buildImageProviderBlockedMessage(providerStatus, nextImageProvider));
+      trackEvent('workflow_reference_generate_failed', {
+        template: nextTemplate,
+        imageProvider: nextImageProvider,
+        reason: 'image-provider-not-ready',
+        source: options.eventSource || 'panel',
+      });
+      return;
+    }
 
     setBusy(true);
     setOperationStartedAt(getTimestamp());
@@ -376,7 +726,9 @@ export function GenerationPanel({
     setTemplate(nextTemplate);
     setImageProvider(nextImageProvider);
     setImageProfile(nextImageProfile);
-    setStatus(options.statusPrefix || `${getImageProviderName(nextImageProvider)} 正在生成 3D-ready 单图参考图...`);
+    setStatus(options.statusPrefix || (forceImageRetry
+      ? '正在绕过最近一次失败缓存重试 48760 文生图；如果标准规格仍失败，后端会自动尝试轻量规格。'
+      : `${getImageProviderName(nextImageProvider)} 正在生成 3D-ready 单图参考图...`));
     const shouldUseConfirmedPrompt =
       Boolean(confirmedPrompt?.imagePrompt) &&
       confirmedPrompt?.sourcePrompt.trim() === nextPrompt &&
@@ -401,6 +753,7 @@ export function GenerationPanel({
         provider: nextImageProvider,
         template: nextTemplate,
         ...(shouldUseConfirmedPrompt ? { imagePromptOverride: confirmedPrompt?.imagePrompt } : {}),
+        forceImageRetry,
         ...getImageProfileRequest(nextImageProfile),
       });
       setImageProfile(normalizeUiImageProfile(reference.imageProfile || nextImageProfile));
@@ -503,7 +856,29 @@ export function GenerationPanel({
       setStatus('请先输入生物结构术语或课堂描述。');
       return;
     }
-
+    const forceImageRetry = canForceRetryImageProvider(providerStatus, imageProvider);
+    if (!isImageProviderReady(providerStatus, imageProvider) && !forceImageRetry) {
+      setStatus(buildImageProviderBlockedMessage(providerStatus, imageProvider));
+      trackEvent('workflow_model_confirm_blocked', {
+        reason: 'image-provider-not-ready',
+        source: 'full-workflow',
+        template,
+        imageProvider,
+        provider: modelProvider,
+      });
+      return;
+    }
+    if (modelProvider === 'selfhost-triposg' && !isModel3dReady(providerStatus)) {
+      const message = buildModel3dBlockedMessage(providerStatus);
+      setStatus(message);
+      trackEvent('workflow_model_confirm_blocked', {
+        reason: 'model-resource-guard',
+        source: 'full-workflow',
+        template,
+        provider: modelProvider,
+      });
+      return;
+    }
     setBusy(true);
     setOperationStartedAt(getTimestamp());
     setReferenceImage(null);
@@ -513,7 +888,12 @@ export function GenerationPanel({
       setConfirmedPrompt(null);
     }
     setActiveJob(null);
-    setStatus('正在按默认链路执行：术语 → GPT prompt → 单图 → TripoSG → Hunyuan3D-Paint → Bio3D final GLB。');
+    const nextTextureMode = modelProvider === 'selfhost-triposg' ? textureMode : 'stable';
+    setStatus(forceImageRetry
+      ? '正在绕过 48760 最近失败缓存启动完整链路；标准生图失败后会自动降级到轻量图片规格，再接续图生 3D。'
+      : nextTextureMode === 'hunyuan'
+      ? `${buildHy3dTextureRunMessage(providerStatus)} 正在按贴图增强链路执行：术语 → GPT prompt → 单图 → TripoSG → Hunyuan3D-Paint/Bio3D fallback → final GLB。`
+      : '正在按稳定链路执行：术语 → GPT prompt → 单图 → TripoSG → Bio3D final GLB。');
     trackEvent('workflow_full_run_start', {
       template,
       imageProvider,
@@ -522,6 +902,7 @@ export function GenerationPanel({
       imageSize: getImageProfileOption(imageProfile).size,
       imageQuality: getImageProfileOption(imageProfile).quality,
       provider: modelProvider,
+      textureMode: nextTextureMode,
       promptLength: prompt.trim().length,
       promptConfirmed: confirmedPromptMatchesCurrent,
     });
@@ -530,7 +911,9 @@ export function GenerationPanel({
       const { reference, job } = await createFullTextTo3dJob({
         prompt: prompt.trim(),
         provider: modelProvider,
+        textureMode: nextTextureMode,
         imageProvider,
+        forceImageRetry,
         ...getImageProfileRequest(imageProfile),
         template,
         ...(confirmedPromptMatchesCurrent ? { imagePromptOverride: confirmedPrompt?.imagePrompt } : {}),
@@ -558,6 +941,7 @@ export function GenerationPanel({
         costEstimateCny: job.costEstimateCny,
         referenceId: reference?.id ?? job.referenceId,
         workflowMode: job.workflowMode,
+        textureMode: job.textureMode,
         imageProvider: job.imageProvider,
         imageProfile: job.imageProfile || imageProfile,
         imageSize: job.imageSize || getImageProfileOption(imageProfile).size,
@@ -637,7 +1021,18 @@ export function GenerationPanel({
       });
       return;
     }
-
+    if (nextModelProvider === 'selfhost-triposg' && !isModel3dReady(providerStatus)) {
+      const message = buildModel3dBlockedMessage(providerStatus);
+      setStatus(message);
+      trackEvent('workflow_model_confirm_blocked', {
+        reason: 'model-resource-guard',
+        source: options.eventSource || 'panel',
+        template: nextTemplate,
+        provider: nextModelProvider,
+        referenceId: nextReference.id,
+      });
+      return;
+    }
     setBusy(true);
     setOperationStartedAt(getTimestamp());
     setPrompt(nextPrompt);
@@ -647,12 +1042,16 @@ export function GenerationPanel({
     setModelProvider(nextModelProvider);
     setReferenceImage(nextReference);
     setReferenceAccepted(true);
-    setStatus('已确认参考图，正在创建图生 3D 建模任务...');
+    const nextTextureMode = nextModelProvider === 'selfhost-triposg' ? textureMode : 'stable';
+    setStatus(nextTextureMode === 'hunyuan'
+      ? `${buildHy3dTextureRunMessage(providerStatus)} 已确认参考图，正在创建图生 3D 建模任务...`
+      : '已确认参考图，正在创建图生 3D 建模任务...');
     trackEvent('workflow_model_confirm', {
       template: nextTemplate,
       provider: nextModelProvider,
       imageProvider: nextImageProvider,
       imageProfile: nextImageProfile,
+      textureMode: nextModelProvider === 'selfhost-triposg' ? textureMode : 'stable',
       imageSize: getImageProfileOption(nextImageProfile).size,
       imageQuality: getImageProfileOption(nextImageProfile).quality,
       referenceId: nextReference.id,
@@ -670,6 +1069,7 @@ export function GenerationPanel({
         imageProvider: nextImageProvider,
         ...getImageProfileRequest(nextImageProfile),
         referenceId: nextReference.id,
+        textureMode: nextTextureMode,
       });
       setActiveJob(job);
       setDetailsOpen(true);
@@ -681,6 +1081,7 @@ export function GenerationPanel({
         provider: job.provider,
         costEstimateCny: job.costEstimateCny,
         workflowMode: job.workflowMode,
+        textureMode: job.textureMode,
         imageProvider: job.imageProvider,
         imageProfile: job.imageProfile || nextImageProfile,
         imageSize: job.imageSize || getImageProfileOption(nextImageProfile).size,
@@ -701,15 +1102,29 @@ export function GenerationPanel({
   };
 
   const handleSelectJob = (job: WorkflowJob) => {
+    hydrateJobIntoWorkspace(job, {
+      acceptReference: Boolean(job.referenceId),
+      keepPrompt: true,
+    });
+    setActiveJob(job);
+    setJobHistory((current) => mergeJobs(job, current));
+    setDetailsOpen(true);
+
+    if (job.status === 'failed') {
+      setBusy(false);
+      setOperationStartedAt(null);
+      setStatus(
+        isSelfhostJobResumable(job)
+          ? '远端三维输出暂未完成；已保留 ComfyUI prompt_id，请先诊断远端，恢复后再续接输出。'
+          : job.error || job.stage || '生成任务失败。'
+      );
+      return;
+    }
+
     applyWorkflowJobUpdate(job, {
       selectModel: true,
       statusOverride: job.error || job.stage,
       trackCompletion: false,
-    });
-    setDetailsOpen(true);
-    hydrateJobIntoWorkspace(job, {
-      acceptReference: Boolean(job.referenceId),
-      keepPrompt: true,
     });
   };
 
@@ -739,6 +1154,13 @@ export function GenerationPanel({
 
   const handleResumeActiveJob = async () => {
     if (!activeJob || syncingJobId) return;
+    const activeDiagnostics = getDiagnosticsForJob(activeJob, diagnostics);
+    const shouldDiagnoseFirst = shouldDiagnoseBeforeResume(activeJob, providerStatus, activeDiagnostics);
+    if (shouldDiagnoseFirst) {
+      setDetailsOpen(true);
+      setStatus(buildResumeBlockedReason(activeJob, providerStatus, activeDiagnostics));
+      return;
+    }
     setSyncingJobId(activeJob.id);
     setBusy(true);
     setOperationStartedAt(getTimestamp());
@@ -817,6 +1239,43 @@ export function GenerationPanel({
     setStatus('已切换到该任务生成的 3D 模型。');
   };
 
+  const handleTextureEnhanceActiveJob = async () => {
+    if (!activeJob?.referenceId && !activeJob?.reference?.id) {
+      setStatus('当前任务缺少可复用参考图，无法提交混元贴图增强。');
+      return;
+    }
+    if (activeJob.provider !== 'selfhost-triposg') {
+      setStatus('只有自部署 TripoSG 任务可以继续做混元贴图增强。');
+      return;
+    }
+    setTextureMode('hunyuan');
+    setSyncingJobId(activeJob.id);
+    setBusy(true);
+    setOperationStartedAt(getTimestamp());
+    setStatus(`${buildHy3dTextureRunMessage(providerStatus)} 正在提交贴图后处理：复用当前 raw GLB，不重跑 TripoSG。`);
+    trackEvent('workflow_job_manual_sync', {
+      jobId: activeJob.id,
+      provider: activeJob.provider,
+      status: activeJob.status,
+      action: 'hy3dpaint-enhance-existing-raw',
+    });
+
+    try {
+      const job = await createTextureEnhancementJob(activeJob.id);
+      applyWorkflowJobUpdate(job, {
+        statusOverride: job.stage || '已开始混元贴图后处理：复用 raw GLB，不重跑 TripoSG。',
+        trackCompletion: false,
+      });
+      setDetailsOpen(true);
+    } catch (error) {
+      setBusy(false);
+      setOperationStartedAt(null);
+      setStatus(error instanceof Error ? error.message : '混元贴图增强任务创建失败。');
+    } finally {
+      setSyncingJobId(null);
+    }
+  };
+
   const handleResultReviewAction = async (action: 'view-model' | 'open-reference' | 'download-model' | 'copy-prompt') => {
     if (!activeJob) return;
     trackEvent('workflow_result_review_action', {
@@ -848,6 +1307,13 @@ export function GenerationPanel({
       void handleCreateReference();
       return;
     }
+    if (actionId === 'upload-reference') {
+      imageInputRef.current?.click();
+      setStatus(selectedImageProviderShortMessage
+        ? `${selectedImageProviderShortMessage} 请选择一张清晰白底参考图，上传后可继续图生 3D。`
+        : '请选择一张清晰白底参考图，上传后可继续图生 3D。');
+      return;
+    }
     if (actionId === 'accept-reference') {
       handleAcceptReference();
       return;
@@ -856,8 +1322,16 @@ export function GenerationPanel({
       void handleConfirmModeling();
       return;
     }
+    if (actionId === 'refresh-preflight') {
+      void handleRefreshProviderStatus();
+      return;
+    }
     if (actionId === 'sync-job') {
       void handleSyncActiveJob();
+      return;
+    }
+    if (actionId === 'diagnose-job') {
+      void handleDiagnoseActiveJob();
       return;
     }
     if (actionId === 'resume-job') {
@@ -879,10 +1353,13 @@ export function GenerationPanel({
 
   const isRecommendedNextActionEnabled = (actionId: ReturnType<typeof buildWorkflowNextAction>['id']) => {
     if (actionId === 'write-prompt') return true;
+    if (actionId === 'upload-reference') return !busy;
     if (actionId === 'generate-reference') return canCreateReference;
     if (actionId === 'accept-reference') return Boolean(referenceImage && !busy);
     if (actionId === 'confirm-modeling') return canConfirmModeling;
+    if (actionId === 'refresh-preflight') return !providerStatusLoading;
     if (actionId === 'sync-job') return Boolean(activeJob && !syncingJobId);
+    if (actionId === 'diagnose-job') return Boolean(canDiagnoseActiveJob && !diagnosingJobId);
     if (actionId === 'resume-job') return Boolean(canResumeActiveJob && !syncingJobId);
     if (actionId === 'view-model') return Boolean(activeJob?.result);
     return Boolean(activeJob);
@@ -897,6 +1374,7 @@ export function GenerationPanel({
     setImageProvider(normalizeUiImageProvider(job.imageProvider || imageProvider));
     setImageProfile(normalizeUiImageProfile(job.imageProfile || imageProfile));
     setModelProvider(job.provider || modelProvider);
+    setTextureMode(job.textureMode === 'hunyuan' ? 'hunyuan' : 'stable');
     if (job.reference) {
       setReferenceImage(toReferenceImage(job.reference, false));
       setReferenceAccepted(Boolean(options.acceptReference));
@@ -961,13 +1439,33 @@ export function GenerationPanel({
   };
 
   const progress = activeJob?.progress ?? 0;
-  const canCreateReference = !busy && prompt.trim().length >= 6;
-  const canConfirmModeling = !busy && !!referenceImage && referenceAccepted && activeJob?.status !== 'completed' && activeJob?.status !== 'processing' && activeJob?.status !== 'queued';
+  const diagnosticsForActiveJob = getDiagnosticsForJob(activeJob, diagnostics);
+  const resumeShouldDiagnoseFirst = shouldDiagnoseBeforeResume(activeJob, providerStatus, diagnosticsForActiveJob);
+  const resumeBlockedReason = resumeShouldDiagnoseFirst
+    ? buildResumeBlockedReason(activeJob, providerStatus, diagnosticsForActiveJob)
+    : null;
+  const model3dReady = isModel3dReady(providerStatus);
+  const canSubmitModeling = modelProvider !== 'selfhost-triposg' || model3dReady;
+  const canConfirmModeling = !busy && canSubmitModeling && !!referenceImage && referenceAccepted && activeJob?.status !== 'completed' && activeJob?.status !== 'processing' && activeJob?.status !== 'queued';
   const selectedProviderOnline = isImageProviderReady(providerStatus, imageProvider);
+  const selectedProviderForceRetry = canForceRetryImageProvider(providerStatus, imageProvider);
+  const selectedImageProviderBlockedMessage = !providerStatusLoading && !selectedProviderOnline
+    ? buildImageProviderBlockedMessage(providerStatus, imageProvider)
+    : null;
+  const selectedImageProviderShortMessage = selectedImageProviderBlockedMessage
+    ? buildImageProviderFallbackMessage(providerStatus, imageProvider)
+    : null;
+  const canPreviewPrompt = !busy && prompt.trim().length >= 6;
+  const canCreateReference = canPreviewPrompt && (selectedProviderOnline || selectedProviderForceRetry);
   const selectedProviderLabel = getImageProviderName(imageProvider);
   const gatewayRouteHint = buildGatewayRouteHint(providerStatus, imageProvider);
-  const model3dReady = isModel3dReady(providerStatus);
-  const activeChainSummary = buildActiveChainSummary(providerStatus, imageProvider, modelProvider);
+  const model3dBlockKind = modelProvider === 'selfhost-triposg' && providerStatus && !model3dReady
+    ? getModel3dBlockKind(providerStatus)
+    : null;
+  const model3dBlockedMessage = model3dBlockKind
+    ? buildModel3dBlockedMessage(providerStatus)
+    : null;
+  const activeChainSummary = buildActiveChainSummary(providerStatus, imageProvider, modelProvider, textureMode);
   const selectedModelProviderLabel = getModelProviderName(modelProvider);
   const stageMonitor = buildStageMonitor({
     activeJob,
@@ -980,7 +1478,11 @@ export function GenerationPanel({
     referenceAccepted,
     referenceImage,
   });
-  const latestGeneratedModel = generatedModels[0];
+  const latestCompletedJob = newestJob(
+    [activeJob, ...jobHistory].filter((job): job is WorkflowJob => Boolean(job?.result?.modelUrl && job.status === 'completed'))
+  );
+  const latestCompletedJobModel = latestCompletedJob ? workflowJobToCellModel(latestCompletedJob) : null;
+  const latestGeneratedModel = latestCompletedJobModel || selectNewestGeneratedModel(generatedModels);
   const taskWatch = activeJob ? buildTaskWatch(activeJob, clockNow) : null;
   const latestGeneratedName = latestGeneratedModel ? formatGeneratedModelName(latestGeneratedModel.name) : '';
   const latestResultLabel = latestGeneratedModel
@@ -1024,6 +1526,9 @@ export function GenerationPanel({
   const modelOutputChain = activeJob?.result ? buildModelOutputChain(activeJob) : null;
   const canResumeActiveJob = isSelfhostJobResumable(activeJob);
   const canDiagnoseActiveJob = isSelfhostJobDiagnosable(activeJob);
+  const canTextureEnhanceActiveJob = canEnhanceWithHy3dTexture(activeJob);
+  const hy3dTextureReady = isHy3dTextureReady(providerStatus);
+  const hy3dTextureMessage = buildHy3dTextureStatusMessage(providerStatus);
   const workflowPreflight = buildWorkflowPreflight({
     status: providerStatus,
     loading: providerStatusLoading,
@@ -1038,24 +1543,35 @@ export function GenerationPanel({
     referenceAccepted,
     activeJob,
     canResumeActiveJob,
+    canDiagnoseActiveJob,
+    resumeShouldDiagnoseFirst,
+    resumeBlockedReason,
+    imageProviderReady: selectedProviderOnline,
+    imageProviderChecking: providerStatusLoading,
+    imageProviderBlockedReason: selectedImageProviderShortMessage,
+    canUploadReference: !busy,
+    model3dReady,
+    model3dBlockedKind: model3dBlockKind,
+    model3dBlockedReason: model3dBlockedMessage,
     syncing: Boolean(syncingJobId),
   });
   const resultReview = activeJob?.status === 'completed' && activeJob.result
     ? buildResultReview(activeJob)
     : null;
+  const textureResultStatus = resultReview ? buildTextureResultStatus(activeJob) : null;
   const jobHistorySummary = buildJobHistorySummary(jobHistory, activeJob);
   const visibleJobHistory = jobHistorySummary.visible;
   const hiddenJobCount = jobHistorySummary.hiddenCount;
   const quickStatusItems = [
     {
       label: '图片',
-      value: providerStatusLoading ? '检查中' : selectedProviderOnline ? '正常' : '需检查',
+      value: providerStatusLoading ? '检查中' : selectedProviderOnline ? '正常' : selectedProviderForceRetry ? '可重试' : '需检查',
       state: providerStatusLoading ? 'pending' : selectedProviderOnline ? 'ok' : 'warn',
     },
     {
       label: '3D',
-      value: providerStatusLoading ? '同步中' : model3dReady ? '就绪' : '需检查',
-      state: providerStatusLoading ? 'pending' : model3dReady ? 'ok' : 'warn',
+      value: providerStatusLoading ? '同步中' : getModel3dStatusLabel(providerStatus),
+      state: providerStatusLoading ? 'pending' : getModel3dStatusClass(providerStatus),
     },
     {
       label: '阶段',
@@ -1075,11 +1591,66 @@ export function GenerationPanel({
     activeJob,
     selectedProviderOnline,
     model3dReady,
+    model3dBlockKind,
+    resumeShouldDiagnoseFirst,
     providerStatusLoading,
   });
+  const runtimeRailItems = buildRuntimeRail({
+    status: providerStatus,
+    loading: providerStatusLoading,
+    imageProvider,
+    modelProvider,
+  });
+  const modelRoleItems = buildModelRoleRail({
+    status: providerStatus,
+    loading: providerStatusLoading,
+    imageProvider,
+    modelProvider,
+  });
+  const textureResourcePlan = buildTextureResourcePlan({
+    status: providerStatus,
+    loading: providerStatusLoading,
+    imageProvider,
+    modelProvider,
+    textureMode,
+  });
+  const workflowGuardSummary = buildWorkflowGuardSummary({
+    status: providerStatus,
+    loading: providerStatusLoading,
+    imageProvider,
+    modelProvider,
+  });
+  const chainReadiness = buildChainReadiness({
+    status: providerStatus,
+    loading: providerStatusLoading,
+    imageProvider,
+    modelProvider,
+    textureMode,
+  });
+  const textureArtifactHealth = buildTextureArtifactHealth(textureArtifactStatus, textureArtifactLoading);
+  const textureStabilityHealth = buildTextureStabilityHealth(
+    textureStabilityStatus,
+    textureStabilityLoading,
+    textureStabilityRunning || Boolean(textureStabilityStatus?.running),
+  );
+  const textureStabilityBusy = textureStabilityRunning || Boolean(textureStabilityStatus?.running);
+  const textureArtifactCheckedAt = textureArtifactStatus?.generatedAt
+    ? formatRelativeTime(textureArtifactStatus.generatedAt, clockNow)
+    : textureArtifactLoading
+      ? '同步中'
+      : '未检查';
+  const textureStabilityCheckedAt = textureStabilityStatus?.generatedAt
+    ? formatRelativeTime(textureStabilityStatus.generatedAt, clockNow)
+    : textureStabilityLoading
+      ? '同步中'
+      : '未运行';
+  const referenceQualityGate = referenceImage ? buildReferenceQualityGate(referenceImage) : null;
+  const imageFallbackNotice = selectedImageProviderShortMessage
+    ? `${selectedImageProviderShortMessage} 上传图片后仍可走图生 3D，队列与内存保护会继续生效。`
+    : null;
 
   return (
-    <section className="generation-panel" id={id} data-testid="generation-panel">
+    <section className={`generation-panel${captureMode ? ' generation-panel--capture' : ''}`} id={id} data-testid="generation-panel">
       <div>
         <span className="generation-eyebrow">§ 01 — WORKFLOW DESK</span>
         <h2>生成工坊</h2>
@@ -1108,10 +1679,10 @@ export function GenerationPanel({
           <p>{confirmedPromptMatchesCurrent ? '参考图会使用已确认版本，降低构图漂移。' : '先让 GPT-5.5 打磨单图 prompt，再生成参考图或完整生成。'}</p>
         </div>
         <div className="prompt-approval-actions">
-          <button type="button" onClick={handlePreviewPrompt} disabled={!canCreateReference || busy} data-testid="preview-prompt">
+          <button type="button" onClick={handlePreviewPrompt} disabled={!canPreviewPrompt} data-testid="preview-prompt">
             预览提示词
           </button>
-          <button type="button" onClick={handleRegeneratePrompt} disabled={!canCreateReference || busy} data-testid="regenerate-prompt">
+          <button type="button" onClick={handleRegeneratePrompt} disabled={!canPreviewPrompt} data-testid="regenerate-prompt">
             重新生成提示词
           </button>
           <button type="button" onClick={handleConfirmPrompt} disabled={!promptPreviewMatchesCurrent || busy || confirmedPromptMatchesCurrent} data-testid="confirm-prompt">
@@ -1119,42 +1690,6 @@ export function GenerationPanel({
           </button>
         </div>
       </section>
-
-      {visibleJobHistory.length > 0 && (
-        <div className="job-history" data-testid="job-history-compact">
-          <div className="job-history-title">
-            <span>队列摘要</span>
-            <strong>{jobHistorySummary.liveCount > 0 ? `${jobHistorySummary.liveCount} 个运行中` : '最近 2 条'}</strong>
-            <em>{hiddenJobCount > 0 ? `已收纳 ${hiddenJobCount} 条` : `共 ${jobHistorySummary.totalCount} 条`}</em>
-          </div>
-          {visibleJobHistory.map((job, index) => (
-            <button
-              type="button"
-              className={`job-row history-slot-${index + 1} ${job.status}${activeJob?.id === job.id ? ' active' : ''}`}
-              key={job.id}
-              onClick={() => handleSelectJob(job)}
-            >
-              <span>
-                <small>{getWorkflowModeLabel(job.workflowMode || 'image-to-3d')} · {getShortJobId(job.id)}</small>
-                <em>{job.prompt}</em>
-              </span>
-              <strong>{job.status === 'completed' ? '完成' : job.status === 'failed' ? '失败' : `${job.progress}%`}</strong>
-            </button>
-          ))}
-          <p className="job-history-note">队列不展开滚动，完整记录保留在本地任务接口。</p>
-        </div>
-      )}
-
-      {promptPreview?.imagePrompt && (
-        <div className={`prompt-preview-card inline${confirmedPromptMatchesCurrent ? ' confirmed' : ''}`} aria-label="3D-ready prompt 预览" data-testid="prompt-preview-card">
-          <div>
-            <span>3D-READY PROMPT</span>
-            <strong>{confirmedPromptMatchesCurrent ? '已确认' : promptPreview.model}</strong>
-          </div>
-          <p>{promptPreview.imagePrompt}</p>
-          <em>{confirmedPromptMatchesCurrent ? '下一步可以生成参考图或直接完整生成。' : '检查构图、剖面和白底单图要求后，点击“确认提示词”。'}</em>
-        </div>
-      )}
 
       <div className="generation-actions" id="workflow-actions" aria-label="生成操作">
         <section className={`workflow-next-action ${nextAction.state}`} aria-label="推荐下一步" data-testid="workflow-next-action">
@@ -1171,6 +1706,34 @@ export function GenerationPanel({
             {nextAction.label}
           </button>
         </section>
+        <div className="generation-action-main" aria-label="主流程操作">
+          <button type="button" className={`generation-primary${recommendedActionTestId === 'generate-reference' ? ' is-recommended' : ''}`} onClick={handleCreateReference} disabled={!canCreateReference} data-testid="generate-reference">
+            生成参考图
+          </button>
+          <button type="button" className="generation-primary full-action" onClick={handleRunFullWorkflow} disabled={!canCreateReference || busy || !canSubmitModeling} title={textureResourcePlan.strategy.detail} data-testid="run-full-workflow">
+            完整生成
+          </button>
+          <button type="button" className={`generation-primary confirm-action${recommendedActionTestId === 'confirm-modeling' ? ' is-recommended' : ''}`} onClick={handleConfirmModeling} disabled={!canConfirmModeling} title={textureResourcePlan.strategy.detail} data-testid="confirm-modeling">
+            确认建模
+          </button>
+        </div>
+        <div className={`generation-path-strategy ${textureResourcePlan.strategy.state}`} aria-label="本次 3D 路径" data-testid="generation-path-strategy" title={textureResourcePlan.strategy.detail}>
+          <span>本次 3D 路径</span>
+          <strong>{textureResourcePlan.strategy.value}</strong>
+          <small>{textureResourcePlan.strategy.detail}</small>
+        </div>
+        {model3dBlockedMessage && (
+          <div className={`generation-resource-guard ${model3dBlockKind || 'sync'}`} role="status" data-testid="generation-resource-guard">
+            <span>{getModel3dBlockLabel(model3dBlockKind)}</span>
+            <strong>{model3dBlockedMessage}</strong>
+          </div>
+        )}
+        {imageFallbackNotice && (
+          <div className="image-fallback-notice" role="status" data-testid="image-fallback-notice">
+            <span>图片上游</span>
+            <strong>{imageFallbackNotice}</strong>
+          </div>
+        )}
         <div className="generation-action-status" aria-label="当前链路节点" data-testid="generation-action-status">
           {actionStatusItems.map((item) => (
             <span className={item.state} key={item.label}>
@@ -1179,22 +1742,11 @@ export function GenerationPanel({
             </span>
           ))}
         </div>
-        <div className="generation-action-main" aria-label="主流程操作">
-          <button type="button" className={`generation-primary${recommendedActionTestId === 'generate-reference' ? ' is-recommended' : ''}`} onClick={handleCreateReference} disabled={!canCreateReference} data-testid="generate-reference">
-            生成参考图
-          </button>
-          <button type="button" className="generation-primary full-action" onClick={handleRunFullWorkflow} disabled={!canCreateReference || busy} data-testid="run-full-workflow">
-            完整生成
-          </button>
-          <button type="button" className={`generation-primary confirm-action${recommendedActionTestId === 'confirm-modeling' ? ' is-recommended' : ''}`} onClick={handleConfirmModeling} disabled={!canConfirmModeling} data-testid="confirm-modeling">
-            确认建模
-          </button>
-        </div>
         <div className="generation-action-secondary" aria-label="辅助操作">
-          <button type="button" className="generation-secondary" onClick={() => imageInputRef.current?.click()} disabled={busy} data-testid="upload-reference-image">
+          <button type="button" className={`generation-secondary${recommendedActionTestId === 'upload-reference-image' ? ' is-recommended' : ''}`} onClick={() => imageInputRef.current?.click()} disabled={busy} data-testid="upload-reference-image">
             上传图片
           </button>
-          <button type="button" className="generation-secondary" onClick={handleCreateReference} disabled={!canCreateReference} data-testid="retry-reference-image">
+          <button type="button" className="generation-secondary" onClick={handleCreateReference} disabled={!canCreateReference} title={selectedImageProviderBlockedMessage || undefined} data-testid="retry-reference-image">
             重试图片
           </button>
           <button type="button" className={`generation-secondary${recommendedActionTestId === 'accept-reference-image' ? ' is-recommended' : ''}`} onClick={handleAcceptReference} disabled={!referenceImage || busy} data-testid="accept-reference-image">
@@ -1211,6 +1763,326 @@ export function GenerationPanel({
           </button>
         </div>
       </div>
+
+      <section className={`workflow-guard-summary ${workflowGuardSummary.state}`} aria-label="链路守护摘要" data-testid="workflow-guard-summary">
+        <div>
+          <span>链路守护摘要</span>
+          <strong>{workflowGuardSummary.title}</strong>
+          <p>{workflowGuardSummary.detail}</p>
+        </div>
+        <div className="workflow-guard-chips">
+          {workflowGuardSummary.chips.map((chip) => (
+            <span className={chip.state} key={chip.id}>
+              <small>{chip.label}</small>
+              <strong>{chip.value}</strong>
+            </span>
+          ))}
+        </div>
+      </section>
+
+      <section className={`chain-readiness ${chainReadiness.state}`} aria-label="文生图到图生3D链路就绪" data-testid="chain-readiness">
+        <div className="chain-readiness-copy">
+          <span>链路就绪</span>
+          <div className={`chain-readiness-title ${chainReadiness.badge.state}`}>
+            <strong>{chainReadiness.title}</strong>
+            <em data-testid="chain-readiness-badge">
+              <small>{chainReadiness.badge.label}</small>
+              {chainReadiness.badge.value}
+            </em>
+          </div>
+          <p>{chainReadiness.detail}</p>
+        </div>
+        <div className="chain-readiness-steps" aria-label="链路分步状态">
+          {chainReadiness.steps.map((step) => (
+            <span className={step.state} key={step.id} title={step.note}>
+              <small>{step.label}</small>
+              <strong>{step.value}</strong>
+              <em>{step.note}</em>
+            </span>
+          ))}
+        </div>
+      </section>
+
+      <section className={`texture-mode-card ${textureMode === 'hunyuan' ? 'enhanced' : 'stable'}`} aria-label="3D 贴图模式" data-testid="texture-mode-card">
+        <div>
+          <span>3D 贴图模式</span>
+          <strong>{textureMode === 'hunyuan' ? '混元贴图增强' : '稳定几何优先'}</strong>
+          <p>{textureMode === 'hunyuan'
+            ? hy3dTextureReady
+              ? '会复用 raw GLB 调用 Hunyuan3D-Paint；失败时自动嵌入参考图做轻量贴图 fallback。'
+              : '资源保护时先完成稳定 GLB；资源不过线会嵌入参考图写入轻量贴图 fallback。'
+            : '默认优先产出可用几何模型；白模不是失败，需要贴图时再做增强。'}</p>
+          <div className={`texture-submit-strategy ${textureResourcePlan.strategy.state}`} aria-label="贴图提交策略" data-testid="texture-submit-strategy" title={textureResourcePlan.strategy.detail}>
+            <span>{textureResourcePlan.strategy.label}</span>
+            <strong>{textureResourcePlan.strategy.value}</strong>
+            <small>{textureResourcePlan.strategy.detail}</small>
+          </div>
+        </div>
+        <div className="texture-mode-actions" role="group" aria-label="选择贴图模式">
+          <button
+            type="button"
+            className={textureMode === 'stable' ? 'active' : ''}
+            onClick={() => void handleTextureModeChange('stable')}
+            disabled={busy}
+            data-testid="texture-mode-stable"
+          >
+            稳定几何
+          </button>
+          <button
+            type="button"
+            className={textureMode === 'hunyuan' ? 'active' : ''}
+            onClick={() => void handleTextureModeChange('hunyuan')}
+            disabled={busy}
+            title={hy3dTextureMessage}
+            data-testid="texture-mode-hunyuan"
+          >
+            混元贴图
+          </button>
+        </div>
+        <div className="texture-mode-safety" aria-label="贴图资源安全边界" data-testid="texture-mode-safety">
+          {textureResourcePlan.items
+            .filter((item) => item.id === 'memory' || item.id === 'vram' || item.id === 'time')
+            .map((item) => (
+              <span className={item.state} key={item.id} title={item.note}>
+                <small>{item.label}</small>
+                <strong>{item.value}</strong>
+              </span>
+            ))}
+        </div>
+        <em>{hy3dTextureMessage}</em>
+      </section>
+
+      <section className={`texture-preflight-card ${textureStabilityHealth.state}`} aria-label="贴图只读预检" aria-live="polite" data-testid="texture-stability-preflight-card">
+        <div className="texture-preflight-copy">
+          <span>连续白模换原贴图</span>
+          <strong>{textureStabilityHealth.title}</strong>
+          <p>{textureStabilityHealth.detail}</p>
+          <div className="texture-path-strip" aria-label="贴图路径状态" data-testid="texture-stability-path-strip">
+            {textureStabilityHealth.paths.map((path) => (
+              <span className={path.state} key={path.id} title={path.note}>
+                <small>{path.label}</small>
+                <strong>{path.value}</strong>
+              </span>
+            ))}
+          </div>
+          <em data-testid="texture-stability-feedback">{textureStabilityFeedback}</em>
+        </div>
+        <div className="texture-preflight-action" data-testid="texture-stability-latest">
+          <button
+            type="button"
+            onClick={() => void handleRunTextureStability()}
+            disabled={textureStabilityBusy}
+            title="只读预检 raw GLB、参考图与资源闸门，不提交远端混元重任务"
+            data-testid="run-texture-stability"
+          >
+            {textureStabilityRunMode === 'dry-run' ? '预检中' : '只读预检'}
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleRunTextureFallbackLongCheck()}
+            disabled={textureStabilityBusy}
+            title="串行运行 3 次轻量 fallback 贴图验证，不调用远端 Hunyuan3D-Paint"
+            data-testid="run-texture-fallback-long-check"
+          >
+            {textureStabilityRunMode === 'fallback-long-check' ? '长测中' : '轻量长测'}
+          </button>
+          <small data-testid="texture-stability-checked-at">最近验证：{textureStabilityCheckedAt}</small>
+          {textureStabilityHealth.latest?.modelUrl ? (
+            <a href={textureStabilityHealth.latest.modelUrl} target="_blank" rel="noreferrer" data-testid="texture-stability-open-model">
+              最后一轮 GLB
+            </a>
+          ) : (
+            <em>不提交重任务</em>
+          )}
+        </div>
+      </section>
+
+      <details className="generation-inspector" data-testid="generation-inspector">
+        <summary>
+          <span>链路巡检</span>
+          <strong>{workflowPreflight.title}</strong>
+          <em>{textureArtifactHealth.title}</em>
+        </summary>
+        <div className="generation-inspector-body">
+          <section className={`model-role-card ${textureResourcePlan.state}`} aria-label="模型角色与贴图资源计划" data-testid="model-role-card">
+            <div className="model-role-copy">
+              <span>模型角色</span>
+              <strong>{textureResourcePlan.title}</strong>
+              <p>{textureResourcePlan.detail}</p>
+            </div>
+            <div className="model-role-rail" aria-label="当前模型分工">
+              {modelRoleItems.map((item) => (
+                <span className={item.state} key={item.id} title={item.note}>
+                  <small>{item.label}</small>
+                  <strong>{item.value}</strong>
+                  <em>{item.note}</em>
+                </span>
+              ))}
+            </div>
+            <div className="texture-resource-rail" aria-label="贴图资源与耗时预估">
+              {textureResourcePlan.items.map((item) => (
+                <span className={item.state} key={item.id} title={item.note}>
+                  <small>{item.label}</small>
+                  <strong>{item.value}</strong>
+                  <em>{item.note}</em>
+                </span>
+              ))}
+            </div>
+          </section>
+
+          <section className={`texture-artifact-health ${textureArtifactHealth.state}`} aria-label="贴图产物健康检查" aria-live="polite" data-testid="texture-artifact-health">
+            <div className="texture-artifact-copy">
+              <div className="texture-artifact-title-row">
+                <span>贴图产物健康</span>
+                <div className="texture-artifact-actions">
+                  <button
+                    type="button"
+                    onClick={() => void handleRefreshTextureArtifacts()}
+                    disabled={textureArtifactLoading}
+                    title="只读取现有 GLB 缓存，不提交 Hunyuan3D-Paint 任务"
+                    data-testid="refresh-texture-artifacts"
+                  >
+                    {textureArtifactLoading ? '检查中' : '只读刷新'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleRunTextureStability()}
+                    disabled={textureStabilityBusy}
+                    title="只读预检 raw GLB、参考图与资源闸门，不提交远端混元重任务"
+                  >
+                    {textureStabilityRunMode === 'dry-run' ? '预检中' : '只读预检'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleRunTextureFallbackLongCheck()}
+                    disabled={textureStabilityBusy}
+                    title="串行运行 3 次轻量 fallback 贴图验证，不调用远端 Hunyuan3D-Paint"
+                  >
+                    {textureStabilityRunMode === 'fallback-long-check' ? '长测中' : '轻量长测'}
+                  </button>
+                </div>
+              </div>
+              <strong>{textureArtifactHealth.title}</strong>
+              <p>{textureArtifactHealth.detail}</p>
+              <em data-testid="texture-artifact-checked-at">最近检查：{textureArtifactCheckedAt} · 不提交重任务</em>
+              <em data-testid="texture-artifact-feedback">{textureArtifactFeedback}</em>
+              {textureArtifactHealth.latest && (
+                <div className={`texture-artifact-latest ${textureArtifactHealth.latest.state}`} data-testid="texture-artifact-latest">
+                  <span>最新产物</span>
+                  <strong>{textureArtifactHealth.latest.mode} · {textureArtifactHealth.latest.fileSize}</strong>
+                  <small>{textureArtifactHealth.latest.verdict}</small>
+                  {textureArtifactHealth.latest.modelUrl ? (
+                    <a href={textureArtifactHealth.latest.modelUrl} target="_blank" rel="noreferrer" data-testid="texture-artifact-open-model">
+                      打开 GLB
+                    </a>
+                  ) : (
+                    <em>本地链接缺失</em>
+                  )}
+                </div>
+              )}
+              <div className="texture-path-strip compact" aria-label="贴图路径状态" data-testid="texture-artifact-path-strip">
+                {textureArtifactHealth.paths.map((path) => (
+                  <span className={path.state} key={path.id} title={path.note}>
+                    <small>{path.label}</small>
+                    <strong>{path.value}</strong>
+                  </span>
+                ))}
+              </div>
+              <div className={`texture-stability-latest ${textureStabilityHealth.state}`} data-testid="texture-stability-latest-detail">
+                <span>连续白模换原贴图</span>
+                <strong>{textureStabilityHealth.title}</strong>
+                <small>{textureStabilityHealth.detail}</small>
+                <em data-testid="texture-stability-feedback-detail">{textureStabilityFeedback}</em>
+                <em data-testid="texture-stability-checked-at-detail">最近验证：{textureStabilityCheckedAt}</em>
+                {textureStabilityHealth.latest?.modelUrl ? (
+                  <a href={textureStabilityHealth.latest.modelUrl} target="_blank" rel="noreferrer" data-testid="texture-stability-open-model-detail">
+                    最后一轮 GLB
+                  </a>
+                ) : null}
+              </div>
+            </div>
+            <div className="texture-artifact-chips" aria-label="最近贴图产物检查摘要">
+              {textureArtifactHealth.chips.map((chip) => (
+                <span className={chip.state} key={chip.id}>
+                  <small>{chip.label}</small>
+                  <strong>{chip.value}</strong>
+                </span>
+              ))}
+              {textureStabilityHealth.chips.map((chip) => (
+                <span className={chip.state} key={`stability-${chip.id}`}>
+                  <small>{chip.label}</small>
+                  <strong>{chip.value}</strong>
+                </span>
+              ))}
+            </div>
+          </section>
+
+          <div className="runtime-rail" aria-label="生成链路运行仪表" data-testid="runtime-rail">
+            {runtimeRailItems.map((item) => (
+              <span className={item.state} key={item.id} title={item.note}>
+                <small>{item.label}</small>
+                <strong>{item.value}</strong>
+                <em>{item.note}</em>
+              </span>
+            ))}
+          </div>
+
+          {visibleJobHistory.length > 0 && (
+            <div className="job-history" data-testid="job-history-compact">
+              <div className="job-history-title">
+                <span>队列摘要</span>
+                <strong>{jobHistorySummary.liveCount > 0 ? `${jobHistorySummary.liveCount} 个运行中` : '最近 2 条'}</strong>
+                <em>{hiddenJobCount > 0 ? `已收纳 ${hiddenJobCount} 条` : `共 ${jobHistorySummary.totalCount} 条`}</em>
+              </div>
+              {visibleJobHistory.map((job, index) => (
+                <button
+                  type="button"
+                  className={`job-row history-slot-${index + 1} ${job.status}${activeJob?.id === job.id ? ' active' : ''}`}
+                  key={job.id}
+                  onClick={() => handleSelectJob(job)}
+                >
+                  <span>
+                    <small>{getWorkflowModeLabel(job.workflowMode || 'image-to-3d')} · {getShortJobId(job.id)}</small>
+                    <em>{job.prompt}</em>
+                  </span>
+                  <strong data-testid="job-history-status">{getJobHistoryStatusLabel(job)}</strong>
+                </button>
+              ))}
+              <p className="job-history-note">固定摘要，不向下增长；完整记录保留在本地任务接口。</p>
+            </div>
+          )}
+        </div>
+      </details>
+
+      {taskWatch && (
+        <TaskWatchCard
+          taskWatch={taskWatch}
+          activeJob={activeJob}
+          diagnostics={diagnostics}
+          syncingJobId={syncingJobId}
+          diagnosingJobId={diagnosingJobId}
+          canResumeActiveJob={canResumeActiveJob}
+          canDiagnoseActiveJob={canDiagnoseActiveJob}
+          resumeShouldDiagnoseFirst={resumeShouldDiagnoseFirst}
+          resumeBlockedReason={resumeBlockedReason}
+          onSync={handleSyncActiveJob}
+          onResume={handleResumeActiveJob}
+          onDiagnose={handleDiagnoseActiveJob}
+          onOpenModel={handleOpenActiveJobModel}
+          onToggleDetails={() => setDetailsOpen((current) => !current)}
+        />
+      )}
+
+      {promptPreview?.imagePrompt && (
+        <div className={`prompt-preview-card inline${confirmedPromptMatchesCurrent ? ' confirmed' : ''}`} aria-label="3D-ready prompt 预览" data-testid="prompt-preview-card">
+          <div>
+            <span>3D-READY PROMPT</span>
+            <strong>{confirmedPromptMatchesCurrent ? '已确认' : promptPreview.model}</strong>
+          </div>
+          <p>{promptPreview.imagePrompt}</p>
+          <em>{confirmedPromptMatchesCurrent ? '下一步可以生成参考图或直接完整生成。' : '检查构图、剖面和白底单图要求后，点击“确认提示词”。'}</em>
+        </div>
+      )}
 
       {referenceImage && (
         <section className={`reference-gate-card${referenceAccepted ? ' accepted' : ''}`} aria-label="参考图验收" data-testid="reference-gate-card">
@@ -1232,6 +2104,23 @@ export function GenerationPanel({
               <strong>{referenceImage.model || referenceImage.promptModel || '本地缓存'}</strong>
             </span>
           </div>
+          {referenceQualityGate && (
+            <div className={`reference-quality-strip ${referenceQualityGate.state}`} aria-label="参考图质量门槛" data-testid="reference-quality-gate">
+              <div>
+                <small>质量门槛</small>
+                <strong>{referenceQualityGate.title}</strong>
+                <p>{referenceQualityGate.summary}</p>
+              </div>
+              <div className="reference-quality-checks">
+                {referenceQualityGate.checks.map((check) => (
+                  <span key={check.id} className={check.state}>
+                    <small>{check.label}</small>
+                    <strong>{check.value}</strong>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
           <p>{referenceAccepted ? '参考图已锁定，下一步提交图生 3D；不满意仍可重试图片。' : '确认单主体、剖面清晰、白底留白充足后，再接收图片进入建模。'}</p>
           <div className="reference-gate-actions" aria-label="参考图验收操作">
             <button type="button" onClick={handleAcceptReference} disabled={busy || referenceAccepted} data-testid="accept-reference-gate">
@@ -1245,23 +2134,6 @@ export function GenerationPanel({
             </button>
           </div>
         </section>
-      )}
-
-      {taskWatch && (
-        <TaskWatchCard
-          taskWatch={taskWatch}
-          activeJob={activeJob}
-          diagnostics={diagnostics}
-          syncingJobId={syncingJobId}
-          diagnosingJobId={diagnosingJobId}
-          canResumeActiveJob={canResumeActiveJob}
-          canDiagnoseActiveJob={canDiagnoseActiveJob}
-          onSync={handleSyncActiveJob}
-          onResume={handleResumeActiveJob}
-          onDiagnose={handleDiagnoseActiveJob}
-          onOpenModel={handleOpenActiveJobModel}
-          onToggleDetails={() => setDetailsOpen((current) => !current)}
-        />
       )}
 
       <section className={`generation-timeline ${generationTimeline.state}`} aria-label="完整生成路线" data-testid="generation-timeline">
@@ -1372,6 +2244,17 @@ export function GenerationPanel({
                 下载 GLB
               </a>
             )}
+            {canTextureEnhanceActiveJob && (
+              <button
+                type="button"
+                onClick={() => void handleTextureEnhanceActiveJob()}
+                disabled={Boolean(busy || syncingJobId)}
+                title={hy3dTextureMessage}
+                data-testid="review-texture-enhance"
+              >
+                混元贴图增强
+              </button>
+            )}
             <button type="button" onClick={() => void handleResultReviewAction('copy-prompt')} data-testid="review-copy-prompt">
               复制 Prompt
             </button>
@@ -1400,6 +2283,12 @@ export function GenerationPanel({
                   </article>
                 ))}
               </div>
+            </section>
+          )}
+          {textureResultStatus && (
+            <section className={`texture-result-status ${textureResultStatus.state}`} aria-label="贴图结果状态" data-testid="texture-result-status">
+              <span>{textureResultStatus.label}</span>
+              <strong>{textureResultStatus.detail}</strong>
             </section>
           )}
           <div className="result-review-grid">
@@ -1511,7 +2400,7 @@ export function GenerationPanel({
                     重新建模
                   </button>
                   {canResumeActiveJob && (
-                    <button type="button" onClick={handleResumeActiveJob} disabled={Boolean(syncingJobId)}>
+                    <button type="button" onClick={handleResumeActiveJob} disabled={Boolean(syncingJobId || resumeShouldDiagnoseFirst)}>
                       续接输出
                     </button>
                   )}
@@ -1533,6 +2422,17 @@ export function GenerationPanel({
                       }}
                     >
                       查看模型
+                    </button>
+                  )}
+                  {canTextureEnhanceActiveJob && (
+                    <button
+                      type="button"
+                      onClick={() => void handleTextureEnhanceActiveJob()}
+                      disabled={Boolean(busy || syncingJobId)}
+                      title={hy3dTextureMessage}
+                      data-testid="detail-texture-enhance"
+                    >
+                      混元贴图增强
                     </button>
                   )}
                 </div>
@@ -1561,7 +2461,7 @@ export function GenerationPanel({
               )}
 
               {activeJob?.error && (
-                <p className="job-detail-error">{activeJob.error}</p>
+                <p className="job-detail-error">{formatJobErrorForDisplay(activeJob)}</p>
               )}
 
               {activeJob?.result && (
@@ -1644,9 +2544,20 @@ export function GenerationPanel({
         <label className="generation-field compact">
           <span>3D PROVIDER</span>
           <select value={modelProvider} onChange={(event) => setModelProvider(event.target.value)}>
-            <option value="selfhost-triposg">本地 TripoSG + 混元贴图</option>
+            <option value="selfhost-triposg">本地 TripoSG + Bio3D</option>
             <option value="local-demo">本地缓存链路</option>
             <option value="tencent-hunyuan">腾讯混元</option>
+          </select>
+        </label>
+        <label className="generation-field compact">
+          <span>TEXTURE</span>
+          <select
+            value={textureMode}
+            onChange={(event) => void handleTextureModeChange(event.target.value === 'hunyuan' ? 'hunyuan' : 'stable')}
+            disabled={modelProvider !== 'selfhost-triposg' || busy}
+          >
+            <option value="stable">稳定几何优先</option>
+            <option value="hunyuan">混元贴图增强</option>
           </select>
         </label>
       </div>
@@ -1658,15 +2569,15 @@ export function GenerationPanel({
 
       <div className="local-chain-proof" aria-label="本地链路说明" data-testid="local-chain-proof">
         <span>本地链路</span>
-        <strong>{buildLocalChainProofText(providerStatus, imageProvider, modelProvider)}</strong>
+        <strong>{buildLocalChainProofText(providerStatus, imageProvider, modelProvider, textureMode)}</strong>
       </div>
 
       <div className="provider-status-strip" aria-label="本地生成服务状态">
         <span className={getProviderStatusClass(providerStatusLoading, selectedProviderOnline)}>
           {providerStatusLoading ? '检查中' : selectedProviderOnline ? '图片服务正常' : '图片服务需检查'}
         </span>
-        <span className={getProviderStatusClass(providerStatusLoading, model3dReady)}>
-          {providerStatusLoading ? '同步中' : model3dReady ? '3D 服务就绪' : '3D 服务需检查'}
+        <span className={providerStatusLoading ? 'pending' : getModel3dStatusClass(providerStatus)}>
+          {providerStatusLoading ? '同步中' : `3D 服务${getModel3dStatusLabel(providerStatus)}`}
         </span>
         <em>{buildProviderStatusText(providerStatus, imageProvider)}</em>
       </div>
@@ -1738,6 +2649,25 @@ function mergeJobs(job: WorkflowJob, jobs: WorkflowJob[]) {
   return [job, ...jobs.filter((item) => item.id !== job.id)].slice(0, 12);
 }
 
+function selectLatestInspectableJob(jobs: WorkflowJob[]) {
+  return (
+    newestJob(jobs.filter(isLiveWorkflowJob)) ||
+    newestJob(jobs.filter((job) => job.status === 'completed' && Boolean(job.reference || job.result))) ||
+    newestJob(jobs.filter(isSelfhostJobResumable)) ||
+    newestJob(jobs.filter((job) => job.status === 'failed')) ||
+    newestJob(jobs)
+  );
+}
+
+function newestJob(jobs: WorkflowJob[]) {
+  return [...jobs].sort((a, b) => getJobTime(b) - getJobTime(a))[0] || null;
+}
+
+function getJobTime(job: WorkflowJob) {
+  const time = Date.parse(job.updatedAt || job.createdAt || '');
+  return Number.isFinite(time) ? time : 0;
+}
+
 function getJobWaitStage(job: WorkflowJob, hasReference: boolean) {
   if (job.status === 'queued') return 'queue';
   if (job.workflowMode === 'full-text-to-3d' && !hasReference) return 'image';
@@ -1776,6 +2706,7 @@ function buildJobDetailRows(job: WorkflowJob) {
     { label: '图片', value: getImageProviderName(job.imageProvider || 'local-gateway') },
     { label: '规格', value: buildImageSpecLabel(job.imageProfile, job.imageSize, job.imageQuality) },
     { label: '三维', value: getModelProviderName(job.provider) },
+    { label: '贴图', value: getTextureModeName(job.result?.textureMode || job.effectiveTextureMode || job.textureMode) },
     { label: '模式', value: getWorkflowModeLabel(job.workflowMode || 'image-to-3d') },
     { label: '模板', value: job.template || 'auto' },
     { label: '成本', value: job.costEstimateCny ? `约 ${job.costEstimateCny} 元` : '本地链路' },
@@ -1783,7 +2714,7 @@ function buildJobDetailRows(job: WorkflowJob) {
   ];
 
   if (job.provider === 'selfhost-triposg' && job.providerJobId) {
-    rows.splice(6, 0, { label: '续接ID', value: getShortJobId(job.providerJobId) });
+    rows.splice(7, 0, { label: '续接ID', value: getShortJobId(job.providerJobId) });
   }
 
   return rows;
@@ -1849,6 +2780,10 @@ function buildModelOutputChain(job: WorkflowJob) {
     };
   }
 
+  const includesTexturedStage = Boolean(result.texturedModelUrl);
+  const actualTextured = job.effectiveTextureMode === 'hunyuan' || result.effectiveTextureMode === 'hunyuan' || Boolean(result.texturedModelUrl);
+  const hasFallbackColor = job.effectiveTextureMode === 'fallback-color' || result.effectiveTextureMode === 'fallback-color' || result.textureMode === 'fallback-color';
+  const requestedTexture = actualTextured || job.requestedTextureMode === 'hunyuan' || result.requestedTextureMode === 'hunyuan';
   const items = [
     {
       id: 'raw',
@@ -1860,19 +2795,29 @@ function buildModelOutputChain(job: WorkflowJob) {
       state: result.rawModelUrl ? 'ok' : 'pending',
       testId: 'raw-output-link',
     },
-    {
-      id: 'textured',
-      no: '02',
-      label: 'Textured GLB',
-      detail: result.texturedModelUrl ? '贴图版已写入缓存' : '等待贴图 GLB',
-      url: result.texturedModelUrl,
-      action: '下载',
-      state: result.texturedModelUrl ? 'ok' : 'pending',
-      testId: 'textured-output-link',
-    },
+    ...(includesTexturedStage || requestedTexture
+      ? [{
+          id: 'textured',
+          no: '02',
+          label: hasFallbackColor ? '轻量贴图 fallback' : 'Textured GLB',
+          detail: result.texturedModelUrl
+            ? '混元贴图版已写入缓存'
+            : hasFallbackColor
+              ? result.textureFallbackReason?.includes('默认不提交远端贴图') || result.textureFallbackReason?.includes('低内存模式')
+                ? '20G 保护已跳过远端混元，已生成本地轻量贴图版'
+                : '混元未返回，已生成本地轻量贴图版'
+            : result.textureFallbackReason
+              ? '贴图未完成，当前展示可用轻量贴图 fallback'
+              : '混元贴图未返回，当前展示稳定几何版',
+          url: result.texturedModelUrl || (hasFallbackColor ? result.modelUrl : undefined),
+          action: result.texturedModelUrl || hasFallbackColor ? '下载' : '等待',
+          state: result.texturedModelUrl || hasFallbackColor ? 'ok' : 'pending',
+          testId: 'textured-output-link',
+        }]
+      : []),
     {
       id: 'final',
-      no: '03',
+      no: includesTexturedStage || requestedTexture ? '03' : '02',
       label: '当前展示',
       detail: result.modelUrl ? `${formatFileSize(result.fileSize)} · ${result.provider}` : '等待前端入库',
       url: result.modelUrl,
@@ -1896,9 +2841,24 @@ function getWorkflowStatusLabel(status: WorkflowJob['status']) {
   return '失败';
 }
 
+function getJobHistoryStatusLabel(job: WorkflowJob) {
+  if (job.status === 'completed') return '完成';
+  if (isSelfhostJobResumable(job)) return '待诊断';
+  if (job.status === 'failed') return '复查';
+  return `${Math.max(0, Math.min(100, job.progress || 0))}%`;
+}
+
+function formatJobErrorForDisplay(job: WorkflowJob) {
+  if (isSelfhostJobResumable(job)) {
+    return '远端三维输出暂未完成，本地已保留 ComfyUI prompt_id；请先点击“诊断远端”查看队列/history，恢复后再续接 GLB。';
+  }
+  return job.error || job.stage || '请检查本地网关、参考图缓存与 3D 服务状态。';
+}
+
 function getWorkflowModeLabel(mode: string) {
   if (mode === 'full-text-to-3d') return '完整生成';
   if (mode === 'image-to-3d') return '图生 3D';
+  if (mode === 'texture-enhance') return '贴图增强';
   return mode;
 }
 
@@ -1924,6 +2884,29 @@ function formatRelativeTime(value?: string, now = getTimestamp()) {
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `${hours}h 前`;
   return `${Math.floor(hours / 24)}d 前`;
+}
+
+function buildTextureArtifactFeedback(payload: TextureArtifactStatusPayload | null) {
+  if (!payload) return '贴图产物检查失败：请确认任务记录和 GLB 缓存仍可读取。';
+  if (payload.checked <= 0) return '还没有可检查的 selfhost 贴图产物。';
+  if (payload.ok) return `只读检查完成：${payload.checked} 个产物通过，未提交重任务。`;
+  return `只读检查完成：${payload.failed}/${payload.checked} 个产物存在白模风险。`;
+}
+
+function buildTextureStabilityFeedback(payload: TextureStabilityStatusPayload | null) {
+  const summary = payload?.summary;
+  if (!summary) return '还没有贴图预检报告；可先做只读预检，确认 raw GLB、参考图和资源闸门。';
+  if (summary.dryRun) {
+    if (summary.ok) return '只读预检通过：来源 raw GLB、参考图和资源闸门可用，未提交贴图任务。';
+    return payload?.message || summary.resourceMessage || '只读预检未通过：请复查来源任务或资源闸门。';
+  }
+  if (summary.ok) {
+    if (summary.textureMode === 'fallback-color') {
+      return `轻量长测通过：${summary.coloredRuns}/${summary.requestedRuns} 次产出非白模 fallback GLB，未调用混元重任务。`;
+    }
+    return `连续 ${summary.requestedRuns} 次通过，${summary.coloredRuns} 次生成非白模彩色 GLB。`;
+  }
+  return payload?.message || `${summary.failedRuns}/${summary.requestedRuns} 次未通过，请复查资源闸门或失败轮次。`;
 }
 
 type WorkflowPhase = 'input' | 'prompt' | 'image' | 'modeling' | 'done' | 'failed';
@@ -2013,20 +2996,27 @@ function buildTaskWatch(job: WorkflowJob, now: number): TaskWatchViewModel {
     hint = '结果已写入标本索引，可点击查看模型或复用参考图继续迭代。';
   } else if (job.status === 'failed') {
     if (job.provider === 'selfhost-triposg' && job.providerJobId) {
-      title = '远端输出可续接';
-      hint = '该任务已经拿到 ComfyUI prompt_id，可直接续接三维输出，不需要重新生成参考图。';
-      recoveryLabel = '可续接';
-      recoveryHint = `点击“续接输出”按 ${getShortJobId(job.providerJobId)} 拉取 history / GLB。`;
+      title = '远端输出待诊断';
+      hint = '该任务已经拿到 ComfyUI prompt_id；先诊断 queue/history，确认远端恢复后再续接 GLB。';
+      recoveryLabel = '待诊断';
+      recoveryHint = `${getShortJobId(job.providerJobId)} · 先诊断远端，恢复后再拉取 history / GLB。`;
     } else {
       title = '任务需要复查';
       hint = job.error || job.stage || '请检查图片网关、3D 服务和参考图缓存。';
     }
   } else if (job.provider === 'selfhost-triposg' && progress >= 80) {
-    title = progress >= 98 ? '正在续接三维输出' : '正在等待贴图与 GLB 输出';
-    hint = job.stage || '80% 后通常是远端三维服务的打包、贴图或文件写入阶段；可保持页面开启，或稍后点击同步状态。';
+    title = progress >= 98 ? '正在续接三维输出' : '正在等待 GLB 输出';
+    hint = job.stage || '82% 附近通常是远端 TripoSG / Bio3D 写入 raw 或 final GLB；可保持页面开启，或稍后点击同步状态。';
     if (job.providerJobId) {
       recoveryLabel = '远端任务';
-      recoveryHint = `${getShortJobId(job.providerJobId)} · 已提交到 ComfyUI，正在拉取 final.glb。`;
+      recoveryHint = `${getShortJobId(job.providerJobId)} · 队列仍在运行时请等待；history 清理后可自动复用参考图重提一次。`;
+    }
+  } else if (job.provider === 'selfhost-triposg' && /冷启动|恢复|OOM|不可达|自动重试/i.test(job.stage || job.error || '')) {
+    title = '3D 服务正在恢复';
+    hint = job.stage || '自部署 3D 服务正在冷启动或从 OOM 重启恢复，任务会保留并自动重试。';
+    if (job.providerJobId) {
+      recoveryLabel = '可恢复';
+      recoveryHint = `${getShortJobId(job.providerJobId)} · 稍后可续接 history / GLB。`;
     }
   } else if (job.workflowMode === 'full-text-to-3d' && !hasReference) {
     title = '正在等待参考图';
@@ -2117,7 +3107,7 @@ function buildTaskEstimateLabel(input: {
   providerJobId?: string;
 }) {
   if (input.completed) return '已完成';
-  if (input.failed && input.providerJobId) return '可续接';
+  if (input.failed && input.providerJobId) return '待诊断';
   if (input.failed) return '需复查';
   if (input.isImageStage) return '1-7 分钟';
   if (input.isSelfhost && input.progress >= 80) return '贴图/GLB';
@@ -2158,14 +3148,17 @@ function buildStageMonitor({
   const modelProviderLabel = getModelProviderName(modelProvider);
 
   if (activeJob?.status === 'failed' || phase === 'failed') {
+    const resumable = isSelfhostJobResumable(activeJob);
     return {
       state: 'warn',
       label: `任务 ${jobShortId}`,
-      primary: '链路中断',
+      primary: resumable ? '远端输出待诊断' : '链路需要复查',
       elapsed,
       chain: `${imageProviderLabel} / ${modelProviderLabel}`,
-      estimate: '需人工复查',
-      nextAction: activeJob?.error || activeJob?.stage || '请检查本地网关、参考图缓存与 3D 服务状态。',
+      estimate: resumable ? '先诊断远端' : '需人工复查',
+      nextAction: resumable
+        ? '已保留 ComfyUI prompt_id；先诊断远端队列和 history，恢复后再续接输出。'
+        : activeJob?.error || activeJob?.stage || '请检查本地网关、参考图缓存与 3D 服务状态。',
     };
   }
 
@@ -2233,7 +3226,7 @@ const WORKFLOW_STEPS: Array<{
   { id: 'input', no: '01', title: '术语 / 图片输入', caption: '写描述或上传初图' },
   { id: 'prompt', no: '02', title: 'GPT prompt 打磨', caption: 'gpt-5.5 生成 3D-ready' },
   { id: 'image', no: '03', title: '单图生成与确认', caption: 'image tool 输出参考图' },
-  { id: 'modeling', no: '04', title: '图生 3D 建模', caption: 'TripoSG / 混元贴图 / Bio3D' },
+  { id: 'modeling', no: '04', title: '图生 3D 建模', caption: 'TripoSG / Bio3D' },
   { id: 'done', no: '05', title: '下载缓存展示', caption: '加载 final GLB' },
 ];
 
@@ -2282,6 +3275,45 @@ function isSelfhostJobDiagnosable(job: WorkflowJob | null) {
     && Boolean(job.providerJobId)
     && job.status !== 'completed'
     && !job.result;
+}
+
+function getDiagnosticsForJob(job: WorkflowJob | null, diagnostics: WorkflowDiagnosticsPayload | null) {
+  if (!job?.providerJobId || !diagnostics) return null;
+  return diagnostics.promptId === job.providerJobId ? diagnostics : null;
+}
+
+function shouldDiagnoseBeforeResume(
+  job: WorkflowJob | null,
+  status: ProviderStatusPayload | null,
+  diagnostics: WorkflowDiagnosticsPayload | null
+) {
+  if (!isSelfhostJobResumable(job)) return false;
+  if (diagnostics?.outputs.glbCount && diagnostics.outputs.glbCount > 0) return false;
+  const selfhost = status?.model3d.selfhostTriposg;
+  if (!selfhost?.status) return true;
+  if (selfhost.status.recoverable) return true;
+  if (selfhost.status.ok !== true) return true;
+  if (diagnostics && !diagnostics.history.found && !diagnostics.queue.ok) return true;
+  return false;
+}
+
+function buildResumeBlockedReason(
+  job: WorkflowJob | null,
+  status: ProviderStatusPayload | null,
+  diagnostics: WorkflowDiagnosticsPayload | null
+) {
+  const promptId = getShortJobId(job?.providerJobId || '');
+  if (diagnostics && diagnostics.outputs.glbCount <= 0) {
+    if (!diagnostics.queue.ok || !diagnostics.history.found) {
+      return `${promptId} 已保留，但远端 queue/history 暂不可观测；先诊断远端，等服务恢复后再续接 GLB。`;
+    }
+    return `${promptId} 的 history 已返回但还没有 GLB 输出；先等待远端写入 raw/textured/final GLB。`;
+  }
+  const selfhostStatus = status?.model3d.selfhostTriposg?.status;
+  if (!selfhostStatus) {
+    return `${promptId} 已保留；先刷新或诊断远端，确认 ComfyUI queue/history 可访问后再续接。`;
+  }
+  return selfhostStatus.message || selfhostStatus.error || `${promptId} 已保留；远端 3D 服务暂不可观测，先诊断后续接。`;
 }
 
 function getWorkflowFailedPhase(activeJob: WorkflowJob | null): Exclude<WorkflowPhase, 'failed'> | null {
@@ -2360,10 +3392,15 @@ function buildImageSpecLabel(profile?: string, size?: string, quality?: string) 
 }
 
 function getModelProviderName(provider: string) {
-  if (provider === 'selfhost-triposg') return 'TripoSG + 混元贴图';
+  if (provider === 'selfhost-triposg') return 'TripoSG + Bio3D';
   if (provider === 'local-demo') return '本地缓存链路';
   if (provider === 'tencent-hunyuan') return '腾讯混元';
   return '3D 生成服务';
+}
+
+function getTextureModeName(mode?: string) {
+  if (mode === 'fallback-color') return 'Bio3D 轻量贴图 fallback';
+  return mode === 'hunyuan' ? '混元贴图增强' : '稳定几何优先';
 }
 
 function formatElapsedMs(ms: number) {
@@ -2398,12 +3435,15 @@ function buildActionStatusItems(input: {
   activeJob: WorkflowJob | null;
   selectedProviderOnline: boolean;
   model3dReady: boolean;
+  model3dBlockKind: Model3dBlockKind | null;
+  resumeShouldDiagnoseFirst: boolean;
   providerStatusLoading: boolean;
 }) {
   const hasReference = Boolean(input.referenceImage || input.activeJob?.reference || input.activeJob?.referenceId);
   const hasResult = Boolean(input.activeJob?.status === 'completed' && input.activeJob.result?.modelUrl);
   const live = input.activeJob?.status === 'queued' || input.activeJob?.status === 'processing';
   const failed = input.activeJob?.status === 'failed';
+  const resumable = isSelfhostJobResumable(input.activeJob);
 
   return [
     {
@@ -2426,8 +3466,22 @@ function buildActionStatusItems(input: {
     },
     {
       label: '图生 3D',
-      value: hasResult ? '已完成' : live ? '进行中' : input.model3dReady ? '可提交' : '需检查',
-      state: hasResult ? 'ok' : failed ? 'warn' : live ? 'pending' : input.model3dReady ? 'ready' : 'warn',
+      value: hasResult
+        ? '已完成'
+        : resumable
+          ? input.resumeShouldDiagnoseFirst ? '待诊断' : '可续接'
+          : live
+            ? '进行中'
+            : input.model3dReady
+              ? '可提交'
+              : input.model3dBlockKind === 'resource'
+                ? '资源保护'
+                : input.model3dBlockKind === 'queue'
+                  ? '队列保护'
+                  : input.model3dBlockKind === 'sync'
+                    ? '同步中'
+                    : '需检查',
+      state: hasResult ? 'ok' : failed ? 'warn' : live ? 'pending' : input.model3dReady ? 'ready' : input.model3dBlockKind === 'service' ? 'warn' : 'pending',
     },
     {
       label: '结果入库',
@@ -2437,12 +3491,36 @@ function buildActionStatusItems(input: {
   ];
 }
 
+type Model3dBlockKind = 'resource' | 'queue' | 'sync' | 'service';
+
+function getModel3dBlockKind(status: ProviderStatusPayload | null): Model3dBlockKind {
+  const selfhost = status?.model3d.selfhostTriposg;
+  if (!selfhost?.status) return 'sync';
+  if (selfhost.status.recoverable) return 'sync';
+  if (selfhost.status.ok !== true) return 'service';
+
+  const guard = selfhost.resourceGuard;
+  const ramFreeGiB = bytesToGiB(selfhost.status.ram?.available ?? selfhost.status.ram?.free);
+  if (Number.isFinite(ramFreeGiB) && ramFreeGiB < (guard?.minRamFreeGb ?? 10)) return 'resource';
+  const gpu = selfhost.status.gpu?.[0];
+  const vramFreeGiB = bytesToGiB(gpu?.vramFree);
+  if (Number.isFinite(vramFreeGiB) && vramFreeGiB < (guard?.minVramFreeGb ?? 6)) return 'resource';
+  if (isModel3dQueueProtected(status)) return 'queue';
+
+  return 'service';
+}
+
+function getModel3dBlockLabel(kind: Model3dBlockKind | null) {
+  if (kind === 'resource') return '3D 资源保护';
+  if (kind === 'queue') return '3D 队列保护';
+  if (kind === 'sync') return '3D 状态同步';
+  return '3D 链路复查';
+}
+
 function isImageProviderReady(status: ProviderStatusPayload | null, provider: string) {
   if (!status) return false;
   if (provider === 'local-gateway') {
-    const gateway = status.image.localGateway;
-    const healthReady = gateway?.health ? gateway.health.ok : true;
-    return Boolean(gateway?.configured && healthReady);
+    return isLocalGatewayReady(status);
   }
   if (provider === 'openai') {
     const openai = status.image.openai;
@@ -2452,10 +3530,214 @@ function isImageProviderReady(status: ProviderStatusPayload | null, provider: st
   return false;
 }
 
+function canForceRetryImageProvider(status: ProviderStatusPayload | null, provider: string) {
+  if (!status || provider !== 'local-gateway') return false;
+  const gateway = status.image.localGateway;
+  if (!gateway?.configured) return false;
+  const healthReady = gateway.health ? gateway.health.ok : true;
+  const modelsReady = gateway.models ? gateway.models.ok : true;
+  const modelsRecoverable = gateway.models?.status === 504 || /超时|timeout/i.test(gateway.models?.message || '');
+  if (!healthReady || (!modelsReady && !modelsRecoverable)) return false;
+  const imageRoute = gateway.imageRoute;
+  if (!imageRoute || imageRoute.ok !== false) return false;
+  return Boolean(
+    imageRoute.recoverable ||
+      isRecoverableHttpStatus(imageRoute.status) ||
+      isRecoverableHttpStatus(imageRoute.lastImageError?.status)
+  );
+}
+
+function isLocalGatewayReady(status: ProviderStatusPayload | null) {
+  const gateway = status?.image.localGateway;
+  const healthReady = gateway?.health ? gateway.health.ok : true;
+  const modelsReady = gateway?.models ? gateway.models.ok : true;
+  const modelsRecoverable = gateway?.models?.status === 504 || /超时|timeout/i.test(gateway?.models?.message || '');
+  const imageRouteReady = !gateway?.imageRoute || gateway.imageRoute.ok === null || gateway.imageRoute.ok !== false;
+  return Boolean(gateway?.configured && healthReady && (modelsReady || modelsRecoverable) && imageRouteReady);
+}
+
+function buildImageProviderBlockedMessage(status: ProviderStatusPayload | null, provider: string) {
+  if (!status) return '图片链路状态仍在同步，请先点击“刷新”确认 48760 网关与图片上游。';
+  if (provider === 'local-gateway') {
+    const gateway = status.image.localGateway;
+    if (!gateway?.configured) return '本地图片网关未配置，暂不能生成参考图；仍可上传图片后继续图生 3D。';
+    if (gateway.health && !gateway.health.ok) return `48760 本地图片网关 health 异常：${gateway.health.message}`;
+    if (gateway.imageRoute?.ok === false) return gateway.imageRoute.message;
+    if (gateway.models && !gateway.models.ok) return `48760 本地图片网关 models 异常：${gateway.models.message}`;
+    return '48760 网关在线，但图片上游尚未确认；请刷新预检或上传图片继续图生 3D。';
+  }
+  const openai = status.image.openai;
+  if (openai?.auth && !openai.auth.ok) {
+    return `OpenAI 直连图片服务不可用：${openai.auth.message}；建议切回 48760 本地图片网关或上传图片继续图生 3D。`;
+  }
+  return '图片服务暂不可用；请刷新预检，或上传图片继续图生 3D。';
+}
+
+function buildImageProviderFallbackMessage(status: ProviderStatusPayload | null, provider: string) {
+  if (!status) return '图片链路仍在同步。';
+  if (provider === 'local-gateway') {
+    const imageRoute = status.image.localGateway?.imageRoute;
+    if (imageRoute?.ok === false) {
+      const errorSummary = imageRoute.lastImageError?.message || (imageRoute.status ? `HTTP ${imageRoute.status}` : imageRoute.state);
+      return `48760 文生图上游暂不可用：${errorSummary}`;
+    }
+    return '48760 文生图链路暂不可用。';
+  }
+  const openai = status.image.openai;
+  if (openai?.auth && !openai.auth.ok) return `OpenAI 直连不可用：${openai.auth.message}`;
+  return '图片服务暂不可用。';
+}
+
+function isRecoverableHttpStatus(status?: number) {
+  return status === 408 || status === 409 || status === 425 || status === 429 || status === 500 || status === 502 || status === 503 || status === 504;
+}
+
 function isModel3dReady(status: ProviderStatusPayload | null) {
   if (!status) return false;
   const selfhost = status.model3d.selfhostTriposg;
-  return Boolean(selfhost?.configured && selfhost.status?.ok !== false);
+  if (!selfhost?.configured || selfhost.status?.ok !== true) return false;
+  const guard = selfhost.resourceGuard;
+  const ramFreeGiB = bytesToGiB(selfhost.status.ram?.available ?? selfhost.status.ram?.free);
+  if (Number.isFinite(ramFreeGiB) && ramFreeGiB < (guard?.minRamFreeGb ?? 10)) return false;
+  const gpu = selfhost.status.gpu?.[0];
+  const vramFreeGiB = bytesToGiB(gpu?.vramFree);
+  if (Number.isFinite(vramFreeGiB) && vramFreeGiB < (guard?.minVramFreeGb ?? 6)) return false;
+  if (isModel3dQueueProtected(status)) return false;
+  return true;
+}
+
+function isHy3dTextureReady(status: ProviderStatusPayload | null) {
+  if (!isModel3dReady(status)) return false;
+  const selfhost = status?.model3d.selfhostTriposg;
+  const texture = selfhost?.texture;
+  if (!texture?.enabled) return false;
+  const ramTotalGiB = bytesToGiB(selfhost?.status?.ram?.total);
+  const lowMemoryRemoteDisabled = texture.lowMemoryRemoteEnabled === false
+    && Number.isFinite(ramTotalGiB)
+    && ramTotalGiB < (texture.lowMemoryTotalRamGb ?? 24);
+  if (lowMemoryRemoteDisabled) return false;
+  if (Number.isFinite(ramTotalGiB) && ramTotalGiB < (texture.minTotalRamGb ?? 24)) return false;
+  const ramFreeGiB = bytesToGiB(selfhost?.status?.ram?.available ?? selfhost?.status?.ram?.free);
+  if (Number.isFinite(ramFreeGiB) && ramFreeGiB < (texture.minRamFreeGb ?? 18)) return false;
+  const gpu = selfhost?.status?.gpu?.[0];
+  const vramFreeGiB = bytesToGiB(gpu?.vramFree);
+  if (Number.isFinite(vramFreeGiB) && vramFreeGiB < (texture.minVramFreeGb ?? 14)) return false;
+  return true;
+}
+
+function buildHy3dTextureStatusMessage(status: ProviderStatusPayload | null) {
+  const selfhost = status?.model3d.selfhostTriposg;
+  const texture = selfhost?.texture;
+  if (!selfhost) return '正在同步 ComfyUI 资源状态；未确认前不会提交 Hunyuan3D-Paint。';
+  if (!texture?.enabled) return '混元贴图增强未启用，当前默认生成稳定几何版。';
+  if (!selfhost?.status) return '正在同步 ComfyUI 资源状态；未确认前不会提交 Hunyuan3D-Paint。';
+  if (!isModel3dReady(status)) return buildModel3dBlockedMessage(status);
+  const ramTotalGiB = bytesToGiB(selfhost.status.ram?.total);
+  const lowMemoryCutoff = texture.lowMemoryTotalRamGb ?? 24;
+  if (
+    texture.lowMemoryRemoteEnabled === false &&
+    Number.isFinite(ramTotalGiB) &&
+    ramTotalGiB < lowMemoryCutoff
+  ) {
+    return `20G 低内存保护中：服务器总内存 ${formatGiB(ramTotalGiB)}/${lowMemoryCutoff}GB；当前已禁止远端 Hunyuan3D-Paint，稳定 TripoSG/Bio3D 完成后会嵌入参考图写入轻量贴图 fallback，避免 OOM。`;
+  }
+  if (Number.isFinite(ramTotalGiB) && ramTotalGiB < (texture.minTotalRamGb ?? 24)) {
+    return `混元贴图资源保护中：服务器总内存 ${formatGiB(ramTotalGiB)}/${texture.minTotalRamGb ?? 24}GB；当前会使用稳定 GLB + 参考图轻量贴图 fallback。`;
+  }
+  const ramFreeGiB = bytesToGiB(selfhost.status.ram?.available ?? selfhost.status.ram?.free);
+  const gpu = selfhost.status.gpu?.[0];
+  const vramFreeGiB = bytesToGiB(gpu?.vramFree);
+  const runtimeRamFloor = texture.runtimeMinRamFreeGb ?? 5.5;
+  const runtimeVramFloor = texture.runtimeMinVramFreeGb ?? 8;
+  const ramLabel = Number.isFinite(ramFreeGiB) ? `RAM ${formatGiB(ramFreeGiB)}/${texture.minRamFreeGb ?? 18}GB` : 'RAM 待同步';
+  const vramLabel = Number.isFinite(vramFreeGiB) ? `VRAM ${formatGiB(vramFreeGiB)}/${texture.minVramFreeGb ?? 14}GB` : 'VRAM 待同步';
+  return isHy3dTextureReady(status)
+    ? `混元贴图可用：${ramLabel}，${vramLabel}，${texture.steps ?? 12} steps / ${texture.faces ?? 10000} faces；运行硬熔断 ${runtimeRamFloor}GB RAM / ${runtimeVramFloor}GB VRAM。`
+    : `混元贴图资源保护中：${ramLabel}，${vramLabel}；先用稳定几何版或等待资源释放。`;
+}
+
+function buildHy3dTextureRunMessage(status: ProviderStatusPayload | null) {
+  const message = buildHy3dTextureStatusMessage(status);
+  return isHy3dTextureReady(status)
+    ? message
+    : `${message} 本次仍会继续生成：后端会先完成稳定 TripoSG + Bio3D；资源不过线时不会提交 Hunyuan3D-Paint，会嵌入参考图写入轻量贴图 fallback。`;
+}
+
+function canEnhanceWithHy3dTexture(job: WorkflowJob | null) {
+  if (!job || job.status !== 'completed' || !job.result?.modelUrl) return false;
+  if (job.provider !== 'selfhost-triposg') return false;
+  const actualTextured =
+    job.effectiveTextureMode === 'hunyuan' ||
+    job.result.effectiveTextureMode === 'hunyuan' ||
+    Boolean(job.result.texturedModelUrl);
+  if (actualTextured) return false;
+  return Boolean(job.referenceId || job.reference?.id);
+}
+
+function getModel3dStatusLabel(status: ProviderStatusPayload | null) {
+  const selfhost = status?.model3d.selfhostTriposg;
+  if (!selfhost?.status) return '待同步';
+  const state = status?.model3d.selfhostTriposg?.status?.state;
+  if (state === 'cold_starting') return '冷启动';
+  if (state === 'unreachable') return '可恢复';
+  if (state === 'error') return '需检查';
+  if (selfhost.status?.ok === true && !isModel3dReady(status)) {
+    return getModel3dBlockKind(status) === 'queue' ? '队列保护' : '资源保护';
+  }
+  return isModel3dReady(status) ? '就绪' : '需检查';
+}
+
+function getModel3dStatusClass(status: ProviderStatusPayload | null) {
+  const selfhost = status?.model3d.selfhostTriposg;
+  if (!selfhost?.status) return 'pending';
+  if (selfhost?.status?.recoverable) return 'pending';
+  if (selfhost.status?.ok === true && !isModel3dReady(status)) return 'pending';
+  return isModel3dReady(status) ? 'ok' : 'warn';
+}
+
+function buildModel3dBlockedMessage(status: ProviderStatusPayload | null) {
+  const selfhost = status?.model3d.selfhostTriposg;
+  if (!selfhost?.status) return '3D 服务状态仍在同步，请先点击“刷新”完成 ComfyUI 队列和资源检查。';
+  if (selfhost.status.recoverable) return selfhost.status.message || '自部署 3D 服务正在恢复，暂不提交新的重任务。';
+  if (selfhost.status.ok !== true) return selfhost.status.message || selfhost.status.error || '自部署 3D 服务暂不可用，请复查公网端口与 ComfyUI 进程。';
+  const guard = selfhost.resourceGuard;
+  const ramFreeGiB = bytesToGiB(selfhost.status.ram?.available ?? selfhost.status.ram?.free);
+  if (Number.isFinite(ramFreeGiB) && ramFreeGiB < (guard?.minRamFreeGb ?? 10)) {
+    return `资源保护已生效：服务器可用内存约 ${formatGiB(ramFreeGiB)}，低于 ${guard?.minRamFreeGb ?? 10}GB 安全线，暂不提交 TripoSG/Bio3D 重任务。`;
+  }
+  const gpu = selfhost.status.gpu?.[0];
+  const vramFreeGiB = bytesToGiB(gpu?.vramFree);
+  if (Number.isFinite(vramFreeGiB) && vramFreeGiB < (guard?.minVramFreeGb ?? 6)) {
+    return `资源保护已生效：GPU 可用显存约 ${formatGiB(vramFreeGiB)}，低于 ${guard?.minVramFreeGb ?? 6}GB 安全线，暂不提交图生 3D。`;
+  }
+  if (isModel3dQueueProtected(status)) {
+    const runtime = selfhost.runtime;
+    const queue = selfhost.status.queue;
+    const localLimit = runtime?.maxPending ?? guard?.maxLocalPending ?? 1;
+    return `3D 队列保护中：本地保护队列 ${runtime?.running ?? 0}/${runtime?.pending ?? 0}（最多等待 ${localLimit} 个），远端 ComfyUI 队列 ${queue?.running ?? 0}/${queue?.pending ?? 0}；请等待当前建模完成或刷新预检，避免并发触发 OOM。`;
+  }
+  return '3D 服务仍需复查，请刷新链路预检后再提交建模。';
+}
+
+function isModel3dQueueProtected(status: ProviderStatusPayload | null) {
+  const selfhost = status?.model3d.selfhostTriposg;
+  if (!selfhost?.status || selfhost.status.ok !== true) return false;
+  const runtime = selfhost.runtime;
+  const queue = selfhost.status.queue;
+  const localBusy = (runtime?.running ?? 0) + (runtime?.pending ?? 0) > 0;
+  const shouldBlockRemoteBusy = runtime?.blockWhenRemoteBusy ?? selfhost.resourceGuard?.blockWhenRemoteBusy ?? true;
+  const remoteBusy = shouldBlockRemoteBusy && ((queue?.running ?? 0) + (queue?.pending ?? 0) > 0);
+  return localBusy || remoteBusy;
+}
+
+function bytesToGiB(bytes?: number) {
+  if (!bytes || bytes <= 0) return Number.NaN;
+  return bytes / 1024 / 1024 / 1024;
+}
+
+function formatGiB(value?: number) {
+  if (!value || !Number.isFinite(value) || value <= 0) return '--';
+  return `${value.toFixed(value >= 10 ? 0 : 1)}GB`;
 }
 
 function getProviderStatusClass(loading: boolean, ready: boolean) {
@@ -2465,23 +3747,38 @@ function getProviderStatusClass(loading: boolean, ready: boolean) {
 
 function buildProviderStatusText(status: ProviderStatusPayload | null, provider: string) {
   if (!status) return '等待状态同步';
-  if (provider === 'local-gateway') return getImageQualityProfile(status, provider);
+  if (provider === 'local-gateway') {
+    const route = status.image.localGateway?.imageRoute;
+    if (route?.ok === false) return route.message;
+    return getImageQualityProfile(status, provider);
+  }
   const openai = status.image.openai;
   if (openai?.auth?.message && !openai.auth.ok) return openai.auth.message;
   return getImageQualityProfile(status, provider);
 }
 
-function buildLocalChainProofText(status: ProviderStatusPayload | null, imageProvider: string, modelProvider: string) {
+function buildLocalChainProofText(status: ProviderStatusPayload | null, imageProvider: string, modelProvider: string, textureMode = 'stable') {
   const gateway = status?.image.localGateway;
   const selfhost = status?.model3d.selfhostTriposg;
+  const textureReady = isHy3dTextureReady(status);
   const imagePath = imageProvider === 'local-gateway'
     ? `${gateway?.baseUrl || 'http://127.0.0.1:48760'} / ${gateway?.imageModel || 'gpt-image-2'}`
     : 'OpenAI 直连图片服务';
   const modelPath = modelProvider === 'selfhost-triposg'
-    ? `${selfhost?.baseUrl || 'ComfyUI'} / TripoSG raw -> Hunyuan3D-Paint textured -> Bio3D final`
+    ? textureMode === 'hunyuan'
+      ? textureReady
+        ? `${selfhost?.baseUrl || 'ComfyUI'} / TripoSG raw -> Hunyuan3D-Paint textured -> Bio3D final`
+        : `${selfhost?.baseUrl || 'ComfyUI'} / TripoSG raw -> Bio3D final -> local lightweight texture fallback`
+      : `${selfhost?.baseUrl || 'ComfyUI'} / TripoSG raw -> Bio3D final`
     : getModelProviderName(modelProvider);
   const queue = selfhost?.status?.queue;
-  const queueText = queue ? `队列 ${queue.running ?? 0}/${queue.pending ?? 0}` : '队列待同步';
+  const runtime = selfhost?.runtime;
+  const hasLocalProtectedQueue = Boolean((runtime?.running ?? 0) || (runtime?.pending ?? 0));
+  const queueText = selfhost?.status?.recoverable
+    ? (selfhost.status.message || '3D 服务恢复中')
+    : hasLocalProtectedQueue
+      ? `本地保护队列 ${runtime?.running ?? 0}/${runtime?.pending ?? 0}`
+      : queue ? `远端队列 ${queue.running ?? 0}/${queue.pending ?? 0}` : '队列待同步';
   return `${imagePath} -> ${modelPath} · ${queueText}`;
 }
 
@@ -2489,6 +3786,15 @@ function buildGatewayRouteHint(status: ProviderStatusPayload | null, provider: s
   if (!status) return null;
   const gatewayReady = isImageProviderReady(status, 'local-gateway');
   const openaiAuth = status.image.openai?.auth;
+  const imageRoute = status.image.localGateway?.imageRoute;
+
+  if (provider === 'local-gateway' && imageRoute?.ok === false) {
+    return {
+      state: 'warn',
+      label: '图片上游',
+      text: imageRoute.message,
+    };
+  }
 
   if (provider === 'local-gateway' && gatewayReady) {
     return {
@@ -2510,7 +3816,7 @@ function buildGatewayRouteHint(status: ProviderStatusPayload | null, provider: s
     return {
       state: 'warn',
       label: '网关检查',
-      text: '本地图片网关暂未就绪，生成参考图前请检查 48760 服务与 API Key。',
+      text: imageRoute?.message || '本地图片网关暂未就绪，生成参考图前请检查 48760 服务与 API Key。',
     };
   }
 
@@ -2530,10 +3836,14 @@ function getImageQualityProfile(status: ProviderStatusPayload | null, provider: 
   return `${openai?.imageModel || 'OpenAI'} / ${openai?.imageToolModel || 'image tool'} / ${openai?.imageSize || '1536x1536'} / ${openai?.imageQuality || 'high'}`;
 }
 
-function buildActiveChainSummary(status: ProviderStatusPayload | null, imageProvider: string, modelProvider: string) {
+function buildActiveChainSummary(status: ProviderStatusPayload | null, imageProvider: string, modelProvider: string, textureMode = 'stable') {
   const imageLabel = imageProvider === 'local-gateway'
     ? status?.image.localGateway?.imageModel || 'gpt-image-2'
     : status?.image.openai?.imageToolModel || status?.image.openai?.imageModel || 'OpenAI';
-  const modelLabel = getModelProviderName(modelProvider);
+  const modelLabel = modelProvider === 'selfhost-triposg' && textureMode === 'hunyuan'
+    ? isHy3dTextureReady(status)
+      ? 'TripoSG + 混元贴图'
+      : 'TripoSG + 轻量贴图 fallback'
+    : getModelProviderName(modelProvider);
   return `${imageLabel} 单图 -> ${modelLabel}`;
 }

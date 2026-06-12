@@ -97,7 +97,7 @@ export function buildWorkflowPhaseBoard(input: WorkflowPhaseBoardInput): Workflo
     state,
     title: buildBoardTitle({ job, hasResult, hasReference, jobLive, jobFailed, referenceAccepted, promptReady }),
     summary: buildBoardSummary({ job, elapsed, hasResult, hasReference, jobLive, jobFailed, imageSpec, imageProviderLabel: input.imageProviderLabel, modelProviderLabel: input.modelProviderLabel }),
-    queueNote: '最近任务只保留当前、运行中、可续接和最新完成的关键项，避免队列面板一直向下增长。',
+    queueNote: '队列面板固定为最多 2 条摘要；旧任务自动收纳，避免队列面板一直向下增长。',
     phases,
   };
 }

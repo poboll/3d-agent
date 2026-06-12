@@ -4,6 +4,8 @@ import '../server/env-loader.mjs'
 const API_BASE = (process.env.SMOKE_API_BASE || `http://${process.env.API_HOST || '127.0.0.1'}:${process.env.API_PORT || 8791}`).replace(/\/$/, '')
 const APP_BASE = (process.env.SMOKE_APP_BASE || 'http://127.0.0.1:5173').replace(/\/$/, '')
 const MIN_DEMO_MODELS = Number(process.env.SMOKE_MIN_DEMO_MODELS || 1)
+const API_RETRY_COUNT = Number(process.env.SMOKE_API_RETRY_COUNT || 2)
+const API_RETRY_DELAY_MS = Number(process.env.SMOKE_API_RETRY_DELAY_MS || 180)
 const UI_SOURCE_FILES = [
   'app/src/components/GenerationPanel.tsx',
   'app/src/components/TaskWatchCard.tsx',
@@ -15,6 +17,7 @@ const UI_SOURCE_FILES = [
   'app/src/lib/workflowWait.ts',
   'app/src/lib/workflowTimeline.ts',
   'app/src/lib/workflowPreflight.ts',
+  'app/src/lib/workflowRuntime.ts',
   'app/src/data/models.ts',
 ]
 
@@ -51,11 +54,13 @@ async function main() {
       'task-watch-strategy',
       'task-watch-compact-main',
       'task-watch-compact-actions',
+      'task-watch-live-summary',
       'toggle-active-job-detail',
       'workflow-phase-board',
       'workflow-next-action',
       'workflow-next-action-button',
       'generation-action-status',
+      'generation-path-strategy',
       '当前建议',
       'is-recommended',
       'workflow-preflight-card',
@@ -64,8 +69,19 @@ async function main() {
       'regenerate-prompt',
       'confirm-prompt',
       'prompt-preview-card',
+      'generation-inspector',
+      'generation-inspector-body',
+      '链路巡检',
+      'runtime-rail',
+      '图片网关',
+      '保护队列',
+      'RAM 余量',
+      'GPU 余量',
+      '资源保护',
+      '安全线',
       'local-chain-proof',
       'reference-gate-card',
+      'reference-quality-gate',
       'accept-reference-gate',
       'retry-reference-gate',
       'confirm-modeling-gate',
@@ -76,6 +92,49 @@ async function main() {
       'generation-timeline',
       'job-result-review',
       'model-output-chain',
+      'texture-result-status',
+      'texture-mode-safety',
+      'texture-submit-strategy',
+      'chain-readiness',
+      'chain-readiness-badge',
+      'texture-artifact-health',
+      'refresh-texture-artifacts',
+      'texture-artifact-checked-at',
+      'texture-artifact-feedback',
+      'texture-artifact-latest',
+      'texture-artifact-open-model',
+      'texture-stability-preflight-card',
+      'run-texture-stability',
+      'run-texture-fallback-long-check',
+      'texture-stability-latest',
+      'texture-stability-latest-detail',
+      'texture-stability-feedback',
+      'texture-stability-feedback-detail',
+      'texture-stability-checked-at',
+      'texture-stability-checked-at-detail',
+      'texture-stability-path-strip',
+      'texture-artifact-path-strip',
+      '贴图产物健康',
+      '贴图资源安全边界',
+      '贴图提交策略',
+      '本次 3D 路径',
+      '可试跑混元',
+      'fallback 优先',
+      '连续白模换原贴图',
+      '最新产物',
+      '打开 GLB',
+      '只读刷新',
+      '只读检查现有 GLB',
+      '只读预检',
+      '轻量长测',
+      '不提交重任务',
+      'active material',
+      '原生混元贴图已返回',
+      '稳定 fallback 彩色版',
+      '当前可用彩色版',
+      '原生混元状态',
+      '贴图增强未完整返回',
+      '近期缓存',
       'reference-output-link',
       'raw-output-link',
       'textured-output-link',
@@ -115,6 +174,8 @@ async function main() {
       '默认链路',
       '48760 本地图片网关',
       'health 可用，models 暂未返回',
+      '图片上游',
+      '上游需检查',
       '概念速读',
       '生成复盘',
       '3D 输出链路',
@@ -140,13 +201,15 @@ async function main() {
       '远端任务',
       '远端诊断',
       '诊断远端',
+      '82% 附近',
+      'history 清理后',
       '可续接',
       '队列摘要',
+      '固定显示当前关键任务',
       '队列只展示关键任务摘要',
-      '队列不展开滚动',
+      '固定摘要，不向下增长',
       '最近 2 条',
       '已收纳',
-      '队列不展开滚动',
       '完整记录保留在本地任务接口',
       '重新生成',
       '确认提示词',
@@ -160,6 +223,12 @@ async function main() {
       '生成路线',
       '阶段看板',
       '链路预检',
+      '链路就绪',
+      '文生图到图生 3D',
+      '提示词',
+      '参考图',
+      '图生3D',
+      '贴图兜底',
       '正在同步链路状态',
       '等待接收图片',
       '正在图生3D',
@@ -171,6 +240,76 @@ async function main() {
     return {
       checked: required.length,
       scripts,
+    }
+  })
+
+  await step('巡检面板有界滚动', async () => {
+    const cssText = await readFile('app/src/app.css', 'utf8')
+    const requiredSnippets = [
+      '.generation-inspector-body',
+      'max-height: clamp(260px, 42vh, 420px)',
+      'overflow-y: auto',
+      'overscroll-behavior: contain',
+      '.generation-inspector:not([open]) .generation-inspector-body',
+      'display: none',
+    ]
+    for (const snippet of requiredSnippets) {
+      assertIncludes(cssText, snippet, `巡检面板有界滚动缺少样式：${snippet}`)
+    }
+    return {
+      guard: 'bounded-inspector-scroll',
+      checked: requiredSnippets.length,
+    }
+  })
+
+  await step('生成工坊辅助操作紧凑布局', async () => {
+    const cssText = await readFile('app/src/app.css', 'utf8')
+    const requiredSnippets = [
+      '.generation-action-secondary',
+      'grid-template-columns: repeat(3, minmax(0, 1fr))',
+      'grid-template-columns: repeat(2, minmax(0, 1fr))',
+      'min-height: 26px',
+      'font-size: 7.6px',
+      'transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1)',
+      'scale(1.006)',
+      'scale(0.995)',
+    ]
+    for (const snippet of requiredSnippets) {
+      assertIncludes(cssText, snippet, `生成工坊辅助操作紧凑布局缺少样式：${snippet}`)
+    }
+    return {
+      guard: 'compact-secondary-action-strip',
+      checked: requiredSnippets.length,
+    }
+  })
+
+  await step('加载态舞台控件隔离', async () => {
+    const sourceText = await readFile('app/src/components/ModelViewer.tsx', 'utf8')
+    const requiredSnippets = [
+      'const showStageUi = isReady',
+      "showStageUi ? ' is-model-ready' : ' is-model-loading'",
+      'if (!showStageUi)',
+      '{showStageUi && (',
+      'data-testid="stage-learning-rail"',
+      'className="stage-control-strip"',
+      'data-testid="stage-question-drawer"',
+      '!isReady && (',
+    ]
+    for (const snippet of requiredSnippets) {
+      assertIncludes(sourceText, snippet, `加载态隔离缺少实现片段：${snippet}`)
+    }
+    const protectedLabels = ['观察顺序', '概念图解', '提问线索', '自动旋转', '复位', '全局']
+    for (const label of protectedLabels) {
+      const labelIndex = sourceText.indexOf(label)
+      const guardIndex = sourceText.lastIndexOf('{showStageUi && (', labelIndex)
+      const progressIndex = sourceText.lastIndexOf('<ProgressOverlay', labelIndex)
+      if (labelIndex === -1 || guardIndex === -1 || progressIndex > guardIndex) {
+        throw new Error(`加载态可能仍会露出舞台控件：${label}`)
+      }
+    }
+    return {
+      protectedLabels,
+      guard: 'showStageUi',
     }
   })
 
@@ -244,12 +383,37 @@ async function step(name, fn) {
 }
 
 async function api(path) {
-  const response = await fetch(`${API_BASE}${path}`)
-  const payload = await response.json().catch(async () => ({ error: await response.text() }))
-  if (!response.ok || payload.error) {
-    throw new Error(payload.error || `HTTP ${response.status}`)
+  let lastError
+  for (let attempt = 0; attempt <= API_RETRY_COUNT; attempt += 1) {
+    try {
+      const response = await fetch(`${API_BASE}${path}`)
+      const raw = await response.text()
+      let payload
+      try {
+        payload = raw ? JSON.parse(raw) : {}
+      } catch (error) {
+        const preview = raw.slice(0, 160).replace(/\s+/g, ' ')
+        throw new Error(`JSON 解析失败：${error.message}${preview ? `；响应片段：${preview}` : ''}`)
+      }
+      if (!response.ok || payload.error) {
+        throw new Error(payload.error || `HTTP ${response.status}`)
+      }
+      return payload
+    } catch (error) {
+      lastError = error
+      if (!isRetryableApiSmokeError(error) || attempt >= API_RETRY_COUNT) break
+      await delay(API_RETRY_DELAY_MS * (attempt + 1))
+    }
   }
-  return payload
+  throw lastError
+}
+
+function isRetryableApiSmokeError(error) {
+  return /JSON 解析失败|Unexpected end of JSON input|terminated|ECONNRESET|socket hang up/i.test(error?.message || '')
+}
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 async function fetchText(url) {
