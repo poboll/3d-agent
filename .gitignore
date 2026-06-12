@@ -19,6 +19,13 @@ artifacts/
 .idea/
 .vscode/
 
+# local wrapper workspace leftovers and release handoff bundles
+/.playwright-mcp/
+/LearningCell/
+/3DCellForge/
+/release/
+*.bundle
+
 # 工作目录中的原始素材（已压缩并复制到 app/public/ 下，无需再提交）
 /DNA.draco.glb
 /DNA.png

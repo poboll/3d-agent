@@ -11,9 +11,10 @@ import { ProgressOverlay } from './ProgressOverlay';
 
 interface Props {
   model: CellModel;
+  captureMode?: boolean;
 }
 
-export function ModelViewer({ model }: Props) {
+export function ModelViewer({ model, captureMode = false }: Props) {
   const { status, progress, entry } = useModel(model.modelUrl, {
     autoStart: true,
     fileSize: model.fileSize,
@@ -28,7 +29,7 @@ export function ModelViewer({ model }: Props) {
   const lastClueToggleAt = useRef(0);
 
   const isReady = status === 'done' && !!entry?.gltf;
-  const showStageUi = isReady;
+  const showStageUi = captureMode || isReady;
   const heavyModel = isHeavyModel(model.fileSize);
   const renderDpr: [number, number] = heavyModel ? [1, 1.15] : [1, 1.35];
   const environmentResolution = heavyModel ? 80 : 112;
@@ -146,7 +147,7 @@ export function ModelViewer({ model }: Props) {
           onPointerEnter={() => setModelFocus(true)}
           onPointerMove={() => setModelFocus(true)}
         >
-          {canvasEventSource ? (
+          {canvasEventSource && !captureMode ? (
             <Canvas
               eventSource={canvasEventSource}
               frameloop={autoRotate ? 'always' : 'demand'}
@@ -209,6 +210,12 @@ export function ModelViewer({ model }: Props) {
           ) : null}
         </div>
       </div>
+
+      {captureMode && (
+        <div className="stage-capture-poster" aria-hidden="true">
+          <img src={model.imageUrl} alt="" />
+        </div>
+      )}
 
       {showStageUi && (
         <div className="stage-annotation stage-info stage-info-main">
@@ -376,7 +383,7 @@ export function ModelViewer({ model }: Props) {
         </div>
       )}
 
-      {!isReady && (
+      {!captureMode && !isReady && (
         <ProgressOverlay
           progress={progress}
           status={status}

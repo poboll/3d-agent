@@ -10716,6 +10716,48 @@ button:not(:disabled):hover,
   padding: 8px 9px;
 }
 
+.app-shell--capture .stage-capture-poster {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 3;
+  width: min(46%, 500px);
+  aspect-ratio: 1;
+  transform: translate(-50%, -49%);
+  pointer-events: none;
+}
+
+.app-shell--capture .viewer-canvas-zone {
+  opacity: 0.22;
+}
+
+.app-shell--capture .stage-capture-poster::before {
+  position: absolute;
+  inset: 11%;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 50% 48%, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0) 56%),
+    radial-gradient(circle at 45% 58%, rgba(104, 126, 91, 0.16), rgba(104, 126, 91, 0) 68%);
+  filter: blur(14px);
+  content: "";
+}
+
+.app-shell--capture .stage-capture-poster img {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  clip-path: inset(3.5% round 18px);
+  mix-blend-mode: multiply;
+  filter:
+    saturate(1.06)
+    contrast(1.02)
+    drop-shadow(0 28px 28px rgba(62, 52, 36, 0.08));
+  -webkit-mask-image: radial-gradient(circle at 50% 52%, #000 0 57%, rgba(0, 0, 0, 0.92) 66%, transparent 79%);
+  mask-image: radial-gradient(circle at 50% 52%, #000 0 57%, rgba(0, 0, 0, 0.92) 66%, transparent 79%);
+}
+
 .app-shell--capture .overlay-title {
   font-size: clamp(18px, 1.4vw, 23px);
 }
@@ -10738,11 +10780,57 @@ button:not(:disabled):hover,
 
 .app-shell--capture .sidebar-section {
   padding: 7px 9px;
-  grid-template-columns: minmax(118px, 0.16fr) minmax(0, 1.84fr);
+  grid-template-columns: minmax(150px, 0.22fr) minmax(0, 1.78fr);
+}
+
+.app-shell--capture .specimen-summary {
+  grid-template-columns: 38px minmax(92px, 1fr);
+  gap: 7px;
+  padding-right: 10px;
+}
+
+.app-shell--capture .specimen-location-note {
+  display: none;
+}
+
+.app-shell--capture .specimen-summary-copy {
+  gap: 2px;
+  padding-bottom: 12px;
+}
+
+.app-shell--capture .specimen-summary-copy strong {
+  font-size: 13px;
+  line-height: 1.1;
 }
 
 .app-shell--capture .specimen-summary-copy p {
+  display: -webkit-box;
   max-height: 3.2em;
+  overflow: hidden;
+  font-size: 9.4px;
+  line-height: 1.42;
+  overflow-wrap: normal;
+  word-break: normal;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+.app-shell--capture .index-card {
+  flex-basis: 46%;
+}
+
+.app-shell--capture .cell-list {
+  grid-template-columns: repeat(2, minmax(150px, 1fr));
+}
+
+.app-shell--capture .specimen-art-card,
+.app-shell--capture .specimen-habitat-card,
+.app-shell--capture .specimen-concept-card {
+  min-width: 190px;
+}
+
+.app-shell--capture .art-card-body {
+  grid-template-columns: minmax(76px, 0.42fr) minmax(0, 1fr);
 }
 
 @media (max-width: 980px) {

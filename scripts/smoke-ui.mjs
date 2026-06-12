@@ -286,14 +286,16 @@ async function main() {
   await step('加载态舞台控件隔离', async () => {
     const sourceText = await readFile('app/src/components/ModelViewer.tsx', 'utf8')
     const requiredSnippets = [
-      'const showStageUi = isReady',
+      'const showStageUi = captureMode || isReady',
       "showStageUi ? ' is-model-ready' : ' is-model-loading'",
       'if (!showStageUi)',
+      'canvasEventSource && !captureMode',
+      'stage-capture-poster',
       '{showStageUi && (',
       'data-testid="stage-learning-rail"',
       'className="stage-control-strip"',
       'data-testid="stage-question-drawer"',
-      '!isReady && (',
+      '!captureMode && !isReady && (',
     ]
     for (const snippet of requiredSnippets) {
       assertIncludes(sourceText, snippet, `加载态隔离缺少实现片段：${snippet}`)

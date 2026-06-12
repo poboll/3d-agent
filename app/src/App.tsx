@@ -403,7 +403,7 @@ function App() {
             id="model-stage"
             style={{ '--accent': activeModel.accent } as CSSProperties}
           >
-            <ModelViewer key={activeModel.id} model={activeModel} />
+            <ModelViewer key={activeModel.id} model={activeModel} captureMode={captureMode} />
           </section>
 
           <Sidebar
