@@ -71,8 +71,8 @@ export const LOCAL_IMAGE_GATEWAY_IMAGE_RETRIES = Number(process.env.LOCAL_IMAGE_
 export const PROMPT_POLISH_TIMEOUT_MS = Number(process.env.PROMPT_POLISH_TIMEOUT_MS || 60000)
 export const PROMPT_PREVIEW_TIMEOUT_MS = Number(process.env.PROMPT_PREVIEW_TIMEOUT_MS || 15000)
 export const LOCAL_IMAGE_GATEWAY_CONFIGURED = Boolean(LOCAL_IMAGE_GATEWAY_API_KEY)
-export const COMFYUI_BASE_URL = (process.env.COMFYUI_BASE_URL || 'http://47.242.195.8:8010').replace(/\/+$/, '')
-export const COMFYUI_OUTPUT_PREFIX = process.env.COMFYUI_OUTPUT_PREFIX || '/home/kk/projects/3d/ComfyUI/output/'
+export const COMFYUI_BASE_URL = (process.env.COMFYUI_BASE_URL || 'http://127.0.0.1:8188').replace(/\/+$/, '')
+export const COMFYUI_OUTPUT_PREFIX = process.env.COMFYUI_OUTPUT_PREFIX || '/path/to/ComfyUI/output/'
 export const COMFYUI_WORKFLOW_TEMPLATE = path.resolve(
   process.env.COMFYUI_WORKFLOW_TEMPLATE || 'server/workflows/bio_single_image_triposg_bio3d_api.json'
 )

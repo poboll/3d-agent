@@ -8,15 +8,19 @@ AI-assisted biology 3D generation workbench for classroom-grade model exploratio
 
 ## Screenshots / 界面预览
 
-| Local API / 本地接口 | Workbench / 常驻工作台 |
-| --- | --- |
-| ![3D Agent local API panel](docs/assets/screenshots/3d-agent-local-api-chrome.png) | ![3D Agent workbench](docs/assets/screenshots/3d-agent-workbench-chrome.png) |
+### 1. Persistent Workbench / 常驻工作台
 
-| Flow Guide / 流程引导 | Specimen Index / 标本索引 |
-| --- | --- |
-| ![3D Agent flow guide overlay](docs/assets/screenshots/3d-agent-flow-guide-chrome.png) | ![3D Agent specimen index](docs/assets/screenshots/3d-agent-specimen-index-chrome.png) |
+![3D Agent persistent workbench](docs/assets/screenshots/3d-agent-workbench-desktop.png)
 
-All screenshots above are foreground Chrome captures from the running local app at `http://127.0.0.1:5173`, kept at `2456x1856` Retina resolution for GitHub display.
+### 2. Flow Guide / 流程引导
+
+![3D Agent flow guide](docs/assets/screenshots/3d-agent-flow-guide-chrome.png)
+
+### 3. Specimen Index / 标本索引
+
+![3D Agent specimen index](docs/assets/screenshots/3d-agent-specimen-index-chrome.png)
+
+The screenshots above are foreground browser captures from the running local app at `http://127.0.0.1:5173`. The README keeps them in this order: persistent workbench, flow guide, specimen index.
 
 ## Why It Exists
 
@@ -80,7 +84,7 @@ docs/                Deployment notes, release notes, screenshots
 
 Requirements:
 
-- Node.js 20+ recommended.
+- Node.js 22+ recommended.
 - A local or remote ComfyUI-compatible 3D service for live image-to-3D.
 - A local image gateway if you want live text-to-image generation.
 
@@ -108,7 +112,7 @@ Default local services:
 | Frontend | `http://127.0.0.1:5173` |
 | API | `http://127.0.0.1:8791` |
 | Local image gateway | `http://127.0.0.1:48760` |
-| Self-hosted 3D service | `http://47.242.195.8:8010` by default in `.env.example` |
+| Self-hosted 3D service | Configure your own `COMFYUI_BASE_URL` in `.env.local`. |
 
 If a port is busy:
 

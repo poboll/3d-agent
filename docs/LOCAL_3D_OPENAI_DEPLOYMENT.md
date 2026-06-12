@@ -29,7 +29,7 @@
 
 ```bash
 OPENAI_API_KEY=<填写已授权的 OpenAI API Key>
-OPENAI_BASE_URL=https://api.anhesea.top:9443/v1
+OPENAI_BASE_URL=https://api.openai.com/v1
 OPENAI_PROMPT_MODEL=gpt-5.5
 OPENAI_REVIEW_MODEL=gpt-5.5
 OPENAI_REASONING_EFFORT=xhigh
@@ -64,7 +64,7 @@ DEFAULT_IMAGE_PROVIDER=local-gateway
 三维生成服务使用本地/自托管 ComfyUI：
 
 ```bash
-COMFYUI_BASE_URL=http://47.242.195.8:8010
+COMFYUI_BASE_URL=http://127.0.0.1:8188
 COMFYUI_WORKFLOW_TEMPLATE=server/workflows/bio_single_image_triposg_bio3d_api.json
 COMFYUI_HY3DPAINT_WORKFLOW_TEMPLATE=server/workflows/bio_single_image_triposg_hy3dpaint_api.json
 COMFYUI_HY3DPAINT_EXISTING_MESH_WORKFLOW_TEMPLATE=server/workflows/bio_existing_mesh_hy3dpaint_postprocess_api.json
@@ -137,7 +137,7 @@ http://127.0.0.1:5173/#workbench
 如果通过 SSH 转发访问服务器：
 
 ```bash
-ssh -p 9090 kk@47.242.195.8 -L 18188:127.0.0.1:8188
+ssh -p <ssh-port> <user>@<server-host> -L 18188:127.0.0.1:8188
 COMFYUI_BASE_URL=http://127.0.0.1:18188 npm run dev:api
 ```
 
@@ -221,7 +221,7 @@ python3 /Users/Apple/Downloads/苏增烨申请/deploy_3d/api_examples/build_bio_
 ```bash
 python3 /Users/Apple/Downloads/苏增烨申请/deploy_3d/api_examples/run_bio_single_image_workflow.py \
   path/to/3d-ready-single-reference.png \
-  --base-url http://47.242.195.8:8010 \
+  --base-url http://127.0.0.1:8188 \
   --prefix bio_single_mitochondrion \
   --output-dir tripo-bio-benchmark/generated/mitochondrion
 ```

@@ -8,7 +8,7 @@
   "2": {
     "class_type": "Hunyuan3DPaintExistingMesh",
     "inputs": {
-      "model_3d": "/home/kk/projects/3d/ComfyUI/output/3d/bio_existing_raw.glb",
+      "model_3d": "/opt/comfyui/output/3d/bio_existing_raw.glb",
       "image": [
         "1",
         0

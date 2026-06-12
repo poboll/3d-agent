@@ -737,7 +737,7 @@ function makeProviderStatus(overrides = {}) {
     model3d: {
       selfhostTriposg: {
         configured: true,
-        baseUrl: 'http://47.242.195.8:8010',
+        baseUrl: 'http://127.0.0.1:8188',
         texture: {
           enabled: true,
           minRamFreeGb: 16.5,
